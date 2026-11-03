@@ -26,7 +26,7 @@ La liste complète voulue par Adrien (03/11/2026), et pour chacune un statut :
 | Liens entre éléments | première version | 1 (données), 3 (écrans) | Liens typés, par exemple : bloque, en double de, lié à. |
 | Commentaires | première version | 1 (données), 3 (écrans) | |
 | Priorité | première version | 1 | |
-| Tags clé:valeur (`projet:cluster`, `composant:pxe`) | première version | 1 (données), 3 (écrans) | Ils remplacent les composants, les labels et beaucoup de champs. |
+| Tags clé:valeur (`composant:pxe`, `release:v1`) | première version | 1 (données), 3 (écrans) | Ils remplacent les composants, les labels et beaucoup de champs. Le projet n'est pas un tag : `projet:<nom>` à l'écran est un lien vers l'entité projet (décision 002). |
 | Release | première version | 3 | Un tag `release:<nom>` : il groupe des tâches à livrer ensemble. Une étape, pas un sprint. |
 | Sprint | **abandonné** | — | Les horizons à la Timestripe le remplacent. |
 | Backlog | première version | 3 | Une vue : ce qui n'est ni fait ni planifié, trié par priorité. |
