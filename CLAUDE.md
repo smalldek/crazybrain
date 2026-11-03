@@ -7,7 +7,7 @@ Adrien veut apprendre à travailler avec l'IA.
 
 - **Français**, partout : docs, commits, PR, commentaires du code, messages de l'interface.
   Les noms du code (variables, fonctions, tables) peuvent rester en anglais si c'est plus clair ;
-  on choisit une fois au début de l'étape 1 et on s'y tient.
+  on choisit une fois à l'étape 1d et on s'y tient.
 
 ## Moteur, pas données
 

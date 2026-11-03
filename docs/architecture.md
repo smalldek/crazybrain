@@ -18,8 +18,8 @@ Un seul Worker porte tout : les pages, l'API, le connecteur, la réception des m
 
 ## Socle
 
-- **Un Worker Cloudflare**, séparé de celui du site du vault, sur un sous-domaine de
-  `dekermadec.net` à fixer au premier déploiement.
+- **Un Worker Cloudflare**, séparé de celui du site du vault, sur
+  `crazybrain.dekermadec.net`.
 - **Une base D1** dédiée (D1 est du SQLite hébergé par Cloudflare).
 - **Cloudflare Access** devant tout le sous-domaine : connexion Google, Adrien seul autorisé.
   Le Worker vérifie en plus le jeton qu'Access lui transmet (en-tête `Cf-Access-Jwt-Assertion`) :
@@ -27,7 +27,7 @@ Un seul Worker porte tout : les pages, l'API, le connecteur, la réception des m
 - **Déploiement par GitHub Actions** à chaque fusion dans `main`. Avant de déployer, l'Action
   vérifie qu'Access protège bien le sous-domaine, comme pour le site du vault. Le jeton Cloudflare
   et les identifiants sont dans les secrets GitHub du dépôt.
-- **Langage et cadriciel** : à trancher au début de l'étape 1, dans une décision `002`. Point de
+- **Langage et cadriciel** : à trancher à l'étape 1d, dans une décision `002`. Point de
   départ : TypeScript, le langage naturel des Workers.
 
 ## Client
@@ -63,7 +63,7 @@ Deux chemins possibles :
 2. **Repli : le Worker fait l'OAuth.** Access laisse passer `/mcp` seul ; le Worker mène lui-même
    la connexion OAuth avec Google et n'accepte que le compte d'Adrien.
 
-C'est la première chose à vérifier (étape 1), car le connecteur porte les étapes 2 et 4.
+C'est la première chose à vérifier côté Claude (étape 1c), car le connecteur porte les étapes 2 et 4.
 
 Outils prévus : chercher, lire, créer, modifier, commenter, lier, tagger (étape 2) ; tester une
 requête, enregistrer une requête (étape 4).
@@ -105,7 +105,7 @@ Goalscape, le glisser-déposer et le mode journée en ont besoin. Les **horizons
 (cet élément est pour « novembre », pour « 2027 ») se conçoivent à l'étape 7 : un champ dédié ou
 un tag `horizon:2026-11`.
 
-Questions de modèle à trancher au début de l'étape 1 :
+Questions de modèle à trancher à l'étape 1d :
 
 - **Le projet : un élément parent, ou un tag `projet:` ?** Les deux à la fois feraient un doublon
   qui finirait par diverger. Proposition : le projet est un élément (il a ses sous-projets, son
@@ -149,7 +149,7 @@ dépend.
 
 | Hypothèse | Pourquoi elle compte | Comment on vérifie | Quand | Si elle est fausse |
 |---|---|---|---|---|
-| Un connecteur MCP derrière Cloudflare Access marche avec les connecteurs claude.ai. Cloudflare documente une protection d'un serveur MCP par Access et OAuth ; pas vérifié. | Le connecteur porte les étapes 2 et 4. | Un Worker minimal avec un seul outil (`bonjour`), ajouté comme connecteur dans claude.ai : Claude l'appelle et reçoit la réponse ; un appel sans authentification est refusé. | Début de l'étape 1, avant tout le reste. | Repli : OAuth fait par le Worker. Si rien ne marche, on revoit le socle avant d'aller plus loin. |
+| Un connecteur MCP derrière Cloudflare Access marche avec les connecteurs claude.ai. Cloudflare documente une protection d'un serveur MCP par Access et OAuth ; pas vérifié. | Le connecteur porte les étapes 2 et 4. | Un Worker minimal avec un seul outil (`bonjour`), ajouté comme connecteur dans claude.ai : Claude l'appelle et reçoit la réponse ; un appel sans authentification est refusé. | Étape 1c, avant le socle. | Repli : OAuth fait par le Worker. Si rien ne marche, on revoit le socle avant d'aller plus loin. |
 | Une requête SQL peut s'exécuter en lecture seule sur D1. | Une requête écrite par Claude ne doit rien modifier. | La série de requêtes d'écriture du test, toutes refusées. | Étape 4. | Repli : exécuter les requêtes sur une copie de la base, refaite régulièrement. |
 | L'appli installée survit à l'expiration de la connexion Access. | Quand la session Access expire, les appels de l'appli reçoivent la page de connexion au lieu des données : l'appli peut sembler vide ou bloquée. | Une durée de session courte en test ; on observe ce que fait l'appli. Elle doit détecter l'expiration et rouvrir la connexion. | Visible dès l'étape 1, traitée à l'étape 5. | Session Access longue, plus la détection et la reconnexion dans l'appli. |
 | Web Push est assez fiable sur Android. | Les rappels. | Des rappels de test sur plusieurs jours, téléphone en veille ; on mesure le retard. | Étape 5. | Appli native, plus tard. |
