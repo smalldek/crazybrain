@@ -5,7 +5,7 @@
   "scripts": {
     "verifier-types": "tsc --noEmit",
     "test": "vitest run",
-    "test:acceptation": "cucumber-js",
+    "test:acceptation": "NODE_OPTIONS=\"--import tsx\" cucumber-js",
     "test:tout": "npm run verifier-types && npm test && npm run test:acceptation"
   },
   "devDependencies": {
