@@ -1,0 +1,15 @@
+{
+  "name": "crazybrain",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "verifier-types": "tsc --noEmit",
+    "test": "vitest run",
+    "test:acceptation": "cucumber-js",
+    "test:tout": "npm run verifier-types && npm test && npm run test:acceptation"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.0"
+  }
+}

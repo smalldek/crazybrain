@@ -1,6 +1,7 @@
 # Met le site en ligne sur Cloudflare à chaque fusion dans main (ou à la main, onglet Actions).
 # Ne déploie jamais sans Cloudflare Access (la connexion Google) devant l'adresse.
 # Sans les deux secrets Cloudflare du dépôt, ne fait rien et le dit.
+# Ne déploie que si tous les tests passent (tests.yml).
 name: Déployer sur Cloudflare
 
 on:
@@ -16,7 +17,11 @@ permissions:
   contents: read
 
 jobs:
+  tests:
+    uses: ./.github/workflows/tests.yml
+
   deployer:
+    needs: tests
     runs-on: ubuntu-latest
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
