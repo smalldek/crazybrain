@@ -1,0 +1,15 @@
+// Worker de Crazybrain. Pour l'instant, il ne sert qu'une page d'accueil statique (dossier public/).
+// Pas d'adresse de secours en workers.dev : le site ne vit que sur son sous-domaine, que
+// Cloudflare Access fermera à l'étape suivante (connexion Google).
+{
+	"name": "crazybrain",
+	"compatibility_date": "2026-10-01",
+	"assets": {
+		"directory": "./public"
+	},
+	"workers_dev": false,
+	"preview_urls": false,
+	"routes": [
+		{ "pattern": "crazybrain.dekermadec.net", "custom_domain": true }
+	]
+}

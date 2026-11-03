@@ -15,26 +15,41 @@ L'état d'avancement (étape en cours, ce qui est fait) est tenu dans le vault d
 
 ## Étape 1 — Socle
 
-**1a. D'abord, vérifier qu'un connecteur MCP passe derrière Access.** C'est l'hypothèse dont
-dépend le plus de choses ([architecture](architecture.md), « Hypothèses à vérifier »).
+Ordre revu par Adrien le 03/11 : d'abord un site vide en ligne, puis la connexion Google ;
+le connecteur viendra ensuite.
 
-- **Livre** : un Worker minimal sur le sous-domaine choisi, derrière Access, qui sert un serveur
-  MCP avec un seul outil, `bonjour`.
+**1a. Un site vide en ligne.**
+
+- **Livre** : une page d'accueil statique servie par un Worker sur `crazybrain.dekermadec.net`,
+  déployée par GitHub Actions à chaque fusion dans `main`.
+- **Fait quand** : Adrien ouvre l'adresse sur son téléphone et voit la page d'accueil.
+- **Il faut d'Adrien** : un jeton Cloudflare et l'identifiant du compte dans les secrets du dépôt
+  (Claude ne peut pas créer le jeton).
+
+**1b. La connexion Google devant le site.**
+
+- **Livre** : Cloudflare Access sur le sous-domaine, avec la connexion par compte Google (méthode
+  de connexion commune à tous les sites d'Adrien) ; le déploiement vérifie qu'Access est en place.
+- **Fait quand** : sans connexion, l'adresse refuse ; avec le compte Google d'Adrien, la page
+  s'affiche.
+- **Il faut d'Adrien** : un « client OAuth » créé dans la console Google Cloud, ajouté comme
+  méthode de connexion dans Cloudflare Zero Trust.
+
+**1c. Vérifier qu'un connecteur MCP passe derrière Access.** C'est l'hypothèse dont dépendent
+les étapes 2 et 4 ([architecture](architecture.md), « Hypothèses à vérifier »).
+
+- **Livre** : sur le même Worker, un serveur MCP avec un seul outil, `bonjour`.
 - **Fait quand** : dans une conversation d'Adrien, Claude appelle `bonjour` par le connecteur et
   reçoit la réponse ; et un appel sans authentification est refusé. Sinon, on essaie le repli
   (OAuth fait par le Worker) avant d'aller plus loin.
 
-**1b. Ensuite, le socle lui-même.**
+**1d. Le socle lui-même.**
 
 - **Livre** : la décision `002` (langage, cadriciel) ; le schéma de la base (migrations) ;
   l'API (créer, lire, modifier, lister des éléments) ; une page liste avec un champ de saisie
-  rapide ; le déploiement automatique par GitHub Actions, qui vérifie d'abord qu'Access protège
-  le sous-domaine.
-- **Fait quand** : depuis le téléphone, Adrien ouvre l'adresse, se connecte avec Google, tape une
-  tâche, la voit dans la liste, recharge la page et la voit encore. Sans connexion, l'adresse
-  refuse. Une fusion dans `main` déploie sans geste à la main.
-- **Il faudra d'Adrien** : le choix du sous-domaine, et un jeton Cloudflare dans les secrets du
-  dépôt (Claude ne peut pas le créer).
+  rapide.
+- **Fait quand** : depuis le téléphone, Adrien se connecte avec Google, tape une tâche, la voit
+  dans la liste, recharge la page et la voit encore.
 
 ## Étape 2 — Connecteur Claude
 

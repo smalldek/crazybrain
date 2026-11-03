@@ -16,8 +16,9 @@ vivent dans la base, jamais dans git. Ce dépôt est public : il ne contient ni 
 
 ## État
 
-Cadrage fait le 03/11/2026. Rien n'est encore construit. La prochaine étape est le socle
-(étape 1), en commençant par vérifier qu'un connecteur Claude passe derrière Cloudflare Access.
+Cadrage fait le 03/11/2026. Étape 1 en cours : d'abord une page d'accueil en ligne sur
+`crazybrain.dekermadec.net`, puis la connexion Google devant, puis la vérification du connecteur
+Claude, puis le socle ([feuille de route](docs/feuille-de-route.md)).
 
 ## Documents
 
