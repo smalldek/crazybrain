@@ -1,10 +1,12 @@
 // Réglages du compilateur TypeScript (l'équivalent du .csproj : version du langage, rigueur).
+// Ce fichier vérifie le Worker (src/), avec les types de Cloudflare ; tsconfig.tests.json vérifie les tests, avec ceux de Node.
 {
   "compilerOptions": {
     "target": "ES2022",
     "module": "ES2022",
     "moduleResolution": "Bundler",
     "lib": ["ES2022"],
+    "types": ["@cloudflare/workers-types"],
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
@@ -14,5 +16,5 @@
     "isolatedModules": true,
     "verbatimModuleSyntax": true
   },
-  "include": ["src", "tests", "vitest.config.ts"]
+  "include": ["src"]
 }

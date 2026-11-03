@@ -22,3 +22,5 @@ jobs:
         run: npm run verifier-types
       - name: Tests unitaires (domaine)
         run: npm test
+      - name: Tests d'acceptation (scénarios Gherkin, Worker et base D1 locaux)
+        run: npm run test:acceptation

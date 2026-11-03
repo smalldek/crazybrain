@@ -1,11 +1,29 @@
-// Worker de Crazybrain. Pour l'instant, il ne sert qu'une page d'accueil statique (dossier public/).
+// Worker de Crazybrain : l'API (src/, routes /api/*) et la page (dossier public/), avec la base D1.
 // Pas d'adresse de secours en workers.dev : le site ne vit que sur son sous-domaine, que
 // Cloudflare Access ferme (connexion Google ; outils/poser_access.py, vérifié à chaque déploiement).
+// Le Worker vérifie en plus le jeton d'Access sur chaque appel /api/* (deuxième serrure).
 {
 	"name": "crazybrain",
+	"main": "src/index.ts",
 	"compatibility_date": "2026-10-01",
 	"assets": {
-		"directory": "./public"
+		"directory": "./public",
+		// Seuls les appels /api/* passent par le code ; le reste est servi tel quel depuis public/.
+		"run_worker_first": ["/api/*"]
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "crazybrain",
+			// L'identifiant réel est écrit par le déploiement (deployer.yml), jamais commité.
+			"database_id": "REMPLACE_AU_DEPLOIEMENT",
+			"migrations_dir": "migrations"
+		}
+	],
+	"vars": {
+		// L'équipe Cloudflare Access qui signe les jetons (pas un secret). L'AUD, propre à
+		// l'application Access, est passée au déploiement (--var AUD:…), pas écrite ici.
+		"TEAM_DOMAIN": "https://2ker-consulting.cloudflareaccess.com"
 	},
 	"workers_dev": false,
 	"preview_urls": false,

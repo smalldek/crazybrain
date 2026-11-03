@@ -53,14 +53,42 @@ jobs:
         if: steps.config.outputs.ok == 'oui'
         run: python3 outils/verifier_access.py avant
 
+      - uses: actions/setup-node@v4
+        if: steps.config.outputs.ok == 'oui'
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Installer les dépendances
+        if: steps.config.outputs.ok == 'oui'
+        run: npm ci
+
+      # La base D1 « crazybrain » : créée si elle manque. Son identifiant est écrit dans la copie de
+      # wrangler.jsonc de cette machine seulement (jamais commité), et masqué dans le journal.
+      - name: Base D1 (créer si elle manque, appliquer les migrations)
+        if: steps.config.outputs.ok == 'oui'
+        run: |
+          set -o pipefail
+          id_base() { npx wrangler d1 list --json | python3 -c 'import json,sys; print(next((b["uuid"] for b in json.load(sys.stdin) if b["name"] == "crazybrain"), ""))'; }
+          ID=$(id_base)
+          if [ -z "$ID" ]; then
+            echo "Base crazybrain absente : création."
+            npx wrangler d1 create crazybrain > /dev/null
+            ID=$(id_base)
+          fi
+          if [ -z "$ID" ]; then echo "::error::Base crazybrain introuvable après création."; exit 1; fi
+          echo "::add-mask::$ID"
+          sed -i "s/REMPLACE_AU_DEPLOIEMENT/$ID/" wrangler.jsonc
+          npx wrangler d1 migrations apply crazybrain --remote
+
+      # L'AUD de l'application Access : le Worker l'exige dans chaque jeton (deuxième serrure).
+      # Lue à chaque déploiement, masquée dans le journal, jamais écrite dans le dépôt.
       - name: Déployer
         if: steps.config.outputs.ok == 'oui'
-        uses: cloudflare/wrangler-action@v4
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          wranglerVersion: '4'
-          command: deploy
+        run: |
+          AUD=$(python3 outils/verifier_access.py aud)
+          echo "::add-mask::$AUD"
+          npx wrangler deploy --var "AUD:$AUD"
 
       - name: Sans connexion, l'adresse refuse-t-elle ?
         if: steps.config.outputs.ok == 'oui'
