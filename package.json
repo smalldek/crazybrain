@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "verifier-types": "tsc --noEmit",
+    "verifier-types": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.tests.json",
     "test": "vitest run",
     "test:acceptation": "NODE_OPTIONS=\"--import tsx\" cucumber-js",
     "test:tout": "npm run verifier-types && npm test && npm run test:acceptation"
