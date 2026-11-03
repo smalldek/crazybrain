@@ -1,0 +1,52 @@
+# Crazybrain — Règles pour Claude
+
+Crazybrain est le moteur de gestion de tâches et de projets d'Adrien. On le construit ensemble :
+Adrien veut apprendre à travailler avec l'IA.
+
+## Langue
+
+- **Français**, partout : docs, commits, PR, commentaires du code, messages de l'interface.
+  Les noms du code (variables, fonctions, tables) peuvent rester en anglais si c'est plus clair ;
+  on choisit une fois au début de l'étape 1 et on s'y tient.
+
+## Moteur, pas données
+
+- Ce dépôt contient le **moteur** : code, spec, architecture, feuille de route. Les tâches
+  d'Adrien vivent dans la base D1, **jamais dans git**.
+- **Le dépôt est public.** Aucune donnée réelle (tâche, commentaire, export de la base, mail),
+  aucun secret (jeton, clé, mot de passe), aucune adresse mail d'Adrien. Les données de test sont
+  inventées.
+- Les identifiants Cloudflare (compte, base, application Access) et les secrets passent par les
+  secrets du Worker et de GitHub Actions, pas par un fichier du dépôt.
+
+## Changements
+
+- **Chaque changement passe par une PR**, que Claude fusionne lui-même en **squash**, sans
+  attendre l'accord d'Adrien (même règle que le dépôt `cluster`). Adrien suit et relit après coup
+  s'il veut. Une session dont un garde-fou refuse la fusion le note et laisse la session mère
+  fusionner.
+- **Mode apprentissage** : chaque PR explique en mots simples ce qui est fait et pourquoi, pour
+  qu'Adrien apprenne. Un terme technique s'explique la première fois qu'il apparaît. Pas de
+  remplissage : ce qui a été fait, pourquoi ce choix, ce qu'on a vérifié, ce qui reste.
+- Une fonctionnalité qui repose sur une hypothèse non vérifiée (`docs/architecture.md`,
+  « Hypothèses à vérifier ») commence par la vérifier.
+
+## Construction
+
+- **L'interface se construit au fur et à mesure.** Le moteur (base, API, connecteur) d'abord ;
+  chaque étape ajoute l'écran dont elle a besoin, simple, puis on l'améliore à l'usage.
+- Une décision technique qui engage (langage, cadriciel, format) s'écrit dans `docs/decisions/`
+  avec les options écartées et leur motif.
+
+## Où vit quoi
+
+- **Vision globale et état d'avancement** : dans le vault d'Adrien (dépôt privé `smalldek/vault`),
+  fichier `informatique/crazybrain.md`. Il renvoie ici, il ne recopie pas.
+- **Spec et technique** : ici, dans `docs/` :
+  - `docs/vision.md` : pourquoi cet outil, ce qu'il est et n'est pas ;
+  - `docs/fonctionnalites.md` : la liste complète, avec le statut de chacune ;
+  - `docs/architecture.md` : socle, client, connecteur, modèle de données, hypothèses ;
+  - `docs/feuille-de-route.md` : les étapes et leurs livrables vérifiables ;
+  - `docs/decisions/NNN-sujet.md` : une décision par fichier.
+- Quand l'état change (étape finie, hypothèse vérifiée), on met à jour la doc ici **et** l'état
+  dans le vault.
