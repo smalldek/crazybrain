@@ -26,7 +26,7 @@ le connecteur viendra ensuite.
 - **Il faut d'Adrien** : un jeton Cloudflare et l'identifiant du compte dans les secrets du dépôt
   (Claude ne peut pas créer le jeton).
 
-**1b. La connexion Google devant le site.**
+**1b. La connexion Google devant le site.** Fait le 03/11 (Google seul, code par e-mail retiré).
 
 - **Livre** : Cloudflare Access sur le sous-domaine, avec la connexion par compte Google (méthode
   de connexion commune à tous les sites d'Adrien) ; le déploiement vérifie qu'Access est en place.
@@ -43,7 +43,7 @@ les étapes 2 et 4 ([architecture](architecture.md), « Hypothèses à vérifier
   reçoit la réponse ; et un appel sans authentification est refusé. Sinon, on essaie le repli
   (OAuth fait par le Worker) avant d'aller plus loin.
 
-**1d. Le socle lui-même.** Squelette fait le 03/11 ; reste la vérification d'Adrien sur le téléphone.
+**1d. Le socle lui-même.** Squelette fait et vérifié par Adrien sur son téléphone le 03/11 (tâche saisie, toujours là après rechargement).
 
 - **Livre** : la décision `002` (langage, cadriciel) ; le schéma de la base (migrations) ;
   l'API (créer, lire, modifier, lister des éléments) ; une page liste avec un champ de saisie
