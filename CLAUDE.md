@@ -6,8 +6,8 @@ Adrien veut apprendre à travailler avec l'IA.
 ## Langue
 
 - **Français**, partout : docs, commits, PR, commentaires du code, messages de l'interface.
-  Les noms du code (variables, fonctions, tables) peuvent rester en anglais si c'est plus clair ;
-  on choisit une fois à l'étape 1d et on s'y tient.
+  Les noms du code : vocabulaire métier en français sans accents (`elements`, `echeance`),
+  ce que les bibliothèques imposent en anglais (décision 002).
 
 ## Moteur, pas données
 
@@ -32,6 +32,11 @@ Adrien veut apprendre à travailler avec l'IA.
   « Hypothèses à vérifier ») commence par la vérifier.
 
 ## Construction
+
+- **TypeScript strict, écrit pour un lecteur .NET** (décision 002) : domaine dans `src/domaine/`,
+  sans Cloudflare ni HTTP ; entités et objets-valeurs explicites ; pas de `any`.
+- **Chaque modification écrit l'état et un événement** (avant, après, auteur) dans la même
+  transaction (décision 002).
 
 - **L'interface se construit au fur et à mesure.** Le moteur (base, API, connecteur) d'abord ;
   chaque étape ajoute l'écran dont elle a besoin, simple, puis on l'améliore à l'usage.

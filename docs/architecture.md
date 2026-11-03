@@ -27,8 +27,8 @@ Un seul Worker porte tout : les pages, l'API, le connecteur, la réception des m
 - **Déploiement par GitHub Actions** à chaque fusion dans `main`. Avant de déployer, l'Action
   vérifie qu'Access protège bien le sous-domaine, comme pour le site du vault. Le jeton Cloudflare
   et les identifiants sont dans les secrets GitHub du dépôt.
-- **Langage et cadriciel** : à trancher à l'étape 1d, dans une décision `002`. Point de
-  départ : TypeScript, le langage naturel des Workers.
+- **Langage et cadriciel** : TypeScript strict, domaine séparé de l'infrastructure, routage par
+  Hono ; pas de cadriciel d'interface avant l'étape 3 ([décision 002](decisions/002-langage-et-modele.md)).
 
 ## Client
 
@@ -80,6 +80,7 @@ même table, un type différent.
 | `liens` | Les liens typés entre deux éléments : élément source, élément cible, type de lien. |
 | `commentaires` | Les commentaires d'un élément : texte, date, auteur (Adrien ou Claude). |
 | `tags` | Les tags clé:valeur : élément, clé, valeur. Une étiquette simple est une clé sans valeur. |
+| `evenements` | Le journal : élément, type d'événement, valeurs avant et après, auteur, date, version de forme. |
 | `requetes` | Les requêtes enregistrées : nom, SQL, description, date du dernier test. |
 | `abonnements_push`, `rappels` | Techniques : les téléphones abonnés aux notifications, les rappels à envoyer. |
 
@@ -105,14 +106,13 @@ Goalscape, le glisser-déposer et le mode journée en ont besoin. Les **horizons
 (cet élément est pour « novembre », pour « 2027 ») se conçoivent à l'étape 7 : un champ dédié ou
 un tag `horizon:2026-11`.
 
-Questions de modèle à trancher à l'étape 1d :
+Tranché le 03/11 ([décision 002](decisions/002-langage-et-modele.md)) :
 
-- **Le projet : un élément parent, ou un tag `projet:` ?** Les deux à la fois feraient un doublon
-  qui finirait par diverger. Proposition : le projet est un élément (il a ses sous-projets, son
-  objectif, ses commentaires), avec un nom court ; le filtre `projet:cluster` se résout par la
-  hiérarchie (tout ce qui descend du projet `cluster`), sans tag stocké.
-- **Garder l'historique des modifications ?** Savoir ce que Claude a changé, et quand, aide à lui
-  faire confiance. Une table d'historique coûte peu si elle naît avec le schéma.
+- **Toute notion qui a un libellé et une description est une entité** (projet, objectif…). Une tâche
+  se rattache à un ou plusieurs projets par un lien « appartient à » qui pointe l'identifiant du
+  projet ; à l'écran, `projet:<nom>` avec complétion. Un sous-projet a son projet pour parent.
+- **Un journal d'événements** (table `evenements`), écrit dans la même transaction que l'état :
+  valeurs avant et après, auteur, date, version de la forme de l'événement. C'est l'audit log.
 
 ## Requêtes enregistrées, en lecture seule
 
