@@ -5,20 +5,108 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Crazybrain</title>
   <style>
-    :root { color-scheme: light dark; --fond: #f7f7f5; --texte: #1d1d1b; --doux: #6b6b66; }
-    @media (prefers-color-scheme: dark) { :root { --fond: #161615; --texte: #ecece8; --doux: #9a9a94; } }
-    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 16px;
-           box-sizing: border-box; background: var(--fond); color: var(--texte);
-           font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-    main { max-width: 32rem; text-align: center; }
-    h1 { font-size: 2.2rem; margin: 0 0 .5rem; }
-    p { color: var(--doux); line-height: 1.5; margin: 0; }
+    :root { color-scheme: light dark; --fond: #f7f7f5; --carte: #ffffff; --texte: #1d1d1b; --doux: #6b6b66;
+            --bord: #deded8; --accent: #2f5fd0; --erreur: #b3261e; }
+    @media (prefers-color-scheme: dark) {
+      :root { --fond: #161615; --carte: #22221f; --texte: #ecece8; --doux: #9a9a94;
+              --bord: #3a3a36; --accent: #8fb0ff; --erreur: #ffb4ab; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--fond); color: var(--texte);
+           font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.4; }
+    main { max-width: 40rem; margin: 0 auto; padding: 16px; }
+    h1 { font-size: 1.6rem; margin: 8px 0 16px; }
+    form { margin-bottom: 16px; }
+    label { display: block; font-size: .9rem; color: var(--doux); margin-bottom: 6px; }
+    input { width: 100%; font: inherit; font-size: 1.05rem; padding: 12px 14px; border-radius: 10px;
+            border: 1px solid var(--bord); background: var(--carte); color: var(--texte); }
+    input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+    ul { list-style: none; margin: 0; padding: 0; }
+    li { background: var(--carte); border: 1px solid var(--bord); border-radius: 10px; padding: 12px 14px;
+         margin-bottom: 8px; overflow-wrap: anywhere; }
+    .etat { color: var(--doux); margin: 8px 0; }
+    .erreur { color: var(--erreur); }
   </style>
 </head>
 <body>
   <main>
     <h1>Crazybrain</h1>
-    <p>Gestion des tâches et des projets. En construction : cette page d'accueil est la première pierre.</p>
+    <form id="saisie" autocomplete="off">
+      <label for="titre">Nouvelle tâche (Entrée pour l'ajouter)</label>
+      <input id="titre" name="titre" maxlength="200" enterkeyhint="done" placeholder="Taper une tâche…" autofocus>
+    </form>
+    <p id="message" class="etat" role="status" aria-live="polite">Chargement…</p>
+    <ul id="liste"></ul>
   </main>
+  <script>
+    // Pas de cadriciel (décision 002) : quelques lignes de JavaScript qui appellent l'API.
+    const liste = document.getElementById('liste');
+    const message = document.getElementById('message');
+    const champ = document.getElementById('titre');
+
+    function afficherMessage(texte, erreur = false) {
+      message.textContent = texte;
+      message.className = erreur ? 'etat erreur' : 'etat';
+      message.hidden = texte === '';
+    }
+
+    // Appelle l'API. Si la connexion Access a expiré, la réponse n'est pas du JSON (page de connexion,
+    // ou redirection que le navigateur bloque) : on le dit au lieu de rester vide.
+    async function appeler(chemin, options) {
+      let reponse;
+      try {
+        reponse = await fetch(chemin, options);
+      } catch {
+        throw new Error('Connexion perdue ou expirée : recharger la page.');
+      }
+      const type = reponse.headers.get('content-type') || '';
+      if (!type.includes('application/json')) {
+        throw new Error('Connexion expirée : recharger la page.');
+      }
+      const corps = await reponse.json();
+      if (!reponse.ok) throw new Error(corps.erreur || 'Erreur ' + reponse.status);
+      return corps;
+    }
+
+    function afficher(elements) {
+      liste.replaceChildren(...elements.map((element) => {
+        const ligne = document.createElement('li');
+        ligne.textContent = element.titre; // textContent : le titre n'est jamais interprété comme du HTML
+        return ligne;
+      }));
+      afficherMessage(elements.length === 0 ? 'Aucune tâche pour l’instant.' : '');
+    }
+
+    async function charger() {
+      try {
+        afficher((await appeler('/api/elements')).elements);
+      } catch (e) {
+        afficherMessage(e.message, true);
+      }
+    }
+
+    document.getElementById('saisie').addEventListener('submit', async (evenement) => {
+      evenement.preventDefault();
+      const titre = champ.value;
+      if (titre.trim() === '') return;
+      champ.disabled = true;
+      try {
+        await appeler('/api/elements', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ titre }),
+        });
+        champ.value = '';
+        await charger();
+      } catch (e) {
+        afficherMessage(e.message, true);
+      } finally {
+        champ.disabled = false;
+        champ.focus();
+      }
+    });
+
+    charger();
+  </script>
 </body>
 </html>

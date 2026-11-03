@@ -16,9 +16,36 @@ vivent dans la base, jamais dans git. Ce dépôt est public : il ne contient ni 
 
 ## État
 
-Cadrage fait le 03/11/2026. Étape 1 en cours : d'abord une page d'accueil en ligne sur
-`crazybrain.dekermadec.net`, puis la connexion Google devant, puis la vérification du connecteur
-Claude, puis le socle ([feuille de route](docs/feuille-de-route.md)).
+Cadrage fait le 03/11/2026. Étape 1 en cours : le squelette du socle (base, API, page, tests) est
+en place ([feuille de route](docs/feuille-de-route.md)).
+
+## Lancer les tests
+
+Il faut Node.js 22. Une fois après chaque récupération du dépôt : `npm ci` (installe les
+dépendances figées dans `package-lock.json`, comme un `dotnet restore`).
+
+| Commande | Ce qu'elle fait |
+|---|---|
+| `npm run verifier-types` | Compile en mode strict, sans rien produire (le Worker et les tests) |
+| `npm test` | Tests unitaires du domaine et de la serrure Access (Vitest, `tests/unitaires/`) |
+| `npm run test:acceptation` | Scénarios Gherkin en français (`features/`), joués par Cucumber.js contre le vrai Worker lancé en local avec une base D1 locale neuve |
+| `npm run test:tout` | Les trois, dans l'ordre |
+
+L'Action GitHub `Tests` lance les trois à chaque PR ; le déploiement ne part que s'ils passent.
+Pour essayer l'API à la main en local : `npx wrangler d1 migrations apply crazybrain --local`, puis
+`npx wrangler dev` (sans jeton Access, l'API répond 403 : c'est voulu).
+
+## Où est quoi dans le code
+
+| Dossier | Contenu |
+|---|---|
+| `src/domaine/` | Les règles métier, sans Cloudflare ni HTTP (`Titre`, `Element`, `creerElement`) |
+| `src/acces/` | La vérification du jeton Cloudflare Access |
+| `src/infra/` | Le dépôt D1 (le seul code qui écrit du SQL) |
+| `src/index.ts` | Les routes de l'API (Hono) |
+| `migrations/` | Le schéma de la base, migration par migration |
+| `public/` | La page |
+| `tests/unitaires/`, `features/` | Les tests unitaires, les scénarios d'acceptation |
 
 ## Documents
 

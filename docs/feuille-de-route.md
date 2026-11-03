@@ -43,13 +43,20 @@ les étapes 2 et 4 ([architecture](architecture.md), « Hypothèses à vérifier
   reçoit la réponse ; et un appel sans authentification est refusé. Sinon, on essaie le repli
   (OAuth fait par le Worker) avant d'aller plus loin.
 
-**1d. Le socle lui-même.**
+**1d. Le socle lui-même.** Squelette fait le 03/11 ; reste la vérification d'Adrien sur le téléphone.
 
 - **Livre** : la décision `002` (langage, cadriciel) ; le schéma de la base (migrations) ;
   l'API (créer, lire, modifier, lister des éléments) ; une page liste avec un champ de saisie
   rapide.
 - **Fait quand** : depuis le téléphone, Adrien se connecte avec Google, tape une tâche, la voit
   dans la liste, recharge la page et la voit encore.
+- **Fait (squelette, demandé par Adrien le 03/11 : « juste la base »)** : base D1 et migration
+  `0001` (tables `elements` et `evenements`) ; domaine `Titre`, `Element`, `creerElement` ; API
+  `GET` et `POST /api/elements`, état et événement dans la même transaction ; vérification du jeton
+  Access par le Worker ; page liste et saisie ; tests unitaires (Vitest) et d'acceptation (Gherkin
+  en français, Cucumber.js contre le Worker local), lancés par l'Action avant tout déploiement.
+- **Reste** : modifier un élément (l'API ne fait encore que créer et lister) ; les types, liens et
+  tags (étapes 2 et 3).
 
 ## Étape 2 — Connecteur Claude
 

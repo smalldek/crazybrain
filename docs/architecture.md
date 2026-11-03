@@ -24,6 +24,8 @@ Un seul Worker porte tout : les pages, l'API, le connecteur, la réception des m
 - **Cloudflare Access** devant tout le sous-domaine : connexion Google, Adrien seul autorisé.
   Le Worker vérifie en plus le jeton qu'Access lui transmet (en-tête `Cf-Access-Jwt-Assertion`) :
   si Access était mal réglé, le Worker refuserait quand même. Le site du vault fait déjà ainsi.
+  Fait sur toute route `/api/*` (`src/acces/jeton-access.ts`) : signature RS256 avec les clés de
+  l'équipe (`TEAM_DOMAIN`), audience = `AUD` (lue au déploiement), expiration ; sinon 403.
 - **Déploiement par GitHub Actions** à chaque fusion dans `main`. Avant de déployer, l'Action
   vérifie qu'Access protège bien le sous-domaine, comme pour le site du vault. Le jeton Cloudflare
   et les identifiants sont dans les secrets GitHub du dépôt.
@@ -100,6 +102,12 @@ Champs d'un élément :
 | `poids` | Le poids d'un objectif parmi ses frères, pour la vue Goalscape. |
 | `rang` | L'ordre choisi à la main dans une colonne ou une liste. |
 | `cree_le`, `modifie_le`, `fait_le` | Les dates de vie de l'élément. |
+
+**Déjà en base (migration `0001`, étape 1d)** : `elements` avec `id`, `titre`, `statut`,
+`cree_le`, `modifie_le` ; `evenements` avec `id`, `element_id`, `type`, `version_forme`, `avant` et
+`apres` (JSON), `auteur`, `date`. Le journal n'a pas de clé étrangère vers `elements` : il doit
+survivre à la suppression d'un élément. Les autres champs et tables arrivent par de nouvelles
+migrations, quand une étape en a besoin.
 
 `poids`, `rang` et l'heure du jour planifié s'ajoutent au modèle proposé par Adrien : la vue
 Goalscape, le glisser-déposer et le mode journée en ont besoin. Les **horizons** à la Timestripe
