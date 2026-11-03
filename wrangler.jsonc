@@ -1,6 +1,6 @@
 // Worker de Crazybrain. Pour l'instant, il ne sert qu'une page d'accueil statique (dossier public/).
 // Pas d'adresse de secours en workers.dev : le site ne vit que sur son sous-domaine, que
-// Cloudflare Access fermera à l'étape suivante (connexion Google).
+// Cloudflare Access ferme (connexion Google ; outils/poser_access.py, vérifié à chaque déploiement).
 {
 	"name": "crazybrain",
 	"compatibility_date": "2026-10-01",

@@ -18,7 +18,7 @@ L'état d'avancement (étape en cours, ce qui est fait) est tenu dans le vault d
 Ordre revu par Adrien le 03/11 : d'abord un site vide en ligne, puis la connexion Google ;
 le connecteur viendra ensuite.
 
-**1a. Un site vide en ligne.**
+**1a. Un site vide en ligne.** Fait le 03/11.
 
 - **Livre** : une page d'accueil statique servie par un Worker sur `crazybrain.dekermadec.net`,
   déployée par GitHub Actions à chaque fusion dans `main`.
