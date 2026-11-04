@@ -58,14 +58,22 @@ d'Adrien.** Ce serveur n'a pas le cookie de connexion Access. Il doit s'authenti
 par OAuth, comme le prévoit la spécification MCP. claude.ai envoie Adrien une fois sur une page
 de connexion, puis garde un jeton et le présente à chaque appel.
 
-Deux chemins possibles :
+**Fait à l'étape 1c** ([décision 003](decisions/003-connecteur-claude.md)) :
 
-1. **Access fait l'OAuth.** Cloudflare documente la protection d'un serveur MCP par Access et OAuth.
-   Pas vérifié avec les connecteurs claude.ai.
-2. **Repli : le Worker fait l'OAuth.** Access laisse passer `/mcp` seul ; le Worker mène lui-même
-   la connexion OAuth avec Google et n'accepte que le compte d'Adrien.
-
-C'est la première chose à vérifier côté Claude (étape 1c), car le connecteur porte les étapes 2 et 4.
+- **Le Worker est le serveur OAuth** (`@cloudflare/workers-oauth-provider`) : découverte
+  (`/.well-known/oauth-protected-resource`, `/.well-known/oauth-authorization-server`),
+  enregistrement dynamique du client (`/register`), échange du code contre un jeton avec PKCE
+  (`/token`). Sans jeton, `/mcp` répond 401 et l'en-tête `WWW-Authenticate` indique la découverte.
+  Clients, autorisations et jetons (hachés) sont dans l'espace KV `crazybrain-oauth`.
+- **`/authorize` reste derrière Access** : le Worker revérifie le jeton Access, puis montre la page
+  de consentement (le client, et où part le jeton). Adrien clique « Autoriser » une fois.
+- **Le serveur MCP** (`src/connecteur/serveur-mcp.ts`, `@modelcontextprotocol/sdk`) est sans
+  session ; un outil, `bonjour`, qui répond « Bonjour depuis Crazybrain ! » et le nombre de tâches.
+- **Ouverture limitée** : Access laisse passer `/mcp`, `/token`, `/register` et les deux adresses
+  de découverte (application « crazybrain-connecteur », en bypass) ; le garde-fou du déploiement
+  refuse toute autre ouverture. Le pare-feu de la zone a besoin d'une exception sur ces mêmes
+  chemins (`outils/poser_pare_feu.py`).
+- **Un jeton du connecteur n'ouvre pas `/api/*`**, qui exige toujours le jeton Access.
 
 Outils prévus : chercher, lire, créer, modifier, commenter, lier, tagger (étape 2) ; tester une
 requête, enregistrer une requête (étape 4).
@@ -157,7 +165,7 @@ dépend.
 
 | Hypothèse | Pourquoi elle compte | Comment on vérifie | Quand | Si elle est fausse |
 |---|---|---|---|---|
-| Un connecteur MCP derrière Cloudflare Access marche avec les connecteurs claude.ai. Cloudflare documente une protection d'un serveur MCP par Access et OAuth ; pas vérifié. | Le connecteur porte les étapes 2 et 4. | Un Worker minimal avec un seul outil (`bonjour`), ajouté comme connecteur dans claude.ai : Claude l'appelle et reçoit la réponse ; un appel sans authentification est refusé. | Étape 1c, avant le socle. | Repli : OAuth fait par le Worker. Si rien ne marche, on revoit le socle avant d'aller plus loin. |
+| Un connecteur MCP marche avec les connecteurs claude.ai : Worker serveur OAuth, `/authorize` derrière Access, ouverture limitée aux adresses du connecteur ([décision 003](decisions/003-connecteur-claude.md)). **Construit le 04/11, en attente du test d'Adrien.** | Le connecteur porte les étapes 2 et 4. | Les tests d'acceptation (`features/connecteur.feature`) jouent tout le parcours OAuth contre le Worker local. Reste le vrai test : Adrien ajoute le connecteur dans claude.ai, Claude appelle `bonjour` et reçoit la réponse. | Étape 1c, avant le socle. | Replis : Access en fournisseur OIDC, ou OAuth avec Google directement. Si rien ne marche, on revoit le socle. |
 | Une requête SQL peut s'exécuter en lecture seule sur D1. | Une requête écrite par Claude ne doit rien modifier. | La série de requêtes d'écriture du test, toutes refusées. | Étape 4. | Repli : exécuter les requêtes sur une copie de la base, refaite régulièrement. |
 | L'appli installée survit à l'expiration de la connexion Access. | Quand la session Access expire, les appels de l'appli reçoivent la page de connexion au lieu des données : l'appli peut sembler vide ou bloquée. | Une durée de session courte en test ; on observe ce que fait l'appli. Elle doit détecter l'expiration et rouvrir la connexion. | Visible dès l'étape 1, traitée à l'étape 5. | Session Access longue, plus la détection et la reconnexion dans l'appli. |
 | Web Push est assez fiable sur Android. | Les rappels. | Des rappels de test sur plusieurs jours, téléphone en veille ; on mesure le retard. | Étape 5. | Appli native, plus tard. |

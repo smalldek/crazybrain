@@ -23,8 +23,13 @@ export class WorkerLocal {
     await executer(WRANGLER, ['d1', 'migrations', 'apply', 'crazybrain', '--local', '--persist-to', dossierBase], { env: ENV });
 
     const port = await portLibre();
+    const adresse = `http://127.0.0.1:${port}`;
+    // L'identité OAuth du connecteur : l'adresse locale, au lieu de l'adresse publique.
+    variables = { ORIGINE: adresse, ...variables };
     const options = ['dev', '--ip', '127.0.0.1', '--port', String(port), '--persist-to', dossierBase,
-      '--inspector-port', String(await portLibre()), '--show-interactive-dev-session=false'];
+      '--inspector-port', String(await portLibre()), '--show-interactive-dev-session=false',
+      // Sans ceci, wrangler présente au Worker l'adresse de la route (crazybrain.dekermadec.net), pas l'adresse locale.
+      '--local-upstream', `127.0.0.1:${port}`];
     for (const [nom, valeur] of Object.entries(variables)) {
       options.push('--var', `${nom}:${valeur}`);
     }
@@ -33,7 +38,6 @@ export class WorkerLocal {
     processus.stdout?.on('data', (morceau: Buffer) => { journal += morceau.toString(); });
     processus.stderr?.on('data', (morceau: Buffer) => { journal += morceau.toString(); });
 
-    const adresse = `http://127.0.0.1:${port}`;
     const limite = Date.now() + 60_000;
     while (!journal.includes('Ready on')) {
       if (processus.exitCode !== null || Date.now() > limite) {

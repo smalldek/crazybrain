@@ -42,10 +42,12 @@ Pour essayer l'API à la main en local : `npx wrangler d1 migrations apply crazy
 | `src/domaine/` | Les règles métier, sans Cloudflare ni HTTP (`Titre`, `Element`, `creerElement`) |
 | `src/acces/` | La vérification du jeton Cloudflare Access |
 | `src/infra/` | Le dépôt D1 (le seul code qui écrit du SQL) |
-| `src/index.ts` | Les routes de l'API (Hono) |
+| `src/connecteur/` | Le connecteur Claude : le serveur MCP (outil `bonjour`) et la page de consentement OAuth |
+| `src/index.ts` | Les routes de l'API (Hono), le serveur OAuth du connecteur |
+| `outils/` | Les scripts du déploiement : la porte Access, l'ouverture du connecteur, le garde-fou, le pare-feu |
 | `migrations/` | Le schéma de la base, migration par migration |
 | `public/` | La page |
-| `tests/unitaires/`, `features/` | Les tests unitaires, les scénarios d'acceptation |
+| `tests/unitaires/`, `tests/outils/`, `features/` | Les tests unitaires (domaine, garde-fou Access), les scénarios d'acceptation |
 
 ## Documents
 

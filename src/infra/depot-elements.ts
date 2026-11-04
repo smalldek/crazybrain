@@ -25,6 +25,11 @@ export class DepotElements {
     return results.map((ligne) => Element.depuisInstantane(versInstantane(ligne)));
   }
 
+  async compter(): Promise<number> {
+    const ligne = await this.db.prepare('SELECT COUNT(*) AS nombre FROM elements').first<{ nombre: number }>();
+    return ligne?.nombre ?? 0;
+  }
+
   async enregistrerCreation(element: Element, evenement: Evenement): Promise<void> {
     const etat = element.instantane();
     await this.db.batch([

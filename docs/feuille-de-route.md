@@ -42,6 +42,14 @@ les étapes 2 et 4 ([architecture](architecture.md), « Hypothèses à vérifier
 - **Fait quand** : dans une conversation d'Adrien, Claude appelle `bonjour` par le connecteur et
   reçoit la réponse ; et un appel sans authentification est refusé. Sinon, on essaie le repli
   (OAuth fait par le Worker) avant d'aller plus loin.
+- **Construit le 04/11, en attente du test d'Adrien** ([décision 003](decisions/003-connecteur-claude.md)) :
+  le Worker est le serveur OAuth, `/authorize` reste derrière Access avec une page de consentement,
+  Access et le pare-feu ne laissent passer que les adresses du connecteur ; l'outil `bonjour`
+  répond avec le nombre de tâches. Les tests d'acceptation jouent tout le parcours OAuth en local ;
+  le garde-fou du déploiement refuse toute autre ouverture.
+- **Il faut d'Adrien** : l'exception au pare-feu de la zone si le déploiement n'a pas pu la poser
+  (marche à suivre dans le résumé de l'Action) ; puis, dans claude.ai, Réglages > Connecteurs >
+  « Ajouter un connecteur personnalisé », adresse `https://crazybrain.dekermadec.net/mcp`.
 
 **1d. Le socle lui-même.** Squelette fait et vérifié par Adrien sur son téléphone le 03/11 (tâche saisie, toujours là après rechargement).
 
