@@ -3,6 +3,7 @@
 import { AfterAll, BeforeAll, setDefaultTimeout, setWorldConstructor, World } from '@cucumber/cucumber';
 import { AUDIENCE_DE_TEST, SerrureDeTest } from './serrure-de-test';
 import { WorkerLocal } from './worker-local';
+import type { ClientOAuth } from './client-oauth';
 
 setDefaultTimeout(30_000);
 
@@ -23,6 +24,9 @@ export class Monde extends World {
   jeton: string | undefined;
   reponse: Response | undefined;
   corps: unknown;
+  /** Le client OAuth que « Claude » a enregistré dans ce scénario, et ce qu'il a obtenu. */
+  clientOAuth: ClientOAuth | undefined;
+  jetonOAuth: string | undefined;
 
   get serrure(): SerrureDeTest {
     if (!serrure) throw new Error('Serrure de test non démarrée.');

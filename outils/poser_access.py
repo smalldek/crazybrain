@@ -4,7 +4,8 @@
   python outils/poser_access.py
 
 Cloudflare Access est le « portier » : personne n'atteint le site sans s'être connecté. Ce script
-crée l'application Access de l'hôte (HOTE) quand elle manque, et ne touche à rien si elle existe.
+crée l'application Access de l'hôte entier (HOTE) quand elle manque, et ne touche à rien si elle
+existe. L'ouverture limitée du connecteur Claude est posée à part (poser_ouverture_connecteur.py).
 
 Qui a le droit d'entrer : la même règle que le site du vault (HOTE_MODELE). Le script recopie ses
 conditions (l'adresse d'Adrien) sans jamais les afficher : le dépôt et les journaux des Actions
@@ -17,6 +18,8 @@ import os
 import sys
 import urllib.error
 import urllib.request
+
+from commun_access import couvre_tout_le_site
 
 API = 'https://api.cloudflare.com/client/v4'
 
@@ -40,12 +43,6 @@ def appel(methode, chemin, corps=None, echec_fatal=True):
     return rep['result']
 
 
-def hotes(app):
-    vus = {app.get('domain', '')} | set(app.get('self_hosted_domains') or [])
-    vus |= {d.get('uri', '') for d in app.get('destinations') or []}
-    return {h.split('/')[0].lower() for h in vus if h}
-
-
 def regles(compte, app):
     return app.get('policies') or appel('GET', f'/accounts/{compte}/access/apps/{app["id"]}/policies') or []
 
@@ -53,12 +50,12 @@ def regles(compte, app):
 def main():
     compte, hote, modele = os.environ['CF_ACCOUNT'], os.environ['HOTE'].lower(), os.environ['HOTE_MODELE'].lower()
     apps = appel('GET', f'/accounts/{compte}/access/apps')
-    existantes = [a for a in apps if hote in hotes(a)]
+    existantes = [a for a in apps if couvre_tout_le_site(a, hote)]
     if existantes and any(r.get('decision') == 'allow' for r in regles(compte, existantes[0])):
         print(f'{hote} a déjà son application Access avec une règle « allow » : rien à faire.')
         return
 
-    modeles = [a for a in apps if modele in hotes(a)]
+    modeles = [a for a in apps if couvre_tout_le_site(a, modele)]
     if len(modeles) != 1:
         sys.exit(f'{len(modeles)} application(s) Access pour {modele} (il en faut une) : impossible de recopier la règle.')
     allow = [r for r in regles(compte, modeles[0]) if r.get('decision') == 'allow']

@@ -29,6 +29,7 @@ jobs:
       CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       HOTE: crazybrain.dekermadec.net
+      ZONE: dekermadec.net
       # La règle « qui a le droit d'entrer » est recopiée de celle du site du vault.
       HOTE_MODELE: vault.dekermadec.net
     steps:
@@ -48,6 +49,12 @@ jobs:
       - name: Poser la porte Access si elle manque
         if: steps.config.outputs.ok == 'oui'
         run: python3 outils/poser_access.py
+
+      # Décision 003 : seules les adresses du connecteur Claude passent sans Access (/mcp exige alors
+      # un jeton OAuth du Worker). Le garde-fou de l'étape suivante refuse toute autre ouverture.
+      - name: Ouvrir dans Access les seules adresses du connecteur Claude
+        if: steps.config.outputs.ok == 'oui'
+        run: python3 outils/poser_ouverture_connecteur.py
 
       - name: Cloudflare Access protège-t-il l'adresse ?
         if: steps.config.outputs.ok == 'oui'
@@ -78,8 +85,25 @@ jobs:
           fi
           if [ -z "$ID" ]; then echo "::error::Base crazybrain introuvable après création."; exit 1; fi
           echo "::add-mask::$ID"
-          sed -i "s/REMPLACE_AU_DEPLOIEMENT/$ID/" wrangler.jsonc
+          sed -i "s/\"REMPLACE_AU_DEPLOIEMENT\"/\"$ID\"/" wrangler.jsonc
           npx wrangler d1 migrations apply crazybrain --remote
+
+      # L'espace KV des jetons OAuth du connecteur (rangés hachés) : créé s'il manque, identifiant
+      # masqué et écrit dans la copie locale de wrangler.jsonc seulement.
+      - name: Espace KV du connecteur (créer s'il manque)
+        if: steps.config.outputs.ok == 'oui'
+        run: |
+          set -o pipefail
+          id_kv() { npx wrangler kv namespace list | python3 -c 'import json,sys; print(next((n["id"] for n in json.load(sys.stdin) if n["title"] == "crazybrain-oauth"), ""))'; }
+          ID=$(id_kv)
+          if [ -z "$ID" ]; then
+            echo "Espace KV crazybrain-oauth absent : création."
+            npx wrangler kv namespace create crazybrain-oauth > /dev/null
+            ID=$(id_kv)
+          fi
+          if [ -z "$ID" ]; then echo "::error::Espace KV crazybrain-oauth introuvable après création."; exit 1; fi
+          echo "::add-mask::$ID"
+          sed -i "s/\"REMPLACE_AU_DEPLOIEMENT_KV\"/\"$ID\"/" wrangler.jsonc
 
       # L'AUD de l'application Access : le Worker l'exige dans chaque jeton (deuxième serrure).
       # Lue à chaque déploiement, masquée dans le journal, jamais écrite dans le dépôt.
@@ -89,6 +113,12 @@ jobs:
           AUD=$(python3 outils/verifier_access.py aud)
           echo "::add-mask::$AUD"
           npx wrangler deploy --var "AUD:$AUD"
+
+      # La règle « hors de France » de la zone bloquerait claude.ai avant Access : exception limitée
+      # aux adresses du connecteur. Posée si le jeton en a le droit, sinon expliquée pas à pas.
+      - name: Exception du pare-feu pour le connecteur
+        if: steps.config.outputs.ok == 'oui'
+        run: python3 outils/poser_pare_feu.py
 
       - name: Sans connexion, l'adresse refuse-t-elle ?
         if: steps.config.outputs.ok == 'oui'

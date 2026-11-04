@@ -24,3 +24,5 @@ jobs:
         run: npm test
       - name: Tests d'acceptation (scénarios Gherkin, Worker et base D1 locaux)
         run: npm run test:acceptation
+      - name: Tests du garde-fou Access (l'ouverture du connecteur, et rien d'autre)
+        run: python3 -m unittest discover -s tests/outils -v

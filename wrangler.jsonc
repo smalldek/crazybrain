@@ -2,14 +2,16 @@
 // Pas d'adresse de secours en workers.dev : le site ne vit que sur son sous-domaine, que
 // Cloudflare Access ferme (connexion Google ; outils/poser_access.py, vérifié à chaque déploiement).
 // Le Worker vérifie en plus le jeton d'Access sur chaque appel /api/* (deuxième serrure).
+// Exception (décision 003) : le connecteur Claude (/mcp) et les adresses OAuth que les serveurs
+// d'Anthropic appellent sont ouverts dans Access ; /mcp exige alors un jeton OAuth du Worker.
 {
 	"name": "crazybrain",
 	"main": "src/index.ts",
 	"compatibility_date": "2026-10-01",
 	"assets": {
 		"directory": "./public",
-		// Seuls les appels /api/* passent par le code ; le reste est servi tel quel depuis public/.
-		"run_worker_first": ["/api/*"]
+		// Ces adresses passent par le code ; le reste est servi tel quel depuis public/.
+		"run_worker_first": ["/api/*", "/mcp", "/mcp/*", "/authorize", "/token", "/register", "/.well-known/*"]
 	},
 	"d1_databases": [
 		{
@@ -20,7 +22,17 @@
 			"migrations_dir": "migrations"
 		}
 	],
+	"kv_namespaces": [
+		{
+			// Clients, autorisations et jetons OAuth du connecteur (jetons rangés hachés).
+			// Identifiant réel écrit par le déploiement, jamais commité.
+			"binding": "OAUTH_KV",
+			"id": "REMPLACE_AU_DEPLOIEMENT_KV"
+		}
+	],
 	"vars": {
+		// L'adresse publique : l'identité du connecteur OAuth (ressource et émetteur des jetons).
+		"ORIGINE": "https://crazybrain.dekermadec.net",
 		// L'équipe Cloudflare Access qui signe les jetons (pas un secret). L'AUD, propre à
 		// l'application Access, est passée au déploiement (--var AUD:…), pas écrite ici.
 		"TEAM_DOMAIN": "https://2ker-consulting.cloudflareaccess.com"
