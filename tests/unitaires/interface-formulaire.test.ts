@@ -76,5 +76,7 @@ describe('les vues', () => {
     expect(elementDeLAdresse('/kanban/e/abc')).toBe('abc');
     expect(adresseVue('liste')).toBe('/');
     expect(adresseVue('kanban')).toBe('/kanban');
+    expect(vueDe('/backlog/e/abc')).toBe('backlog');
+    expect(elementDeLAdresse('/backlog/e/abc')).toBe('abc');
   });
 });

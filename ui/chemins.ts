@@ -1,14 +1,17 @@
 // Les adresses de l'appli, sans le navigateur : testées seules (tests/unitaires/interface-formulaire.test.ts).
-// `/` la liste, `/kanban` le kanban ; `/e/<id>` ou `/kanban/e/<id>` ajoutent le panneau de détail
-// d'un élément à la vue.
+// `/` la liste, `/kanban` le kanban, `/backlog` le backlog ; `/e/<id>`, `/kanban/e/<id>`,
+// `/backlog/e/<id>` ajoutent le panneau de détail d'un élément à la vue.
 
-export type Vue = 'liste' | 'kanban';
+export type Vue = 'liste' | 'kanban' | 'backlog';
 
-const PREFIXE: Record<Vue, string> = { liste: '', kanban: '/kanban' };
+const PREFIXE: Record<Vue, string> = { liste: '', kanban: '/kanban', backlog: '/backlog' };
 
 /** La vue que montre cette adresse. */
 export function vueDe(chemin: string): Vue {
-  return chemin === '/kanban' || chemin.startsWith('/kanban/') ? 'kanban' : 'liste';
+  for (const vue of ['kanban', 'backlog'] as const) {
+    if (chemin === PREFIXE[vue] || chemin.startsWith(`${PREFIXE[vue]}/`)) return vue;
+  }
+  return 'liste';
 }
 
 /** L'adresse d'une vue, sans panneau. */
@@ -23,7 +26,7 @@ export function adresseElement(id: string, vue: Vue = 'liste'): string {
 
 /** L'id de l'élément ouvert par cette adresse, ou null. */
 export function elementDeLAdresse(chemin: string): string | null {
-  const trouve = /^(?:\/kanban)?\/e\/([^/]+)\/?$/.exec(chemin);
+  const trouve = /^(?:\/kanban|\/backlog)?\/e\/([^/]+)\/?$/.exec(chemin);
   if (!trouve?.[1]) return null;
   try {
     return decodeURIComponent(trouve[1]);

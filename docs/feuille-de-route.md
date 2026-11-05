@@ -276,7 +276,15 @@ au titre sur un téléphone.
     fréquents d'abord) et les projets ; taper `projet:<nom>` range l'élément dans ce projet, montré
     en tête des tags comme un lien. Les cartes du kanban montrent projet et tags. API :
     `GET /api/tags` rend tous les tags posés (05/11).
-  - 3.7 Les filtres (type, statut, priorité, tag, parent, dates) et le backlog.
+  - 3.7 ✓ Les filtres et le backlog. Au-dessus de chaque vue, une recherche (sans tenir compte des
+    majuscules ni des accents) et un bouton « Filtres (n) » qui ouvre les critères : type, statut,
+    priorité (ou sans), « Dans » un élément (tout ce qu'il contient, sous-projets compris),
+    échéance (en retard, d'ici 7 jours, sans) et tag (`composant` pour toutes ses valeurs,
+    `composant:pxe` pour une seule). Tout est dans l'adresse (`/kanban?tag=composant:pxe`) et reste
+    quand on change de vue. Le backlog (`/backlog`) : ce qui n'est ni fait ni planifié, par
+    priorité, puis échéance, puis du plus ancien (05/11). Reste : sur un kanban filtré, réordonner
+    une carte renumérote les cartes visibles seulement ; à revoir si l'ordre des cartes cachées
+    en souffre à l'usage.
   - 3.8 Les projets et sous-projets à l'écran ; les releases par le tag `release:<nom>`.
 - **Fait quand** : glisser une carte d'une colonne à l'autre change son statut ; les couloirs se
   font par une clé de tag au choix ; cliquer une carte ouvre son panneau ; le filtre

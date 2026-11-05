@@ -150,3 +150,17 @@ li .ouvrir:hover, li .ouvrir:focus-visible { background: var(--fond); color: var
 .couloir { margin-bottom: 18px; }
 .titre-couloir { font-size: 1rem; margin: 0 0 8px; display: flex; gap: 8px; align-items: baseline; }
 .titre-couloir .compte { color: var(--doux); font-weight: normal; font-size: .9rem; }
+
+/* Les filtres : la recherche et le bouton « Filtres », puis les critères (deux par ligne sur le téléphone). */
+.filtres { margin-bottom: 12px; }
+.ligne-filtres { display: flex; gap: 8px; }
+.ligne-filtres input[type=search] { flex: 1; min-width: 0; padding: 8px 12px; font-size: 1rem; }
+.bouton-filtres, .effacer { flex: none; font: inherit; font-size: .9rem; padding: 8px 12px; border-radius: 10px;
+  border: 1px solid var(--bord); background: var(--carte); color: var(--texte); cursor: pointer; }
+.bouton-filtres[aria-expanded=true] { border-color: var(--accent); color: var(--accent); }
+.criteres { display: grid; grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); gap: 8px; margin-top: 8px;
+  padding: 10px; border: 1px solid var(--bord); border-radius: 10px; background: var(--carte); }
+.criteres label { font-size: .8rem; margin-bottom: 2px; }
+.criteres select, .criteres input { width: 100%; font: inherit; font-size: .9rem; padding: 6px 8px; border-radius: 8px;
+  border: 1px solid var(--bord); background: var(--fond); color: var(--texte); }
+.criteres .effacer { align-self: end; color: var(--accent); }

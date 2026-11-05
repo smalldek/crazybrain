@@ -1,14 +1,19 @@
-// L'écran principal : la saisie rapide, le message d'état, puis la vue choisie (la liste ou le
-// kanban) ; et, quand l'adresse nomme un élément (/e/<id>, /kanban/e/<id>), son panneau de détail.
+// L'écran principal : la saisie rapide, le message d'état, les filtres, puis la vue choisie (la
+// liste, le kanban ou le backlog) ; et, quand l'adresse nomme un élément (/e/<id>, /kanban/e/<id>),
+// son panneau de détail.
 // Un composant React est une fonction qui rend ce qu'il faut afficher à partir de son état ;
 // quand l'état change (useState), React refait l'affichage tout seul.
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { adresseElement, adresseVue, elementDeLAdresse, naviguer, parametresIci, useAdresse, vueDe, type Vue } from './adresse';
 import { api, type Changements, type Element, type Tag } from './api';
+import { BarreFiltres } from './barre-filtres';
+import { aujourdhui } from './dates';
+import { backlog, filtrer, lireFiltres } from './filtres';
 import { PanneauDetail } from './panneau-detail';
 import { LigneTache } from './ligne-tache';
 import { ecrireCritere, lireCritere, rangsAPoser, type Critere, type StatutColonne } from './kanban';
 import { appliquer, ordonner } from './liste';
+import { tagsParElement } from './tags';
 import { VueKanban } from './vue-kanban';
 
 /** Le message sous la saisie : un état, une erreur, ou « supprimée » avec un bouton Annuler. */
@@ -18,7 +23,7 @@ interface Message {
   readonly annuler?: () => void;
 }
 
-const NOMS_VUES: Record<Vue, string> = { liste: 'Liste', kanban: 'Kanban' };
+const NOMS_VUES: Record<Vue, string> = { liste: 'Liste', kanban: 'Kanban', backlog: 'Backlog' };
 
 export function Appli() {
   const [elements, setElements] = useState<Element[] | null>(null);
@@ -40,6 +45,18 @@ export function Appli() {
     const recherche = p.toString();
     naviguer(window.location.pathname + (recherche ? `?${recherche}` : ''));
   };
+
+  // Les filtres de l'adresse s'appliquent à toutes les vues ; ils restent quand on change de vue.
+  const filtres = lireFiltres(parametres);
+  const changerFiltres = (p: URLSearchParams): void => {
+    const recherche = p.toString();
+    // Taper dans la recherche remplace l'adresse au lieu d'en empiler une par lettre.
+    const seulLeTexte = p.get('texte') !== parametres.get('texte');
+    naviguer(window.location.pathname + (recherche ? `?${recherche}` : ''), { remplacer: seulLeTexte });
+  };
+  const visibles = elements && filtrer(elements, filtres, tagsParElement(tags), aujourdhui());
+  const rienAMontrer = elements !== null && elements.length > 0 && visibles !== null
+    && (vue === 'backlog' ? backlog(visibles) : visibles).length === 0;
 
   const erreur = (e: unknown): void => setMessage({ texte: e instanceof Error ? e.message : String(e), erreur: true });
 
@@ -142,9 +159,9 @@ export function Appli() {
         <header className="entete-appli">
           <h1>Crazybrain</h1>
           <nav aria-label="Vues">
-            {(['liste', 'kanban'] as const).map((v) => (
-              <a key={v} href={adresseVue(v)} aria-current={v === vue ? 'page' : undefined}
-                onClick={(e) => { e.preventDefault(); naviguer(adresseVue(v)); }}>{NOMS_VUES[v]}</a>
+            {(['liste', 'kanban', 'backlog'] as const).map((v) => (
+              <a key={v} href={adresseVue(v) + window.location.search} aria-current={v === vue ? 'page' : undefined}
+                onClick={(e) => { e.preventDefault(); naviguer(adresseVue(v) + parametresIci()); }}>{NOMS_VUES[v]}</a>
             ))}
           </nav>
         </header>
@@ -158,16 +175,21 @@ export function Appli() {
           {message.texte}
           {message.annuler && <button type="button" onClick={message.annuler}>Annuler</button>}
         </p>
-        {vue === 'liste' ? (
-          <ul id="liste">
-            {elements && ordonner(elements).map((e) => (
+        {elements && elements.length > 0 && (
+          <BarreFiltres filtres={filtres} elements={elements} tags={tags} changer={changerFiltres} />
+        )}
+        {rienAMontrer && <p className="etat" id="aucun-resultat">Rien ne correspond{vue === 'backlog' ? ' dans le backlog' : ''}.</p>}
+        {vue !== 'kanban' ? (
+          // Le backlog est une liste : ce qui n'est ni fait ni planifié, le plus important en haut.
+          <ul id="liste" className={vue === 'backlog' ? 'backlog' : undefined}>
+            {visibles && (vue === 'backlog' ? backlog(visibles) : ordonner(visibles)).map((e) => (
               <LigneTache key={e.id} element={e} ouverte={e.id === ouvert}
                 modifier={(c) => void modifier(e.id, c)} supprimer={() => void supprimer(e)}
                 ouvrir={() => ouvrir(e.id)} />
             ))}
           </ul>
         ) : (
-          elements && <VueKanban elements={elements} tags={tags} critere={critere} changerCritere={changerCritere} ouvert={ouvert} ouvrir={ouvrir}
+          elements && visibles && <VueKanban elements={visibles} tous={elements} tags={tags} critere={critere} changerCritere={changerCritere} ouvert={ouvert} ouvrir={ouvrir}
             poser={(id, statut, ordre) => void poser(id, statut, ordre)} />
         )}
       </main>
