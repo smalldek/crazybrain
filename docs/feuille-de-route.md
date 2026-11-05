@@ -207,3 +207,111 @@ viendra seulement si le besoin s'en fait sentir.
 
 Au passage, la page réduit le champ d'échéance vide à son icône de calendrier, pour laisser la place
 au titre sur un téléphone.
+
+## Étape 2 — Connecteur Claude
+
+- **Livre** : les outils du connecteur. C'est aussi la saisie rapide par l'IA.
+- **Construite le 05/11** ; reste l'appel réel depuis une conversation (2.6), fait par Claude
+  lui-même après le déploiement.
+- **Tâches** :
+  - 2.1 Lire : `chercher_elements` (texte, statut, type, projet avec ses sous-projets, parent, tags,
+    en retard, aujourd'hui, échéance, jour planifié ; les faits exclus par défaut) et
+    `lire_element` (avec ses liens, tags et commentaires). **Fait.**
+  - 2.2 Créer : `creer_elements`, jusqu'à 50 d'un coup, avec projets (id ou titre exact), parent,
+    tags, échéance… **Fait.**
+  - 2.3 Modifier : `modifier_element`, `supprimer_element`, `restaurer_element` ; Claude est
+    l'auteur dans le journal. **Fait.**
+  - 2.4 Commenter, lier, tagger : `commenter_element`, `lier_elements`, `retirer_lien`,
+    `tagger_element`, `retirer_tag`, `lister_types`. **Fait.**
+  - 2.5 Des descriptions d'outils et des consignes de serveur écrites pour Claude (le modèle, les
+    valeurs permises, « en retard » compté au jour de Paris), et 8 scénarios d'acceptation qui
+    jouent OAuth puis les appels MCP (`features/connecteur-outils.feature`). **Fait.**
+  - 2.6 Le test réel : Claude appelle les outils depuis une session du projet d'Adrien.
+- **Au passage** : l'API de la page et le connecteur passent par le même service d'application
+  (`src/application/service-elements.ts`) ; une règle n'est écrite qu'une fois.
+- **Fait quand** : dans une conversation, « crée trois tâches pour le projet X » les fait
+  apparaître dans la liste ; « qu'est-ce qui est en retard ? » donne la bonne réponse.
+
+## Étape 3 — Kanban, détail, tags, filtres
+
+- **Livre** : le premier vrai écran de travail.
+- **Tâches** :
+  - 3.1 Choisir l'outil d'interface (décision 004) : la page grandit, du code fait à la main ne
+    suffira plus.
+  - 3.2 Une adresse par élément, qui ouvre son panneau de détail à droite (le formulaire complet).
+  - 3.3 Commentaires et liens dans le panneau.
+  - 3.4 Le kanban : colonnes par statut, glisser une carte change son statut, l'ordre à la main
+    (`rang`).
+  - 3.5 Les couloirs : par parent, par priorité, ou par une clé de tag au choix.
+  - 3.6 Les tags clé:valeur à l'écran, avec complétion ; `projet:<nom>` comme lien vers le projet.
+  - 3.7 Les filtres (type, statut, priorité, tag, parent, dates) et le backlog.
+  - 3.8 Les projets et sous-projets à l'écran ; les releases par le tag `release:<nom>`.
+- **Fait quand** : glisser une carte d'une colonne à l'autre change son statut ; les couloirs se
+  font par une clé de tag au choix ; cliquer une carte ouvre son panneau ; le filtre
+  `composant:pxe` ne montre que ces éléments ; l'adresse d'un élément l'ouvre directement.
+
+## Étape 4 — Requêtes enregistrées, tableaux de bord
+
+- **Tâches** :
+  - 4.1 Vérifier l'hypothèse « lecture seule » : des vues (`v_elements`, `v_tags`…), un vrai
+    analyseur SQL qui n'accepte qu'un `SELECT`, et le test des écritures déguisées, toutes refusées.
+  - 4.2 La table `requetes` et les outils du connecteur pour tester et enregistrer une requête.
+  - 4.3 Les requêtes enregistrées comme filtres dans l'interface.
+  - 4.4 Les premiers tableaux de bord, codés.
+- **Fait quand** : le test de lecture seule passe ; Claude écrit, teste et enregistre une requête
+  depuis une conversation, et Adrien la retrouve comme filtre dans l'outil.
+
+## Étape 5 — L'appli sur le téléphone
+
+- **Tâches** :
+  - 5.1 L'appli installable : manifeste, icône, service worker.
+  - 5.2 La reprise après expiration de la connexion Access (l'appli se reconnecte au lieu de
+    rester vide).
+  - 5.3 Le partage sortant d'une tâche (menu de partage d'Android).
+  - 5.4 Le partage entrant : depuis WhatsApp ou toute appli, la saisie rapide s'ouvre pré-remplie.
+  - 5.5 Les rappels : abonnement Web Push, tâche planifiée (Cron Trigger) qui envoie les rappels,
+    mesure du retard sur plusieurs jours.
+  - 5.6 Les tâches récurrentes : la règle de récurrence ; cocher crée l'occurrence suivante.
+  - 5.7 La décision de fin d'étape : si les rappels arrivent trop en retard, on envisage l'appli
+    native.
+- **Fait quand** : l'icône est sur l'écran d'accueil ; un message WhatsApp partagé vers
+  Crazybrain devient une tâche ; un rappel fixé à cinq minutes arrive téléphone en veille, et son
+  retard est mesuré sur plusieurs jours ; cocher une tâche récurrente crée la suivante à la bonne
+  date ; après expiration de la session, l'appli se reconnecte au lieu de rester vide.
+
+## Étape 6 — Calendrier et mode journée
+
+- **Tâches** :
+  - 6.1 Le calendrier, semaine et mois, par échéance ou jour planifié.
+  - 6.2 Le mode journée, le matin : choisir ses tâches du jour dans le backlog.
+  - 6.3 Les caser dans des créneaux, et voir le temps prévu face au temps disponible.
+- **Fait quand** : les éléments apparaissent à leur échéance ou à leur jour planifié ; le matin,
+  Adrien choisit ses tâches du jour dans le backlog, les case dans des créneaux, et voit le temps
+  prévu face au temps disponible.
+
+## Étape 7 — Horizons et objectifs
+
+- **Tâches** :
+  - 7.1 Décider comment on note un horizon : un champ dédié ou un tag `horizon:2026-11`.
+  - 7.2 La vue horizons à la Timestripe : jour, semaine, mois, année et au-delà.
+  - 7.3 Le poids des objectifs et la vue Goalscape en cercles.
+- **Fait quand** : un objectif se place sur « 2027 », une tâche sur « semaine 45 », et chacun
+  apparaît dans son horizon ; la vue Goalscape montre les objectifs en cercles, et changer un poids
+  change la taille de la part.
+
+## Étape 8 — Mail → tâche
+
+- **Tâches** :
+  - 8.1 Vérifier l'hypothèse : le domaine peut-il recevoir ce courrier sans casser l'existant
+    (lire ses serveurs de courrier) ; sinon, un sous-domaine.
+  - 8.2 L'adresse dédiée et Email Routing vers le Worker. **Il faut du projet Cloudflare.**
+  - 8.3 Le gestionnaire de mail du Worker : sujet en titre, corps en description ; seuls les mails
+    d'Adrien qui passent SPF et DKIM sont acceptés.
+- **Fait quand** : un mail envoyé par Adrien à l'adresse devient une tâche (sujet en titre, corps
+  en description) ; un mail d'une autre adresse est rejeté.
+
+## Plus tard
+
+- Le site en lecture pour l'extérieur, filtré par projet.
+- Plusieurs utilisateurs, d'autres qu'Adrien limités à un projet.
+- La timeline ; le hors-ligne.

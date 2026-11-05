@@ -76,8 +76,16 @@ de connexion, puis garde un jeton et le présente à chaque appel.
   (dossier `cloudflare/`, OpenTofu) depuis le 05/11 ; ce dépôt les vérifie seulement.
 - **Un jeton du connecteur n'ouvre pas `/api/*`**, qui exige toujours le jeton Access.
 
-Outils prévus : chercher, lire, créer, modifier, commenter, lier, tagger (étape 2) ; tester une
-requête, enregistrer une requête (étape 4).
+**Fait à l'étape 2** : les outils `chercher_elements`, `lire_element`, `creer_elements`,
+`modifier_element`, `supprimer_element`, `restaurer_element`, `commenter_element`,
+`lier_elements`, `retirer_lien`, `tagger_element`, `retirer_tag`, `lister_types` (et `bonjour`,
+gardé pour vérifier que le connecteur répond). Le serveur donne à Claude des consignes : le
+modèle, les valeurs permises, les dates comptées au jour de Paris. Une demande fausse revient à
+Claude comme un refus expliqué (`isError`), pas comme une panne. L'API de la page et le connecteur
+appellent le même service d'application (`src/application/service-elements.ts`) ; dans le journal,
+l'auteur est `adrien` pour la page, `claude` pour le connecteur.
+
+Outils prévus ensuite : tester une requête, enregistrer une requête (étape 4).
 
 ## Modèle de données
 
