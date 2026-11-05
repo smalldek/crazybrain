@@ -1,4 +1,4 @@
-// Worker de Crazybrain : l'API (src/, routes /api/*) et la page (dossier public/), avec la base D1.
+// Worker de Crazybrain : l'API (src/, routes /api/*) et l'interface (construite par Vite de ui/ vers dist/), avec la base D1.
 // Pas d'adresse de secours en workers.dev : le site ne vit que sur son sous-domaine, que
 // Cloudflare Access ferme (connexion Google ; posé par smalldek/cluster, vérifié à chaque déploiement).
 // Le Worker vérifie en plus le jeton d'Access sur chaque appel /api/* (deuxième serrure).
@@ -9,8 +9,12 @@
 	"main": "src/index.ts",
 	"compatibility_date": "2026-10-01",
 	"assets": {
-		"directory": "./public",
-		// Ces adresses passent par le code ; le reste est servi tel quel depuis public/.
+		// L'interface construite par `npm run construire` (Vite) ; dist/ n'est pas dans git.
+		"directory": "./dist",
+		// Une adresse de l'interface qui n'est pas un fichier (/e/<id>, l'adresse d'un élément) rend
+		// index.html : c'est React qui lit l'adresse et ouvre le bon écran.
+		"not_found_handling": "single-page-application",
+		// Ces adresses passent par le code ; le reste est servi tel quel depuis dist/.
 		"run_worker_first": ["/api/*", "/mcp", "/mcp/*", "/authorize", "/token", "/register", "/.well-known/*"]
 	},
 	"d1_databases": [

@@ -26,14 +26,15 @@ dépendances figées dans `package-lock.json`, comme un `dotnet restore`).
 
 | Commande | Ce qu'elle fait |
 |---|---|
-| `npm run verifier-types` | Compile en mode strict, sans rien produire (le Worker et les tests) |
+| `npm run verifier-types` | Compile en mode strict, sans rien produire (le Worker, les tests et l'interface) |
+| `npm run construire` | Construit l'interface (`ui/`) dans `dist/`, que le Worker sert |
 | `npm test` | Tests unitaires du domaine et de la serrure Access (Vitest, `tests/unitaires/`) |
 | `npm run test:acceptation` | Scénarios Gherkin en français (`features/`), joués par Cucumber.js contre le vrai Worker lancé en local avec une base D1 locale neuve |
 | `npm run test:tout` | Les trois, dans l'ordre |
 
 L'Action GitHub `Tests` lance les trois à chaque PR ; le déploiement ne part que s'ils passent.
 Pour essayer l'API à la main en local : `npx wrangler d1 migrations apply crazybrain --local`, puis
-`npx wrangler dev` (sans jeton Access, l'API répond 403 : c'est voulu).
+`npm run construire` puis `npx wrangler dev` (sans jeton Access, l'API répond 403 : c'est voulu).
 
 ## Où est quoi dans le code
 
@@ -42,11 +43,13 @@ Pour essayer l'API à la main en local : `npx wrangler d1 migrations apply crazy
 | `src/domaine/` | Les règles métier, sans Cloudflare ni HTTP (`Titre`, `Element`, `creerElement`) |
 | `src/acces/` | La vérification du jeton Cloudflare Access |
 | `src/infra/` | Le dépôt D1 (le seul code qui écrit du SQL) |
-| `src/connecteur/` | Le connecteur Claude : le serveur MCP (outil `bonjour`) et la page de consentement OAuth |
-| `src/index.ts` | Les routes de l'API (Hono), le serveur OAuth du connecteur |
+| `src/connecteur/` | Le connecteur Claude : le serveur MCP (ses outils) et la page de consentement OAuth |
+| `src/application/` | Le service commun à l'API de la page et au connecteur |
+| `src/api/` | Les routes de l'API de la page (Hono) |
+| `src/index.ts` | Le point d'entrée : la serrure Access, le serveur OAuth du connecteur |
 | `outils/` | Le garde-fou du déploiement : il vérifie Access sans le modifier (Access et le pare-feu sont posés par le dépôt privé `smalldek/cluster`) |
 | `migrations/` | Le schéma de la base, migration par migration |
-| `public/` | La page |
+| `ui/` | L'interface (React), construite par `npm run construire` dans `dist/` |
 | `tests/unitaires/`, `tests/outils/`, `features/` | Les tests unitaires (domaine, garde-fou Access), les scénarios d'acceptation |
 
 ## Documents

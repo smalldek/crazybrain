@@ -236,8 +236,9 @@ au titre sur un téléphone.
 
 - **Livre** : le premier vrai écran de travail.
 - **Tâches** :
-  - 3.1 Choisir l'outil d'interface (décision 004) : la page grandit, du code fait à la main ne
-    suffira plus.
+  - 3.1 ✓ Choisir l'outil d'interface : React, construit par Vite
+    ([décision 004](decisions/004-outil-interface.md)) ; la page actuelle y est portée, ses six
+    scénarios dans le navigateur passent à l'identique (05/11).
   - 3.2 Une adresse par élément, qui ouvre son panneau de détail à droite (le formulaire complet).
   - 3.3 Commentaires et liens dans le panneau.
   - 3.4 Le kanban : colonnes par statut, glisser une carte change son statut, l'ordre à la main

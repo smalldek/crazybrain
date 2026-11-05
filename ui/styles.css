@@ -1,0 +1,37 @@
+/* Les styles de la page : couleurs claires et sombres selon le téléphone, une colonne lisible. */
+:root { color-scheme: light dark; --fond: #f7f7f5; --carte: #ffffff; --texte: #1d1d1b; --doux: #6b6b66;
+        --bord: #deded8; --accent: #2f5fd0; --erreur: #b3261e; }
+@media (prefers-color-scheme: dark) {
+  :root { --fond: #161615; --carte: #22221f; --texte: #ecece8; --doux: #9a9a94;
+          --bord: #3a3a36; --accent: #8fb0ff; --erreur: #ffb4ab; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--fond); color: var(--texte);
+       font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.4; }
+main { max-width: 40rem; margin: 0 auto; padding: 16px; }
+h1 { font-size: 1.6rem; margin: 8px 0 16px; }
+form { margin-bottom: 16px; }
+label { display: block; font-size: .9rem; color: var(--doux); margin-bottom: 6px; }
+input { width: 100%; font: inherit; font-size: 1.05rem; padding: 12px 14px; border-radius: 10px;
+        border: 1px solid var(--bord); background: var(--carte); color: var(--texte); }
+input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+ul { list-style: none; margin: 0; padding: 0; }
+li { background: var(--carte); border: 1px solid var(--bord); border-radius: 10px; padding: 8px 10px;
+     margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
+li input[type=checkbox] { width: 22px; height: 22px; flex: none; margin: 0; accent-color: var(--accent); }
+li .titre { flex: 1; min-width: 0; text-align: left; font: inherit; color: inherit; background: none; border: 0;
+            padding: 6px 0; overflow-wrap: anywhere; cursor: text; }
+li input.edition { flex: 1; min-width: 0; padding: 6px 8px; font-size: 1rem; }
+li input[type=date] { width: 8.6rem; flex: none; font-size: .8rem; padding: 4px 6px; color: var(--doux); }
+/* Sans échéance, le champ se réduit à son icône de calendrier : la place va au titre. */
+li input[type=date].vide { width: 40px; color: transparent; border-color: transparent; background: none; }
+li input[type=date].en-retard { color: var(--erreur); border-color: var(--erreur); }
+li .supprimer { flex: none; width: 36px; height: 36px; border: 0; border-radius: 8px; background: none;
+                color: var(--doux); font-size: 1.3rem; line-height: 1; cursor: pointer; }
+li .supprimer:hover, li .supprimer:focus-visible { background: var(--fond); color: var(--erreur); }
+.etat button { font: inherit; color: var(--accent); background: none; border: 0; padding: 4px 8px;
+               margin-left: 4px; cursor: pointer; text-decoration: underline; }
+li.fait { opacity: .6; }
+li.fait .titre { text-decoration: line-through; }
+.etat { color: var(--doux); margin: 8px 0; }
+.erreur { color: var(--erreur); }
