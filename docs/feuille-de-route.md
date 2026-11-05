@@ -252,7 +252,10 @@ au titre sur un téléphone.
   - 3.1 ✓ Choisir l'outil d'interface : React, construit par Vite
     ([décision 004](decisions/004-outil-interface.md)) ; la page actuelle y est portée, ses six
     scénarios dans le navigateur passent à l'identique (05/11).
-  - 3.2 Une adresse par élément, qui ouvre son panneau de détail à droite (le formulaire complet).
+  - 3.2 ✓ Une adresse par élément (`/e/<id>`), qui ouvre son panneau de détail : à droite sur un
+    grand écran, en plein écran sur le téléphone ; tous les champs s'y modifient (statut, type,
+    priorité, parent, description, échéance, jour et heure prévus, estimation). Une flèche sur
+    chaque ligne l'ouvre ; la croix, Échap ou le bouton Retour le ferment (05/11).
   - 3.3 Commentaires et liens dans le panneau.
   - 3.4 Le kanban : colonnes par statut, glisser une carte change son statut, l'ordre à la main
     (`rang`).

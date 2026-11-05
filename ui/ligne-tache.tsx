@@ -1,5 +1,5 @@
 // Une ligne de la liste : la case à cocher, le titre (qu'on touche pour le corriger), l'échéance,
-// et la croix qui supprime.
+// la flèche qui ouvre son détail, et la croix qui supprime.
 import { useState, type KeyboardEvent } from 'react';
 import type { Changements, Element } from './api';
 import { aujourdhui } from './dates';
@@ -8,9 +8,13 @@ interface Proprietes {
   readonly element: Element;
   readonly modifier: (changements: Changements) => void;
   readonly supprimer: () => void;
+  /** Ouvre le panneau de détail. */
+  readonly ouvrir: () => void;
+  /** Son panneau de détail est ouvert. */
+  readonly ouverte: boolean;
 }
 
-export function LigneTache({ element, modifier, supprimer }: Proprietes) {
+export function LigneTache({ element, modifier, supprimer, ouvrir, ouverte }: Proprietes) {
   const fait = element.statut === 'fait';
   const enRetard = !fait && element.echeance !== null && element.echeance < aujourdhui();
   const [edition, setEdition] = useState(false);
@@ -18,7 +22,7 @@ export function LigneTache({ element, modifier, supprimer }: Proprietes) {
   const classes = ['vide', 'en-retard'].filter((c) => (c === 'vide' ? !element.echeance : enRetard)).join(' ');
 
   return (
-    <li className={fait ? 'fait' : undefined} data-id={element.id}>
+    <li className={[fait && 'fait', ouverte && 'ouverte'].filter(Boolean).join(' ') || undefined} data-id={element.id}>
       <input type="checkbox" checked={fait} aria-label={fait ? 'Marquer à faire' : 'Marquer comme faite'}
         onChange={(e) => modifier({ statut: e.target.checked ? 'fait' : 'a_faire' })} />
       {edition
@@ -30,6 +34,7 @@ export function LigneTache({ element, modifier, supprimer }: Proprietes) {
       <input type="date" aria-label="Échéance" className={classes || undefined} value={element.echeance ?? ''}
         title={enRetard ? 'Échéance dépassée' : undefined}
         onChange={(e) => modifier({ echeance: e.target.value || null })} />
+      <button type="button" className="ouvrir" aria-label={`Ouvrir « ${element.titre} »`} onClick={ouvrir}>›</button>
       <button type="button" className="supprimer" aria-label={`Supprimer « ${element.titre} »`} onClick={supprimer}>×</button>
     </li>
   );

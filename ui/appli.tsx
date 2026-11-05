@@ -1,8 +1,11 @@
-// L'écran de la liste : la saisie rapide, le message d'état, et les tâches.
+// L'écran de la liste : la saisie rapide, le message d'état, les tâches ; et, quand l'adresse est
+// /e/<id>, le panneau de détail de cet élément à côté.
 // Un composant React est une fonction qui rend ce qu'il faut afficher à partir de son état ;
 // quand l'état change (useState), React refait l'affichage tout seul.
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { adresseElement, elementDeLAdresse, naviguer, useAdresse } from './adresse';
 import { api, type Changements, type Element } from './api';
+import { PanneauDetail } from './panneau-detail';
 import { LigneTache } from './ligne-tache';
 import { appliquer, ordonner } from './liste';
 
@@ -18,6 +21,8 @@ export function Appli() {
   const [message, setMessage] = useState<Message>({ texte: 'Chargement…' });
   const [titre, setTitre] = useState('');
   const [envoi, setEnvoi] = useState(false);
+  const ouvert = elementDeLAdresse(useAdresse());
+  const fermer = useCallback(() => naviguer('/'), []);
 
   const erreur = (e: unknown): void => setMessage({ texte: e instanceof Error ? e.message : String(e), erreur: true });
 
@@ -91,23 +96,31 @@ export function Appli() {
   }
 
   return (
-    <main>
-      <h1>Crazybrain</h1>
-      <form onSubmit={(e) => void ajouter(e)} autoComplete="off">
-        <label htmlFor="titre">Nouvelle tâche (Entrée pour l'ajouter)</label>
-        <input id="titre" name="titre" maxLength={200} enterKeyHint="done" placeholder="Taper une tâche…"
-          autoFocus value={titre} disabled={envoi} onChange={(e) => setTitre(e.target.value)} />
-      </form>
-      <p id="message" className={message.erreur ? 'etat erreur' : 'etat'} role="status" aria-live="polite"
-        hidden={message.texte === ''}>
-        {message.texte}
-        {message.annuler && <button type="button" onClick={message.annuler}>Annuler</button>}
-      </p>
-      <ul id="liste">
-        {elements && ordonner(elements).map((e) => (
-          <LigneTache key={e.id} element={e} modifier={(c) => void modifier(e.id, c)} supprimer={() => void supprimer(e)} />
-        ))}
-      </ul>
-    </main>
+    <div className={ouvert ? 'mise-en-page avec-panneau' : 'mise-en-page'}>
+      <main>
+        <h1>Crazybrain</h1>
+        <form onSubmit={(e) => void ajouter(e)} autoComplete="off">
+          <label htmlFor="titre">Nouvelle tâche (Entrée pour l'ajouter)</label>
+          <input id="titre" name="titre" maxLength={200} enterKeyHint="done" placeholder="Taper une tâche…"
+            autoFocus={!ouvert} value={titre} disabled={envoi} onChange={(e) => setTitre(e.target.value)} />
+        </form>
+        <p id="message" className={message.erreur ? 'etat erreur' : 'etat'} role="status" aria-live="polite"
+          hidden={message.texte === ''}>
+          {message.texte}
+          {message.annuler && <button type="button" onClick={message.annuler}>Annuler</button>}
+        </p>
+        <ul id="liste">
+          {elements && ordonner(elements).map((e) => (
+            <LigneTache key={e.id} element={e} ouverte={e.id === ouvert}
+              modifier={(c) => void modifier(e.id, c)} supprimer={() => void supprimer(e)}
+              ouvrir={() => naviguer(adresseElement(e.id))} />
+          ))}
+        </ul>
+      </main>
+      {ouvert && (
+        <PanneauDetail key={ouvert} id={ouvert} elements={elements ?? []} fermer={fermer}
+          modifie={() => void charger()} />
+      )}
+    </div>
   );
 }
