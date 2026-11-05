@@ -1,0 +1,157 @@
+// Le kanban : une colonne par statut, une carte par élément. Glisser une carte dans une autre
+// colonne change son statut ; la glisser dans sa colonne change son ordre (le `rang`).
+// Le glisser-déposer vient de la bibliothèque dnd-kit : elle marche à la souris, au doigt (appui
+// long, pour ne pas gêner le défilement) et au clavier (Espace pour prendre, flèches, Espace pour poser).
+import {
+  closestCorners, DndContext, pointerWithin, type CollisionDetection, DragOverlay, KeyboardSensor, MouseSensor, TouchSensor, useDroppable,
+  useSensor, useSensors, type DragEndEvent, type DragOverEvent, type DragStartEvent,
+} from '@dnd-kit/core';
+import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { useEffect, useMemo, useState } from 'react';
+import type { Element } from './api';
+import { aujourdhui } from './dates';
+import { colonneDe, colonnesDe, COLONNES, deplacer, type StatutColonne } from './kanban';
+
+interface Proprietes {
+  readonly elements: readonly Element[];
+  readonly ouvert: string | null;
+  readonly ouvrir: (id: string) => void;
+  /**
+   * Une carte posée : son nouveau statut, et l'ordre complet de sa colonne d'arrivée.
+   * L'appelant enregistre (statut et rangs) puis relit la liste.
+   */
+  readonly poser: (id: string, statut: StatutColonne, ordre: readonly string[]) => void;
+}
+
+export function VueKanban({ elements, ouvert, ouvrir, poser }: Proprietes) {
+  const parId = useMemo(() => new Map(elements.map((e) => [e.id, e])), [elements]);
+  const depuisServeur = useMemo(() => colonnesDe(elements), [elements]);
+  // Pendant un glissement, les colonnes bougent ici avant d'être enregistrées.
+  const [colonnes, setColonnes] = useState(depuisServeur);
+  const [prise, setPrise] = useState<string | null>(null);
+  useEffect(() => { setColonnes(depuisServeur); }, [depuisServeur]);
+
+  const capteurs = useSensors(
+    // Souris et doigt séparés : au doigt, un glissement court doit faire défiler l'écran, pas prendre la carte.
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const debut = (e: DragStartEvent): void => setPrise(String(e.active.id));
+
+  // Survoler une autre colonne y fait passer la carte tout de suite, pour voir où elle tombera.
+  const survol = (e: DragOverEvent): void => {
+    if (!e.over) return;
+    const carte = String(e.active.id);
+    const sur = String(e.over.id);
+    setColonnes((c) => (colonneDe(carte, c) === colonneDe(sur, c) ? c : deplacer(c, carte, sur)));
+  };
+
+  const fin = (e: DragEndEvent): void => {
+    setPrise(null);
+    const carte = String(e.active.id);
+    if (!e.over) { setColonnes(depuisServeur); return; }
+    const apres = deplacer(colonnes, carte, String(e.over.id));
+    const statut = colonneDe(carte, apres);
+    if (!statut) return;
+    setColonnes(apres);
+    const avant = parId.get(carte);
+    const memeOrdre = avant?.statut === statut && apres[statut].join() === depuisServeur[statut].join();
+    if (!memeOrdre) poser(carte, statut, apres[statut]);
+  };
+
+  const elementPris = prise ? parId.get(prise) : undefined;
+
+  return (
+    // Le défilement automatique ne part qu'au bord de l'écran (8 % de la largeur) : sur le téléphone, on
+    // peut poser une carte sur le bout visible de la colonne voisine sans que le kanban défile.
+    <DndContext sensors={capteurs} autoScroll={{ threshold: { x: 0.08, y: 0.15 } }} accessibility={{ screenReaderInstructions: { draggable: CONSIGNES } }} collisionDetection={sousLeDoigt} onDragStart={debut} onDragOver={survol}
+      onDragEnd={fin} onDragCancel={() => { setPrise(null); setColonnes(depuisServeur); }}>
+      <div className="kanban" id="kanban">
+        {COLONNES.map((c) => (
+          <Colonne key={c.statut} statut={c.statut} titre={c.titre} ids={colonnes[c.statut]}
+            parId={parId} ouvert={ouvert} ouvrir={ouvrir} />
+        ))}
+      </div>
+      <DragOverlay>{elementPris ? <Carte element={elementPris} flottante /> : null}</DragOverlay>
+    </DndContext>
+  );
+}
+
+interface ProprietesColonne {
+  readonly statut: StatutColonne;
+  readonly titre: string;
+  readonly ids: readonly string[];
+  readonly parId: ReadonlyMap<string, Element>;
+  readonly ouvert: string | null;
+  readonly ouvrir: (id: string) => void;
+}
+
+function Colonne({ statut, titre, ids, parId, ouvert, ouvrir }: ProprietesColonne) {
+  // La colonne elle-même accepte une carte (utile quand elle est vide).
+  const { setNodeRef } = useDroppable({ id: statut });
+  return (
+    <section className="colonne" aria-label={titre} data-statut={statut}>
+      <h2>{titre} <span className="compte">{ids.length}</span></h2>
+      <SortableContext id={statut} items={[...ids]} strategy={verticalListSortingStrategy}>
+        <ol ref={setNodeRef} className="cartes">
+          {ids.map((id) => {
+            const element = parId.get(id);
+            return element ? <CarteGlissable key={id} element={element} ouverte={id === ouvert} ouvrir={() => ouvrir(id)} /> : null;
+          })}
+        </ol>
+      </SortableContext>
+    </section>
+  );
+}
+
+function CarteGlissable({ element, ouverte, ouvrir }: { element: Element; ouverte: boolean; ouvrir: () => void }) {
+  // Le rôle reste « élément de liste » : la carte contient déjà un bouton (son titre), et un bouton
+  // dans un bouton trouble les lecteurs d'écran.
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: element.id, attributes: { role: 'listitem', roleDescription: 'carte déplaçable' },
+  });
+  const style = { transform: CSS.Transform.toString(transform), transition };
+  return (
+    <li ref={setNodeRef} style={style} className={isDragging ? 'carte-place' : undefined} data-id={element.id}
+      {...attributes} {...listeners}>
+      <Carte element={element} ouverte={ouverte} ouvrir={ouvrir} />
+    </li>
+  );
+}
+
+/**
+ * Où tombe la carte : ce qui est sous le doigt (ou la souris) d'abord ; sinon (au clavier, ou hors
+ * de toute colonne), le plus proche. « Le plus proche » seul se trompe avec des colonnes très
+ * hautes : leurs coins sont loin, et une carte de la colonne de départ gagne.
+ */
+const sousLeDoigt: CollisionDetection = (args) => {
+  const dessous = pointerWithin(args);
+  return dessous.length > 0 ? dessous : closestCorners(args);
+};
+
+const CONSIGNES = 'Pour prendre une carte, appuyer sur Espace. Les flèches la déplacent ; Espace la pose, Échap annule.';
+
+const PRIORITE: Record<string, string> = { urgente: 'Urgente', haute: 'Haute', normale: 'Normale', basse: 'Basse' };
+
+function Carte({ element, ouverte, ouvrir, flottante }: { element: Element; ouverte?: boolean; ouvrir?: () => void; flottante?: boolean }) {
+  const enRetard = element.statut !== 'fait' && element.echeance !== null && element.echeance < aujourdhui();
+  const classes = ['carte', ouverte && 'ouverte', flottante && 'flottante', element.statut === 'fait' && 'fait'].filter(Boolean).join(' ');
+  return (
+    <div className={classes}>
+      <button type="button" className="titre-carte" onClick={ouvrir} tabIndex={ouvrir ? 0 : -1}>{element.titre}</button>
+      <div className="infos">
+        {element.type !== 'tache' && <span className="pastille">{element.type}</span>}
+        {element.priorite && <span className={`pastille priorite-${element.priorite}`}>{PRIORITE[element.priorite]}</span>}
+        {element.echeance && <span className={enRetard ? 'echeance en-retard' : 'echeance'}>{jourCourt(element.echeance)}</span>}
+      </div>
+    </div>
+  );
+}
+
+/** « 2026-11-05 » → « 5 nov. ». */
+function jourCourt(jour: string): string {
+  return new Date(`${jour}T12:00:00Z`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+}

@@ -1,7 +1,7 @@
 // Le formulaire du panneau de détail et les adresses des éléments.
 import { describe, expect, it } from 'vitest';
 import type { Element } from '../../ui/api';
-import { adresseElement, elementDeLAdresse } from '../../ui/chemins';
+import { adresseElement, adresseVue, elementDeLAdresse, vueDe } from '../../ui/chemins';
 import { brouillonDe, changementsDepuis, parentsPossibles } from '../../ui/formulaire';
 
 function element(id: string, champs: Partial<Element> = {}): Element {
@@ -62,5 +62,19 @@ describe("l'adresse d'un élément", () => {
     expect(elementDeLAdresse('/e/')).toBeNull();
     expect(elementDeLAdresse('/e/a/b')).toBeNull();
     expect(elementDeLAdresse('/e/%E0%A4%A')).toBeNull();
+  });
+});
+
+describe('les vues', () => {
+  it("le kanban a ses propres adresses, panneau compris", () => {
+    expect(vueDe('/')).toBe('liste');
+    expect(vueDe('/e/abc')).toBe('liste');
+    expect(vueDe('/kanban')).toBe('kanban');
+    expect(vueDe('/kanban/e/abc')).toBe('kanban');
+    expect(vueDe('/kanbanx')).toBe('liste');
+    expect(adresseElement('abc', 'kanban')).toBe('/kanban/e/abc');
+    expect(elementDeLAdresse('/kanban/e/abc')).toBe('abc');
+    expect(adresseVue('liste')).toBe('/');
+    expect(adresseVue('kanban')).toBe('/kanban');
   });
 });

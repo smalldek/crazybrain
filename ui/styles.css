@@ -94,3 +94,39 @@ li .ouvrir:hover, li .ouvrir:focus-visible { background: var(--fond); color: var
 .ajout button { font: inherit; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--accent);
                 background: none; color: var(--accent); cursor: pointer; }
 .ajout button:disabled { opacity: .5; cursor: default; }
+
+/* L'en-tête : le nom, et le choix de la vue. */
+.entete-appli { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 8px 0 16px; }
+.entete-appli h1 { margin: 0; flex: 1; }
+.entete-appli nav { display: flex; gap: 4px; background: var(--carte); border: 1px solid var(--bord);
+                    border-radius: 10px; padding: 3px; }
+.entete-appli nav a { padding: 6px 12px; border-radius: 8px; color: var(--doux); text-decoration: none; font-size: .95rem; }
+.entete-appli nav a[aria-current=page] { background: var(--accent); color: var(--carte); }
+
+/* Le kanban : trois colonnes côte à côte ; sur le téléphone, elles défilent de gauche à droite. */
+.vue-kanban main { max-width: none; }
+/* Les colonnes ont toutes la hauteur de la plus longue, et leur liste de cartes la remplit : on peut
+   poser une carte n'importe où dans une colonne, même loin sous sa dernière carte. */
+.kanban { display: grid; grid-template-columns: repeat(3, minmax(15rem, 1fr)); gap: 12px; align-items: stretch; }
+.colonne { background: var(--carte); border: 1px solid var(--bord); border-radius: 12px; padding: 10px; min-width: 0;
+           display: flex; flex-direction: column; }
+.colonne h2 { font-size: .95rem; margin: 2px 4px 10px; display: flex; justify-content: space-between; }
+.colonne .compte { color: var(--doux); font-weight: normal; }
+.cartes { list-style: none; margin: 0; padding: 0; min-height: 3rem; flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.cartes > li { display: block; background: none; border: 0; padding: 0; margin: 0; touch-action: manipulation; }
+.carte { background: var(--fond); border: 1px solid var(--bord); border-radius: 10px; padding: 8px 10px; cursor: grab; }
+.carte.ouverte { border-color: var(--accent); }
+.carte.fait .titre-carte { text-decoration: line-through; opacity: .7; }
+.carte.flottante { box-shadow: 0 8px 24px rgba(0, 0, 0, .25); cursor: grabbing; background: var(--carte); }
+.carte-place { opacity: .35; }
+.titre-carte { display: block; width: 100%; text-align: left; font: inherit; color: inherit; background: none;
+               border: 0; padding: 2px 0; overflow-wrap: anywhere; cursor: pointer; }
+.infos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; font-size: .78rem; color: var(--doux); }
+.pastille { border: 1px solid var(--bord); border-radius: 999px; padding: 0 8px; }
+.priorite-urgente, .priorite-haute { border-color: var(--erreur); color: var(--erreur); }
+.echeance.en-retard { color: var(--erreur); font-weight: 600; }
+@media (max-width: 720px) {
+  .kanban { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: 16px;
+            margin: 0 -16px; padding: 0 16px 8px; }
+  .colonne { flex: 0 0 82%; scroll-snap-align: start; }
+}

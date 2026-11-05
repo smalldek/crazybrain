@@ -262,8 +262,10 @@ au titre sur un téléphone.
     et on en pose un en choisissant sa sorte et l'élément (05/11). La date « modifié le » ne bouge
     toujours pas pour un commentaire ou un lien (remarque de 2.6) : à trancher avec le tri
     « modifié récemment », qui n'existe pas encore.
-  - 3.4 Le kanban : colonnes par statut, glisser une carte change son statut, l'ordre à la main
-    (`rang`).
+  - 3.4 ✓ Le kanban (`/kanban`) : colonnes par statut, glisser une carte change son statut, la
+    glisser dans sa colonne change son ordre (`rang`, posé de 1000 en 1000). À la souris, au doigt
+    après un appui long (un glissement court fait défiler), au clavier. Toucher une carte ouvre son
+    détail (`/kanban/e/<id>`). Glisser-déposer par la bibliothèque dnd-kit (05/11).
   - 3.5 Les couloirs : par parent, par priorité, ou par une clé de tag au choix.
   - 3.6 Les tags clé:valeur à l'écran, avec complétion ; `projet:<nom>` comme lien vers le projet.
   - 3.7 Les filtres (type, statut, priorité, tag, parent, dates) et le backlog.
