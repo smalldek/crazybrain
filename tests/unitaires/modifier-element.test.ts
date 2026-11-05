@@ -22,7 +22,7 @@ describe('modifierElement', () => {
       id: 'ev-2',
       elementId: 'el-1',
       type: 'element_modifie',
-      versionForme: 2,
+      versionForme: 3,
       avant: element.instantane(),
       apres: resultat.element.instantane(),
       auteur: 'adrien',
@@ -61,5 +61,78 @@ describe('modifierElement', () => {
     expect(() => modifierElement(commande({ titre: '  ' }))).toThrow(ErreurDomaine);
     expect(() => modifierElement(commande({ statut: 'termine' }))).toThrow(ErreurDomaine);
     expect(() => modifierElement(commande({ echeance: '2026-02-30' }))).toThrow(ErreurDomaine);
+  });
+});
+
+describe('modifierElement : le reste du modèle (tâche 1.3)', () => {
+  it('change type, description, priorité, estimation, rang et planification en un seul événement', () => {
+    const { element: apres, evenement } = modifierElement({
+      ...commande({
+        type: 'epic',
+        description: '## Contexte\n\nDu *Markdown*.',
+        priorite: 'haute',
+        estimation: 90,
+        rang: 1.5,
+        jourPlanifie: '2026-11-10',
+        heurePlanifiee: '14:00',
+      }),
+    });
+
+    expect(apres.instantane()).toMatchObject({
+      type: 'epic',
+      description: '## Contexte\n\nDu *Markdown*.',
+      priorite: 'haute',
+      estimation: 90,
+      rang: 1.5,
+      jourPlanifie: '2026-11-10',
+      heurePlanifiee: '14:00',
+    });
+    expect(evenement?.type).toBe('element_modifie');
+  });
+
+  it('une description vide, c’est pas de description', () => {
+    const decrit = modifierElement(commande({ description: 'Du texte' })).element;
+    const { element: vide } = modifierElement({ ...commande({ description: '   ' }), element: decrit });
+
+    expect(vide.description).toBeNull();
+  });
+
+  it('retirer le jour planifié retire l’heure', () => {
+    const planifie = modifierElement(commande({ jourPlanifie: '2026-11-10', heurePlanifiee: '14:00' })).element;
+    const { element: libre } = modifierElement({ ...commande({ jourPlanifie: null }), element: planifie });
+
+    expect(libre.jourPlanifie).toBeNull();
+    expect(libre.heurePlanifiee).toBeNull();
+  });
+
+  it('range sous un parent, en vérifiant ses ancêtres', () => {
+    const { element: range } = modifierElement({
+      ...commande({ parent: 'projet-1' }),
+      contexteParent: { ancetresDuParent: ['projet-1'] },
+    });
+
+    expect(range.parent).toBe('projet-1');
+  });
+
+  it('refuse un parent qui ferait une boucle', () => {
+    // el-1 contient sous-1, qui contient sous-2 : sous-2 ne peut pas devenir le parent de el-1.
+    expect(() =>
+      modifierElement({ ...commande({ parent: 'sous-2' }), contexteParent: { ancetresDuParent: ['sous-2', 'sous-1', 'el-1'] } }),
+    ).toThrow(ErreurDomaine);
+  });
+
+  it('refuse d’être son propre parent', () => {
+    expect(() =>
+      modifierElement({ ...commande({ parent: 'el-1' }), contexteParent: { ancetresDuParent: ['el-1'] } }),
+    ).toThrow(ErreurDomaine);
+  });
+
+  it('refuse les valeurs invalides', () => {
+    expect(() => modifierElement(commande({ priorite: 'critique' }))).toThrow(ErreurDomaine);
+    expect(() => modifierElement(commande({ estimation: 0 }))).toThrow(ErreurDomaine);
+    expect(() => modifierElement(commande({ estimation: 2.5 }))).toThrow(ErreurDomaine);
+    expect(() => modifierElement(commande({ heurePlanifiee: '25:00' }))).toThrow(ErreurDomaine);
+    expect(() => modifierElement(commande({ type: 'Tâche' }))).toThrow(ErreurDomaine);
+    expect(() => modifierElement(commande({ heurePlanifiee: '09:00' }))).toThrow(ErreurDomaine); // pas de jour planifié
   });
 });

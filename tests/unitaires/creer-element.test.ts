@@ -26,12 +26,23 @@ describe('creerElement', () => {
       id: 'ev-1',
       elementId: 'el-1',
       type: 'element_cree',
-      versionForme: 2,
+      versionForme: 3,
       avant: null,
       apres: element.instantane(),
       auteur: 'adrien',
       date: '2026-11-03T08:30:00.000Z',
     });
+  });
+
+  it('accepte les autres champs dès la création, dans le même événement', () => {
+    const { element, evenement } = creerElement({
+      ...commande,
+      champs: { type: 'projet', priorite: 'haute', echeance: '2026-12-01', parent: 'p-0' },
+      contexteParent: { ancetresDuParent: ['p-0'] },
+    });
+
+    expect(element.instantane()).toMatchObject({ type: 'projet', priorite: 'haute', echeance: '2026-12-01', parent: 'p-0' });
+    expect(evenement.apres).toEqual(element.instantane());
   });
 
   it('refuse un titre vide, sans élément ni événement', () => {

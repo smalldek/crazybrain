@@ -65,7 +65,7 @@ connecteur. Plan revu le 05/11 : on finit le socle avant d'ouvrir l'étape 2.
 |---|---|---|
 | 1.1 | Le connecteur testé pour de vrai dans claude.ai | **Fait le 05/11** |
 | 1.2 | Modifier une tâche : la cocher, la renommer, lui donner une échéance | **Fait le 05/11** |
-| 1.3 | Le modèle de données complet en base : types, parent, projets, liens, tags, commentaires | Rien |
+| 1.3 | Le modèle de données complet en base : types, parent, projets, liens, tags, commentaires | **Fait le 05/11** |
 | 1.4 | Le déploiement ne pose plus rien dans Cloudflare, il vérifie seulement | **Fait le 05/11** |
 | 1.5 | Supprimer (archiver) une tâche | Rien |
 
@@ -163,15 +163,26 @@ appliquée par le déploiement, qui a déjà le droit sur la base).
 **Fait quand** : sur la page, à la taille d'un téléphone, on coche une tâche, en renomme une autre, donne une
 échéance à une troisième, recharge la page, et retrouve tout.
 
-### 1.3 Le modèle de données complet (grosse maille)
+### 1.3 Le modèle de données complet
 
-Une migration `0003` ajoute ce que l'étape 2 doit pouvoir lire et écrire : la table `types`
-(projet, objectif, epic, tâche… avec leurs statuts), et sur l'élément `type`, `parent`,
-`description`, `priorite`, `jour_planifie`, `estimation`, `rang` ; les tables `liens` (dont
-« appartient à » pour rattacher une tâche à un ou plusieurs projets), `tags` et `commentaires`.
-Le domaine et l'API suivent. La page ne change presque pas : les écrans viennent à l'étape 3.
-`recurrence` et `poids` attendent les étapes 5 et 7. Le [modèle de données](architecture.md)
-détaille chaque champ.
+**Fait le 05/11**, en deux migrations, vérifié par les tests (unitaires et 13 scénarios d'API,
+`features/modele.feature` et `features/relations.feature`) :
+
+- **`0003`** : la table `types` (projet, initiative, objectif, epic, feature, tache ; on en ajoute
+  une ligne pour un nouveau type), et sur l'élément `type`, `parent`, `description` (Markdown),
+  `priorite` (basse, normale, haute, urgente), `jour_planifie` et `heure_planifiee`,
+  `estimation` (minutes), `rang`. Un parent qui ferait une boucle (ranger un projet dans sa propre
+  tâche) est refusé.
+- **`0004`** : les tables `liens` (`appartient_a`, `bloque`, `duplique`, `lie_a`), `tags`
+  (clé:valeur, ou clé seule) et `commentaires` (auteur Adrien ou Claude).
+- **API** : créer un élément avec tous ses champs dès le départ, les modifier, `GET /api/types` ;
+  lire un élément rend aussi ses liens, tags et commentaires ; poser et retirer liens et tags,
+  commenter. Chaque ajout ou retrait s'écrit dans le journal.
+
+La page ne change pas : les écrans de ces champs viennent à l'étape 3. Restent pour plus tard,
+comme prévu : `recurrence` (étape 5) et `poids` (étape 7) ; modifier ou supprimer un commentaire.
+Les statuts restent communs à tous les types ; des statuts par type viendront si le kanban en a
+besoin.
 
 ### 1.4 Le déploiement vérifie, il ne pose plus (grosse maille)
 

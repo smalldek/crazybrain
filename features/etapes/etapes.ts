@@ -101,7 +101,7 @@ Then(
     assert.equal(ligne.avant, null);
     assert.deepEqual(JSON.parse(ligne.apres ?? 'null'), tache);
     assert.equal(ligne.auteur, auteur);
-    assert.equal(ligne.version_forme, 2);
+    assert.equal(ligne.version_forme, 3);
     assert.equal(ligne.date, tache.creeLe);
   },
 );
@@ -141,7 +141,7 @@ Given("j'ai créé la tâche {string}", async function (this: Monde, titre: stri
     body: JSON.stringify({ titre }),
   });
   assert.equal(this.reponse?.status, 201, JSON.stringify(this.corps));
-  creees.set(this, (this.corps as { element: TacheLue }).element);
+  memoriser(this, (this.corps as { element: TacheLue }).element);
 });
 
 When('je passe cette tâche au statut {string}', async function (this: Monde, statut: string) {
@@ -230,6 +230,142 @@ Then(
     assert.equal(etatApres.statut, apres);
     assert.ok(etatApres.faitLe);
     assert.equal(ligne.auteur, auteur);
-    assert.equal(ligne.version_forme, 2);
+    assert.equal(ligne.version_forme, 3);
   },
 );
+
+// --- Le modèle complet (tâche 1.3) ---
+
+// Tous les éléments créés dans le scénario, dans l'ordre.
+const lignees = new WeakMap<Monde, TacheLue[]>();
+
+function memoriser(monde: Monde, element: TacheLue): void {
+  creees.set(monde, element);
+  lignees.set(monde, [...(lignees.get(monde) ?? []), element]);
+}
+
+async function creerElementJson(monde: Monde, corps: Record<string, unknown>): Promise<void> {
+  await monde.appeler('/api/elements', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(corps),
+  });
+  if (monde.reponse?.status === 201) memoriser(monde, (monde.corps as { element: TacheLue }).element);
+}
+
+function premier(monde: Monde): TacheLue {
+  const tous = lignees.get(monde);
+  assert.ok(tous?.[0], 'aucun élément créé dans ce scénario');
+  return tous[0];
+}
+
+When('je demande la liste des types', async function (this: Monde) {
+  await this.appeler('/api/types');
+});
+
+Then('les types sont {string}', function (this: Monde, attendus: string) {
+  assert.equal(this.reponse?.status, 200);
+  const codes = (this.corps as { types: { code: string }[] }).types.map((t) => t.code);
+  assert.deepEqual(codes, attendus.split(', '));
+});
+
+Given("j'ai créé l'élément {}", async function (this: Monde, json: string) {
+  await creerElementJson(this, JSON.parse(json) as Record<string, unknown>);
+  assert.equal(this.reponse?.status, 201, JSON.stringify(this.corps));
+});
+
+When('je crée dans cet élément l\'élément {}', async function (this: Monde, json: string) {
+  const parent = tacheDuScenario(this);
+  await creerElementJson(this, { ...(JSON.parse(json) as Record<string, unknown>), parent: parent.id });
+});
+
+When('je range le premier élément dans le dernier', async function (this: Monde) {
+  await modifier(this, premier(this).id, { parent: tacheDuScenario(this).id });
+});
+
+Then('cette tâche, relue, a les valeurs {}', async function (this: Monde, json: string) {
+  const tache = (await relire(this)) as unknown as Record<string, unknown>;
+  for (const [cle, valeur] of Object.entries(JSON.parse(json) as Record<string, unknown>)) {
+    assert.deepEqual(tache[cle], valeur, `champ ${cle}`);
+  }
+});
+
+Then('cette tâche, relue, a pour parent le premier élément', async function (this: Monde) {
+  assert.equal(((await relire(this)) as unknown as { parent: string }).parent, premier(this).id);
+});
+
+Then("le premier élément, relu, n'a pas de parent", async function (this: Monde) {
+  await this.appeler(`/api/elements/${premier(this).id}`);
+  assert.equal((this.corps as { element: { parent: string | null } }).element.parent, null);
+});
+
+// --- Liens, tags, commentaires (tâche 1.3) ---
+
+interface LienLu { id: string; source: string; cible: string; type: string }
+const derniersLiens = new WeakMap<Monde, LienLu>();
+
+function nieme(monde: Monde, rang: 'premier' | 'deuxième' | 'dernier'): TacheLue {
+  const tous = lignees.get(monde) ?? [];
+  const element = rang === 'premier' ? tous[0] : rang === 'deuxième' ? tous[1] : tous[tous.length - 1];
+  assert.ok(element, `pas de ${rang} élément dans ce scénario`);
+  return element;
+}
+
+async function postJson(monde: Monde, chemin: string, corps: unknown): Promise<void> {
+  await monde.appeler(chemin, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(corps) });
+}
+
+async function relireElement(monde: Monde, element: TacheLue): Promise<{ liens: LienLu[]; tags: { cle: string; valeur: string }[]; commentaires: { texte: string; auteur: string }[] }> {
+  const reponse = await monde.appeler(`/api/elements/${element.id}`);
+  assert.equal(reponse.status, 200, JSON.stringify(monde.corps));
+  return monde.corps as { liens: LienLu[]; tags: { cle: string; valeur: string }[]; commentaires: { texte: string; auteur: string }[] };
+}
+
+When(/^je lie le (premier|deuxième|dernier) élément au (premier|deuxième|dernier) par "([^"]*)"$/,
+  async function (this: Monde, source: 'premier' | 'deuxième' | 'dernier', cible: 'premier' | 'deuxième' | 'dernier', type: string) {
+    await postJson(this, `/api/elements/${nieme(this, source).id}/liens`, { cible: nieme(this, cible).id, type });
+    if (this.reponse?.status === 201) derniersLiens.set(this, (this.corps as { lien: LienLu }).lien);
+  });
+
+When('je retire ce lien', async function (this: Monde) {
+  const lien = derniersLiens.get(this);
+  assert.ok(lien, 'aucun lien créé');
+  await this.appeler(`/api/liens/${lien.id}`, { method: 'DELETE' });
+});
+
+Then(/^le (premier|deuxième|dernier) élément, relu, a (\d+) liens? "([^"]*)"$/,
+  async function (this: Monde, rang: 'premier' | 'deuxième' | 'dernier', nombre: string, type: string) {
+    const { liens } = await relireElement(this, nieme(this, rang));
+    assert.equal(liens.filter((l) => l.type === type).length, Number(nombre), JSON.stringify(liens));
+  });
+
+Then('la réponse est {int}', function (this: Monde, statut: number) {
+  assert.equal(this.reponse?.status, statut, JSON.stringify(this.corps));
+});
+
+When('je pose le tag {string}', async function (this: Monde, tag: string) {
+  await postJson(this, `/api/elements/${tacheDuScenario(this).id}/tags`, { tag });
+});
+
+When('je retire le tag {string}', async function (this: Monde, tag: string) {
+  await this.appeler(`/api/elements/${tacheDuScenario(this).id}/tags/${encodeURIComponent(tag)}`, { method: 'DELETE' });
+});
+
+Then('cette tâche, relue, a les tags {string}', async function (this: Monde, attendus: string) {
+  const { tags } = await relireElement(this, tacheDuScenario(this));
+  assert.deepEqual(tags.map((t) => (t.valeur === '' ? t.cle : `${t.cle}:${t.valeur}`)), attendus.split(', '));
+});
+
+When('je commente {string}', async function (this: Monde, texte: string) {
+  await postJson(this, `/api/elements/${tacheDuScenario(this).id}/commentaires`, { texte });
+});
+
+Then('cette tâche, relue, a {int} commentaire de {string} qui dit {string}', async function (this: Monde, nombre: number, auteur: string, texte: string) {
+  const { commentaires } = await relireElement(this, tacheDuScenario(this));
+  assert.equal(commentaires.length, nombre);
+  assert.deepEqual(commentaires.map((c) => [c.auteur, c.texte]), [[auteur, texte]]);
+});
+
+Then('le journal de cette tâche contient {string} puis {string} puis {string}', async function (this: Monde, a: string, b: string, c: string) {
+  assert.deepEqual(await typesDuJournal(this), [a, b, c]);
+});
