@@ -10,6 +10,8 @@ export type Auteur = 'adrien' | 'claude';
 interface FormesEvenement {
   element_cree: InstantaneElement;
   element_modifie: InstantaneElement;
+  element_archive: InstantaneElement;
+  element_restaure: InstantaneElement;
   lien_ajoute: InstantaneLien;
   lien_retire: InstantaneLien;
   tag_ajoute: InstantaneTag;
@@ -44,14 +46,15 @@ export type Evenement = {
  * 1 : id, titre, statut, creeLe, modifieLe (03/11/2026).
  * 2 : ajoute echeance et faitLe (tâche 1.2, 05/11/2026).
  * 3 : ajoute type, parent, description, priorite, jourPlanifie, heurePlanifiee, estimation, rang (tâche 1.3).
+ * 4 : ajoute archiveLe (tâche 1.5).
  * Un instantané d'une forme plus ancienne se lit avec les champs qui lui manquent à null (type : tache).
  * Les liens, tags et commentaires sont en forme 1 depuis leur création ; leurs événements portent la
  * version courante, qui ne change que si leur forme change.
  */
-export const VERSION_FORME = 3;
+export const VERSION_FORME = 4;
 
-/** Fabrique l'événement d'un ajout ou d'un retrait (lien, tag, commentaire). */
-export function evenementDe<T extends Exclude<TypeEvenement, 'element_cree' | 'element_modifie'>>(params: {
+/** Fabrique un événement : la forme de avant / après suit le type. */
+export function evenementDe<T extends TypeEvenement>(params: {
   id: string;
   elementId: string;
   type: T;

@@ -47,6 +47,8 @@ export interface InstantaneElement {
   readonly rang: number | null;
   /** Date ISO du passage à « fait », ou null. */
   readonly faitLe: string | null;
+  /** Date ISO de l'archivage (une tâche « supprimée »), ou null. */
+  readonly archiveLe: string | null;
   readonly creeLe: string;
   readonly modifieLe: string;
 }
@@ -66,6 +68,7 @@ interface Valeurs {
   readonly estimation: Estimation | null;
   readonly rang: number | null;
   readonly faitLe: Date | null;
+  readonly archiveLe: Date | null;
   readonly creeLe: Date;
   readonly modifieLe: Date;
 }
@@ -91,6 +94,7 @@ export class Element {
   get estimation(): Estimation | null { return this.v.estimation; }
   get rang(): number | null { return this.v.rang; }
   get faitLe(): Date | null { return this.v.faitLe; }
+  get archiveLe(): Date | null { return this.v.archiveLe; }
   get creeLe(): Date { return this.v.creeLe; }
   get modifieLe(): Date { return this.v.modifieLe; }
 
@@ -110,6 +114,7 @@ export class Element {
       estimation: null,
       rang: null,
       faitLe: null,
+      archiveLe: null,
       creeLe: params.maintenant,
       modifieLe: params.maintenant,
     });
@@ -134,6 +139,7 @@ export class Element {
       estimation: etat.estimation == null ? null : Estimation.creer(etat.estimation),
       rang: etat.rang ?? null,
       faitLe: etat.faitLe == null ? null : new Date(etat.faitLe),
+      archiveLe: etat.archiveLe == null ? null : new Date(etat.archiveLe),
       creeLe: new Date(etat.creeLe),
       modifieLe: new Date(etat.modifieLe),
     });
@@ -180,6 +186,20 @@ export class Element {
     return this.avec(champs, maintenant);
   }
 
+  /**
+   * Supprimer une tâche l'archive : elle sort des listes, mais reste en base avec son histoire, et se
+   * restaure. Une suppression définitive viendra seulement si le besoin s'en fait sentir.
+   */
+  archiver(maintenant: Date): Element {
+    if (this.archiveLe) throw new ErreurDomaine('Cet élément est déjà supprimé.');
+    return this.avec({ archiveLe: maintenant }, maintenant);
+  }
+
+  restaurer(maintenant: Date): Element {
+    if (!this.archiveLe) throw new ErreurDomaine("Cet élément n'est pas supprimé.");
+    return this.avec({ archiveLe: null }, maintenant);
+  }
+
   private avec(champs: Partial<Valeurs>, maintenant: Date): Element {
     return new Element({ ...this.v, ...champs, modifieLe: maintenant });
   }
@@ -199,6 +219,7 @@ export class Element {
       estimation: this.estimation?.minutes ?? null,
       rang: this.rang,
       faitLe: this.faitLe?.toISOString() ?? null,
+      archiveLe: this.archiveLe?.toISOString() ?? null,
       creeLe: this.creeLe.toISOString(),
       modifieLe: this.modifieLe.toISOString(),
     };

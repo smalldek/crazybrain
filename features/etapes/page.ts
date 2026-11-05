@@ -103,3 +103,12 @@ Then("la tâche {string} a l'échéance {string}, pas en retard", async function
   await expect(date).toHaveValue(jour);
   await expect(date).not.toHaveClass(/en-retard/);
 });
+
+When('je supprime la tâche {string} sur la page', async function (this: Monde, titre: string) {
+  await ligne(this, titre).getByRole('button', { name: `Supprimer « ${titre} »` }).click();
+  await expect(ligne(this, titre)).toHaveCount(0);
+});
+
+When("j'annule la suppression", async function (this: Monde) {
+  await page(this).locator('#message').getByRole('button', { name: 'Annuler' }).click();
+});

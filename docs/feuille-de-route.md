@@ -24,8 +24,8 @@ tâche en a besoin, elle le dit (« Il faut du projet Cloudflare »), et Adrien 
 | Étape | Ce qu'elle apporte | État |
 |---|---|---|
 | 0. Cadrage | Vision, fonctionnalités, architecture, cette feuille de route | Fait le 03/11 |
-| 1. Socle | Le site, la connexion Google, la base, l'API, le connecteur testé, modifier une tâche, le modèle complet | **En cours** |
-| 2. Connecteur Claude | Claude lit, crée et modifie les tâches depuis une conversation | — |
+| 1. Socle | Le site, la connexion Google, la base, l'API, le connecteur testé, modifier une tâche, le modèle complet | Fait le 05/11 |
+| 2. Connecteur Claude | Claude lit, crée et modifie les tâches depuis une conversation | **En cours** |
 | 3. Kanban, détail, tags, filtres | Le premier vrai écran de travail | — |
 | 4. Requêtes enregistrées, tableaux de bord | Claude écrit des requêtes, l'outil les rejoue | — |
 | 5. L'appli sur le téléphone | Icône, partage, rappels, tâches récurrentes | — |
@@ -67,7 +67,7 @@ connecteur. Plan revu le 05/11 : on finit le socle avant d'ouvrir l'étape 2.
 | 1.2 | Modifier une tâche : la cocher, la renommer, lui donner une échéance | **Fait le 05/11** |
 | 1.3 | Le modèle de données complet en base : types, parent, projets, liens, tags, commentaires | **Fait le 05/11** |
 | 1.4 | Le déploiement ne pose plus rien dans Cloudflare, il vérifie seulement | **Fait le 05/11** |
-| 1.5 | Supprimer (archiver) une tâche | Rien |
+| 1.5 | Supprimer (archiver) une tâche | **Fait le 05/11** |
 
 **Fait quand (étape 1)** : le connecteur répond dans une conversation d'Adrien ; sur la page, à la
 taille d'un téléphone, on crée, coche, renomme et date une tâche, et tout survit au rechargement
@@ -195,107 +195,15 @@ Access) reste. Vérifié avant : tout ce qu'ils posaient (l'application Access �
 « crazybrain-connecteur » et ses cinq chemins, l'exception au pare-feu) est dans le code du projet
 Cloudflare.
 
-### 1.5 Supprimer une tâche (grosse maille)
+### 1.5 Supprimer une tâche
 
-Une tâche se supprime depuis la liste. Elle est archivée plutôt qu'effacée (un statut ou un
-champ `archive_le`) ; le journal garde son histoire dans tous les cas.
+**Fait le 05/11**, vérifié par les tests (unitaires, deux scénarios d'API, un scénario de la page
+dans le navigateur). Supprimer une tâche l'**archive** (migration `0005`, colonne `archive_le`) :
+elle sort de la liste mais reste en base avec son histoire. Sur la page, une croix au bout de la
+ligne ; pas de question « êtes-vous sûr ? », mais un bouton « Annuler » qui la restaure aussitôt.
+Une tâche supprimée ne se modifie plus tant qu'elle n'est pas restaurée. API :
+`DELETE /api/elements/:id` et `POST /api/elements/:id/restaurer`. Une suppression définitive
+viendra seulement si le besoin s'en fait sentir.
 
-## Étape 2 — Connecteur Claude
-
-- **Livre** : les outils du connecteur, qui remplacent `bonjour`. C'est aussi la saisie rapide
-  par l'IA.
-- **Tâches** :
-  - 2.1 Lire : chercher des éléments (par texte, statut, type, projet, tag, échéance) et lire un
-    élément avec ses commentaires et ses liens.
-  - 2.2 Créer : un ou plusieurs éléments d'un coup, avec projet, parent, tags et échéance.
-  - 2.3 Modifier : titre, statut, échéance, priorité, parent ; Claude est l'auteur dans le journal.
-  - 2.4 Commenter, lier, tagger.
-  - 2.5 Des descriptions d'outils et des réponses écrites pour Claude (ce que fait l'outil, quand
-    l'utiliser), et les tests d'acceptation de chaque outil.
-  - 2.6 Le test réel avec Adrien.
-- **Fait quand** : dans une conversation, « crée trois tâches pour le projet X » les fait
-  apparaître dans la liste ; « qu'est-ce qui est en retard ? » donne la bonne réponse.
-
-## Étape 3 — Kanban, détail, tags, filtres
-
-- **Livre** : le premier vrai écran de travail.
-- **Tâches** :
-  - 3.1 Choisir l'outil d'interface (décision 004) : la page grandit, du code fait à la main ne
-    suffira plus.
-  - 3.2 Une adresse par élément, qui ouvre son panneau de détail à droite (le formulaire complet).
-  - 3.3 Commentaires et liens dans le panneau.
-  - 3.4 Le kanban : colonnes par statut, glisser une carte change son statut, l'ordre à la main
-    (`rang`).
-  - 3.5 Les couloirs : par parent, par priorité, ou par une clé de tag au choix.
-  - 3.6 Les tags clé:valeur à l'écran, avec complétion ; `projet:<nom>` comme lien vers le projet.
-  - 3.7 Les filtres (type, statut, priorité, tag, parent, dates) et le backlog.
-  - 3.8 Les projets et sous-projets à l'écran ; les releases par le tag `release:<nom>`.
-- **Fait quand** : glisser une carte d'une colonne à l'autre change son statut ; les couloirs se
-  font par une clé de tag au choix ; cliquer une carte ouvre son panneau ; le filtre
-  `composant:pxe` ne montre que ces éléments ; l'adresse d'un élément l'ouvre directement.
-
-## Étape 4 — Requêtes enregistrées, tableaux de bord
-
-- **Tâches** :
-  - 4.1 Vérifier l'hypothèse « lecture seule » : des vues (`v_elements`, `v_tags`…), un vrai
-    analyseur SQL qui n'accepte qu'un `SELECT`, et le test des écritures déguisées, toutes refusées.
-  - 4.2 La table `requetes` et les outils du connecteur pour tester et enregistrer une requête.
-  - 4.3 Les requêtes enregistrées comme filtres dans l'interface.
-  - 4.4 Les premiers tableaux de bord, codés.
-- **Fait quand** : le test de lecture seule passe ; Claude écrit, teste et enregistre une requête
-  depuis une conversation, et Adrien la retrouve comme filtre dans l'outil.
-
-## Étape 5 — L'appli sur le téléphone
-
-- **Tâches** :
-  - 5.1 L'appli installable : manifeste, icône, service worker.
-  - 5.2 La reprise après expiration de la connexion Access (l'appli se reconnecte au lieu de
-    rester vide).
-  - 5.3 Le partage sortant d'une tâche (menu de partage d'Android).
-  - 5.4 Le partage entrant : depuis WhatsApp ou toute appli, la saisie rapide s'ouvre pré-remplie.
-  - 5.5 Les rappels : abonnement Web Push, tâche planifiée (Cron Trigger) qui envoie les rappels,
-    mesure du retard sur plusieurs jours.
-  - 5.6 Les tâches récurrentes : la règle de récurrence ; cocher crée l'occurrence suivante.
-  - 5.7 La décision de fin d'étape : si les rappels arrivent trop en retard, on envisage l'appli
-    native.
-- **Fait quand** : l'icône est sur l'écran d'accueil ; un message WhatsApp partagé vers
-  Crazybrain devient une tâche ; un rappel fixé à cinq minutes arrive téléphone en veille, et son
-  retard est mesuré sur plusieurs jours ; cocher une tâche récurrente crée la suivante à la bonne
-  date ; après expiration de la session, l'appli se reconnecte au lieu de rester vide.
-
-## Étape 6 — Calendrier et mode journée
-
-- **Tâches** :
-  - 6.1 Le calendrier, semaine et mois, par échéance ou jour planifié.
-  - 6.2 Le mode journée, le matin : choisir ses tâches du jour dans le backlog.
-  - 6.3 Les caser dans des créneaux, et voir le temps prévu face au temps disponible.
-- **Fait quand** : les éléments apparaissent à leur échéance ou à leur jour planifié ; le matin,
-  Adrien choisit ses tâches du jour dans le backlog, les case dans des créneaux, et voit le temps
-  prévu face au temps disponible.
-
-## Étape 7 — Horizons et objectifs
-
-- **Tâches** :
-  - 7.1 Décider comment on note un horizon : un champ dédié ou un tag `horizon:2026-11`.
-  - 7.2 La vue horizons à la Timestripe : jour, semaine, mois, année et au-delà.
-  - 7.3 Le poids des objectifs et la vue Goalscape en cercles.
-- **Fait quand** : un objectif se place sur « 2027 », une tâche sur « semaine 45 », et chacun
-  apparaît dans son horizon ; la vue Goalscape montre les objectifs en cercles, et changer un poids
-  change la taille de la part.
-
-## Étape 8 — Mail → tâche
-
-- **Tâches** :
-  - 8.1 Vérifier l'hypothèse : le domaine peut-il recevoir ce courrier sans casser l'existant
-    (lire ses serveurs de courrier) ; sinon, un sous-domaine.
-  - 8.2 L'adresse dédiée et Email Routing vers le Worker. **Il faut du projet Cloudflare.**
-  - 8.3 Le gestionnaire de mail du Worker : sujet en titre, corps en description ; seuls les mails
-    d'Adrien qui passent SPF et DKIM sont acceptés.
-- **Fait quand** : un mail envoyé par Adrien à l'adresse devient une tâche (sujet en titre, corps
-  en description) ; un mail d'une autre adresse est rejeté.
-
-## Plus tard
-
-- Le site en lecture pour l'extérieur, filtré par projet.
-- Plusieurs utilisateurs, d'autres qu'Adrien limités à un projet.
-- La timeline ; le hors-ligne.
+Au passage, la page réduit le champ d'échéance vide à son icône de calendrier, pour laisser la place
+au titre sur un téléphone.

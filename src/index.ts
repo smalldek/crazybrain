@@ -11,6 +11,7 @@ import { Hono, type Context } from 'hono';
 import { jetonAccessValide } from './acces/jeton-access';
 import { echapper, pageConsentement } from './connecteur/page-consentement';
 import { repondreMcp } from './connecteur/serveur-mcp';
+import { archiverElement, restaurerElement } from './domaine/archiver-element';
 import { creerElement } from './domaine/creer-element';
 import { ErreurDomaine } from './domaine/erreur-domaine';
 import { CHAMPS_MODIFIABLES, modifierElement, type ChangementsElement, type ContexteParent } from './domaine/modifier-element';
@@ -165,6 +166,25 @@ app.get('/api/elements/:id', async (c) => {
   const depot = new DepotRelations(c.env.DB);
   const [liens, tags, commentaires] = await Promise.all([depot.liensDe(id), depot.tagsDe(id), depot.commentairesDe(id)]);
   return c.json({ element: element.instantane(), liens, tags, commentaires });
+});
+
+// Supprimer une tâche : elle est archivée (sort de la liste, se restaure). 204 : rien à rendre.
+app.delete('/api/elements/:id', async (c) => {
+  const depot = new DepotElements(c.env.DB);
+  const actuel = await depot.lire(c.req.param('id'));
+  if (!actuel) return c.json({ erreur: 'Tâche inconnue.' }, 404);
+  const { element, evenement } = archiverElement({ element: actuel, idEvenement: crypto.randomUUID(), auteur: 'adrien', maintenant: new Date() });
+  await depot.enregistrerModification(element, evenement);
+  return c.body(null, 204);
+});
+
+app.post('/api/elements/:id/restaurer', async (c) => {
+  const depot = new DepotElements(c.env.DB);
+  const actuel = await depot.lire(c.req.param('id'));
+  if (!actuel) return c.json({ erreur: 'Tâche inconnue.' }, 404);
+  const { element, evenement } = restaurerElement({ element: actuel, idEvenement: crypto.randomUUID(), auteur: 'adrien', maintenant: new Date() });
+  await depot.enregistrerModification(element, evenement);
+  return c.json({ element: element.instantane() });
 });
 
 app.route('/api', relations);

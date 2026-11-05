@@ -119,7 +119,7 @@ Then("l'outil {string} est proposé par le connecteur", async function (this: Mo
 Then(
   "l'outil {string} répond par un message qui commence par {string} et compte les tâches",
   async function (this: Monde, outil: string, debut: string) {
-    const [ligne] = await this.worker.requete<{ nombre: number }>('SELECT COUNT(*) AS nombre FROM elements');
+    const [ligne] = await this.worker.requete<{ nombre: number }>('SELECT COUNT(*) AS nombre FROM elements WHERE archive_le IS NULL');
     const { result } = await mcp(this, 'tools/call', { name: outil, arguments: {} });
     const message = result?.content?.[0]?.text ?? '';
     assert.ok(message.startsWith(debut), message);

@@ -46,3 +46,14 @@ Fonctionnalité: La page de la liste, sur le téléphone
     Et je recharge la page
     Alors la tâche "Page : rendre les livres" a l'échéance "2020-01-15", marquée en retard
     Et la tâche "Page : préparer Noël" a l'échéance "2099-12-24", pas en retard
+
+  Scénario: Supprimer une tâche, puis annuler
+    Étant donné que j'ouvre la page
+    Et que je tape la tâche "Page : tâche en trop" et j'appuie sur Entrée
+    Quand je supprime la tâche "Page : tâche en trop" sur la page
+    Alors la page ne montre pas la tâche "Page : tâche en trop"
+    Quand j'annule la suppression
+    Alors la page montre la tâche "Page : tâche en trop"
+    Quand je supprime la tâche "Page : tâche en trop" sur la page
+    Et je recharge la page
+    Alors la page ne montre pas la tâche "Page : tâche en trop"

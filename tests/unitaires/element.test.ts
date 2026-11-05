@@ -41,6 +41,7 @@ describe('Element', () => {
       estimation: null,
       rang: null,
       faitLe: null,
+      archiveLe: null,
       creeLe: '2026-11-03T08:30:00.000Z',
       modifieLe: '2026-11-03T08:30:00.000Z',
     });
@@ -129,5 +130,21 @@ describe('lireStatut', () => {
 
   it('refuse un statut inconnu', () => {
     expect(() => lireStatut('termine')).toThrow(ErreurDomaine);
+  });
+});
+
+describe('Element : archiver (tâche 1.5)', () => {
+  it('s’archive en notant quand, et se restaure', () => {
+    const archive = pain().archiver(plusTard);
+    expect(archive.archiveLe).toEqual(plusTard);
+    expect(archive.instantane().archiveLe).toBe(plusTard.toISOString());
+
+    const restaure = archive.restaurer(new Date('2026-11-06T09:00:00.000Z'));
+    expect(restaure.archiveLe).toBeNull();
+  });
+
+  it('refuse d’archiver deux fois, ou de restaurer ce qui ne l’est pas', () => {
+    expect(() => pain().archiver(plusTard).archiver(plusTard)).toThrow(ErreurDomaine);
+    expect(() => pain().restaurer(plusTard)).toThrow(ErreurDomaine);
   });
 });

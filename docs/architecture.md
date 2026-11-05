@@ -112,14 +112,15 @@ Champs d'un élément :
 | `rang` | L'ordre choisi à la main dans une colonne ou une liste. |
 | `cree_le`, `modifie_le`, `fait_le` | Les dates de vie de l'élément. |
 
-**Déjà en base** (migrations `0001` à `0004`, étape 1) : `types` ; `elements` avec tous les champs
+**Déjà en base** (migrations `0001` à `0005`, étape 1) : `types` ; `elements` avec tous les champs
 ci-dessus sauf `recurrence` (étape 5) et `poids` (étape 7) — `statut` vaut `a_faire`, `en_cours` ou
 `fait`, `priorite` `basse`, `normale`, `haute` ou `urgente`, l'heure planifiée est `heure_planifiee` ;
 `liens`, `tags` (une étiquette simple a une valeur vide), `commentaires` ; `evenements` avec `id`,
 `element_id`, `type`, `version_forme`, `avant` et `apres` (JSON), `auteur`, `date`. Le journal n'a
 pas de clé étrangère vers `elements` : il doit survivre à la suppression d'un élément. Les sortes
 d'événements : `element_cree`, `element_modifie`, `lien_ajoute`, `lien_retire`, `tag_ajoute`,
-`tag_retire`, `commentaire_ajoute`.
+`tag_retire`, `commentaire_ajoute`, `element_archive`, `element_restaure`. Supprimer un élément
+l'archive (`archive_le`) : il sort des listes, et se restaure.
 
 `poids`, `rang` et l'heure du jour planifié s'ajoutent au modèle proposé par Adrien : la vue
 Goalscape, le glisser-déposer et le mode journée en ont besoin. Les **horizons** à la Timestripe
