@@ -1,6 +1,7 @@
 import { Element, type InstantaneElement, type Statut } from '../domaine/element';
 import type { Priorite } from '../domaine/priorite';
 import type { Evenement } from '../domaine/evenement';
+import { insererEvenement } from './journal';
 
 const COLONNES =
   'id, type, parent, titre, description, statut, priorite, echeance, jour_planifie, heure_planifiee, estimation, rang, fait_le, cree_le, modifie_le';
@@ -105,20 +106,7 @@ export class DepotElements {
   }
 
   private insererEvenement(evenement: Evenement): D1PreparedStatement {
-    return this.db
-      .prepare(
-        'INSERT INTO evenements (id, element_id, type, version_forme, avant, apres, auteur, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      )
-      .bind(
-        evenement.id,
-        evenement.elementId,
-        evenement.type,
-        evenement.versionForme,
-        evenement.avant === null ? null : JSON.stringify(evenement.avant),
-        evenement.apres === null ? null : JSON.stringify(evenement.apres),
-        evenement.auteur,
-        evenement.date,
-      );
+    return insererEvenement(this.db, evenement);
   }
 }
 

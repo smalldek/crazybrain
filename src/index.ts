@@ -14,7 +14,9 @@ import { repondreMcp } from './connecteur/serveur-mcp';
 import { creerElement } from './domaine/creer-element';
 import { ErreurDomaine } from './domaine/erreur-domaine';
 import { CHAMPS_MODIFIABLES, modifierElement, type ChangementsElement, type ContexteParent } from './domaine/modifier-element';
+import { relations } from './api/relations';
 import { DepotElements } from './infra/depot-elements';
+import { DepotRelations } from './infra/depot-relations';
 
 /** Ce que Cloudflare donne au Worker : la base et les variables de wrangler.jsonc. */
 interface Env {
@@ -155,11 +157,17 @@ app.post('/api/elements', async (c) => {
 
 app.get('/api/types', async (c) => c.json({ types: await new DepotElements(c.env.DB).types() }));
 
+// Lire un élément, avec ses liens (où il est source ou cible), ses tags et ses commentaires.
 app.get('/api/elements/:id', async (c) => {
-  const element = await new DepotElements(c.env.DB).lire(c.req.param('id'));
+  const id = c.req.param('id');
+  const element = await new DepotElements(c.env.DB).lire(id);
   if (!element) return c.json({ erreur: 'Tâche inconnue.' }, 404);
-  return c.json({ element: element.instantane() });
+  const depot = new DepotRelations(c.env.DB);
+  const [liens, tags, commentaires] = await Promise.all([depot.liensDe(id), depot.tagsDe(id), depot.commentairesDe(id)]);
+  return c.json({ element: element.instantane(), liens, tags, commentaires });
 });
+
+app.route('/api', relations);
 
 // Modifier une tâche : seuls les champs envoyés changent. Si deux modifications se croisent, la
 // dernière gagne (Adrien est seul utilisateur).
