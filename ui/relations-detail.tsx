@@ -1,8 +1,7 @@
 // Sous le formulaire du panneau de détail : les liens de l'élément, puis ses commentaires.
 // Chaque ajout ou retrait part tout de suite au serveur, puis le panneau relit l'élément.
 import { useState, type FormEvent } from 'react';
-import { naviguer } from './adresse';
-import { adresseElement } from './chemins';
+import { adresseIci, naviguer } from './adresse';
 import { api, type Commentaire, type Element, type Lien } from './api';
 import { liensVusDe, TYPES_LIEN } from './relations';
 
@@ -64,7 +63,7 @@ function Liens({ id, liens, elements, essayer }: { id: string; liens: readonly L
               <span className="sorte">{l.libelle}</span>
               {l.titreAutre === null
                 ? <span className="doux">un élément supprimé</span>
-                : <a href={adresseElement(l.autre)} onClick={(e) => { e.preventDefault(); naviguer(adresseElement(l.autre)); }}>{l.titreAutre}</a>}
+                : <a href={adresseIci(l.autre)} onClick={(e) => { e.preventDefault(); naviguer(adresseIci(l.autre)); }}>{l.titreAutre}</a>}
               <button type="button" className="retirer" aria-label={`Retirer le lien « ${l.libelle} ${l.titreAutre ?? ''} »`}
                 onClick={() => void essayer(() => api.delier(l.id))}>×</button>
             </li>

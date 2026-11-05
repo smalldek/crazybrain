@@ -1,13 +1,15 @@
-// L'écran de la liste : la saisie rapide, le message d'état, les tâches ; et, quand l'adresse est
-// /e/<id>, le panneau de détail de cet élément à côté.
+// L'écran principal : la saisie rapide, le message d'état, puis la vue choisie (la liste ou le
+// kanban) ; et, quand l'adresse nomme un élément (/e/<id>, /kanban/e/<id>), son panneau de détail.
 // Un composant React est une fonction qui rend ce qu'il faut afficher à partir de son état ;
 // quand l'état change (useState), React refait l'affichage tout seul.
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { adresseElement, elementDeLAdresse, naviguer, useAdresse } from './adresse';
+import { adresseElement, adresseVue, elementDeLAdresse, naviguer, useAdresse, vueDe, type Vue } from './adresse';
 import { api, type Changements, type Element } from './api';
 import { PanneauDetail } from './panneau-detail';
 import { LigneTache } from './ligne-tache';
+import { rangsAPoser, type StatutColonne } from './kanban';
 import { appliquer, ordonner } from './liste';
+import { VueKanban } from './vue-kanban';
 
 /** Le message sous la saisie : un état, une erreur, ou « supprimée » avec un bouton Annuler. */
 interface Message {
@@ -16,13 +18,18 @@ interface Message {
   readonly annuler?: () => void;
 }
 
+const NOMS_VUES: Record<Vue, string> = { liste: 'Liste', kanban: 'Kanban' };
+
 export function Appli() {
   const [elements, setElements] = useState<Element[] | null>(null);
   const [message, setMessage] = useState<Message>({ texte: 'Chargement…' });
   const [titre, setTitre] = useState('');
   const [envoi, setEnvoi] = useState(false);
-  const ouvert = elementDeLAdresse(useAdresse());
-  const fermer = useCallback(() => naviguer('/'), []);
+  const chemin = useAdresse();
+  const vue = vueDe(chemin);
+  const ouvert = elementDeLAdresse(chemin);
+  const fermer = useCallback(() => naviguer(adresseVue(vueDe(window.location.pathname))), []);
+  const ouvrir = (id: string): void => naviguer(adresseElement(id, vue));
 
   const erreur = (e: unknown): void => setMessage({ texte: e instanceof Error ? e.message : String(e), erreur: true });
 
@@ -69,6 +76,29 @@ export function Appli() {
     }
   }
 
+  // Une carte posée sur le kanban : son statut s'il a changé, et les rangs de sa colonne d'arrivée
+  // (seulement ceux qui changent). L'écran les montre tout de suite ; la relecture confirme.
+  async function poser(id: string, statut: StatutColonne, ordre: readonly string[]): Promise<void> {
+    const liste = elements ?? [];
+    const carte = liste.find((e) => e.id === id);
+    const parId = new Map<string, Changements>();
+    // La carte déplacée d'abord : son statut et son rang partent ensemble.
+    if (carte && carte.statut !== statut) parId.set(id, { statut });
+    for (const { id: autre, rang } of rangsAPoser(ordre, liste)) parId.set(autre, { ...parId.get(autre), rang });
+    const envois = [...parId];
+    setElements((l) => l && l.map((e) => {
+      const changement = envois.find(([i]) => i === e.id);
+      return changement ? appliquer(e, changement[1]) : e;
+    }));
+    try {
+      for (const [i, changements] of envois) await api.modifier(i, changements);
+      setMessage({ texte: '' });
+    } catch (e) {
+      erreur(e);
+    }
+    await charger();
+  }
+
   // Supprimer ne demande pas de confirmation : la tâche est archivée, et « Annuler » la restaure
   // tout de suite (plus rapide qu'une question à chaque fois, et rien n'est perdu).
   async function supprimer(element: Element): Promise<void> {
@@ -96,9 +126,17 @@ export function Appli() {
   }
 
   return (
-    <div className={ouvert ? 'mise-en-page avec-panneau' : 'mise-en-page'}>
+    <div className={['mise-en-page', ouvert && 'avec-panneau', `vue-${vue}`].filter(Boolean).join(' ')}>
       <main>
-        <h1>Crazybrain</h1>
+        <header className="entete-appli">
+          <h1>Crazybrain</h1>
+          <nav aria-label="Vues">
+            {(['liste', 'kanban'] as const).map((v) => (
+              <a key={v} href={adresseVue(v)} aria-current={v === vue ? 'page' : undefined}
+                onClick={(e) => { e.preventDefault(); naviguer(adresseVue(v)); }}>{NOMS_VUES[v]}</a>
+            ))}
+          </nav>
+        </header>
         <form onSubmit={(e) => void ajouter(e)} autoComplete="off">
           <label htmlFor="titre">Nouvelle tâche (Entrée pour l'ajouter)</label>
           <input id="titre" name="titre" maxLength={200} enterKeyHint="done" placeholder="Taper une tâche…"
@@ -109,13 +147,18 @@ export function Appli() {
           {message.texte}
           {message.annuler && <button type="button" onClick={message.annuler}>Annuler</button>}
         </p>
-        <ul id="liste">
-          {elements && ordonner(elements).map((e) => (
-            <LigneTache key={e.id} element={e} ouverte={e.id === ouvert}
-              modifier={(c) => void modifier(e.id, c)} supprimer={() => void supprimer(e)}
-              ouvrir={() => naviguer(adresseElement(e.id))} />
-          ))}
-        </ul>
+        {vue === 'liste' ? (
+          <ul id="liste">
+            {elements && ordonner(elements).map((e) => (
+              <LigneTache key={e.id} element={e} ouverte={e.id === ouvert}
+                modifier={(c) => void modifier(e.id, c)} supprimer={() => void supprimer(e)}
+                ouvrir={() => ouvrir(e.id)} />
+            ))}
+          </ul>
+        ) : (
+          elements && <VueKanban elements={elements} ouvert={ouvert} ouvrir={ouvrir}
+            poser={(id, statut, ordre) => void poser(id, statut, ordre)} />
+        )}
       </main>
       {ouvert && (
         <PanneauDetail key={ouvert} id={ouvert} elements={elements ?? []} fermer={fermer}

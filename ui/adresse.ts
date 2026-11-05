@@ -3,7 +3,14 @@
 // (on peut la copier, la partager, revenir en arrière), sans recharger la page.
 import { useEffect, useState } from 'react';
 
-export { adresseElement, elementDeLAdresse } from './chemins';
+import { adresseElement, vueDe } from './chemins';
+
+export { adresseElement, adresseVue, elementDeLAdresse, vueDe, type Vue } from './chemins';
+
+/** L'adresse du panneau d'un élément, dans la vue où l'on est. */
+export function adresseIci(id: string): string {
+  return adresseElement(id, vueDe(window.location.pathname));
+}
 
 const AVERTIR = 'crazybrain:adresse';
 
