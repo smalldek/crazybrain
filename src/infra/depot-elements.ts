@@ -1,11 +1,15 @@
 import { Element, type InstantaneElement, type Statut } from '../domaine/element';
 import type { Evenement } from '../domaine/evenement';
 
+const COLONNES = 'id, titre, statut, echeance, fait_le, cree_le, modifie_le';
+
 /** Une ligne de la table elements, telle que D1 la rend (noms de colonnes en snake_case). */
 interface LigneElement {
   id: string;
   titre: string;
   statut: Statut;
+  echeance: string | null;
+  fait_le: string | null;
   cree_le: string;
   modifie_le: string;
 }
@@ -20,9 +24,15 @@ export class DepotElements {
 
   async lister(): Promise<Element[]> {
     const { results } = await this.db
-      .prepare('SELECT id, titre, statut, cree_le, modifie_le FROM elements ORDER BY cree_le DESC, id')
+      .prepare(`SELECT ${COLONNES} FROM elements ORDER BY cree_le DESC, id`)
       .all<LigneElement>();
     return results.map((ligne) => Element.depuisInstantane(versInstantane(ligne)));
+  }
+
+  /** L'élément, ou null s'il n'existe pas. */
+  async lire(id: string): Promise<Element | null> {
+    const ligne = await this.db.prepare(`SELECT ${COLONNES} FROM elements WHERE id = ?`).bind(id).first<LigneElement>();
+    return ligne ? Element.depuisInstantane(versInstantane(ligne)) : null;
   }
 
   async compter(): Promise<number> {
@@ -34,8 +44,19 @@ export class DepotElements {
     const etat = element.instantane();
     await this.db.batch([
       this.db
-        .prepare('INSERT INTO elements (id, titre, statut, cree_le, modifie_le) VALUES (?, ?, ?, ?, ?)')
-        .bind(etat.id, etat.titre, etat.statut, etat.creeLe, etat.modifieLe),
+        .prepare(`INSERT INTO elements (${COLONNES}) VALUES (?, ?, ?, ?, ?, ?, ?)`)
+        .bind(etat.id, etat.titre, etat.statut, etat.echeance, etat.faitLe, etat.creeLe, etat.modifieLe),
+      this.insererEvenement(evenement),
+    ]);
+  }
+
+  /** Le nouvel état et l'événement qui le raconte, dans la même transaction. */
+  async enregistrerModification(element: Element, evenement: Evenement): Promise<void> {
+    const etat = element.instantane();
+    await this.db.batch([
+      this.db
+        .prepare('UPDATE elements SET titre = ?, statut = ?, echeance = ?, fait_le = ?, modifie_le = ? WHERE id = ?')
+        .bind(etat.titre, etat.statut, etat.echeance, etat.faitLe, etat.modifieLe, etat.id),
       this.insererEvenement(evenement),
     ]);
   }
@@ -63,6 +84,8 @@ function versInstantane(ligne: LigneElement): InstantaneElement {
     id: ligne.id,
     titre: ligne.titre,
     statut: ligne.statut,
+    echeance: ligne.echeance,
+    faitLe: ligne.fait_le,
     creeLe: ligne.cree_le,
     modifieLe: ligne.modifie_le,
   };
