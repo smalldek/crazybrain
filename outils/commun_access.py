@@ -1,4 +1,4 @@
-"""Ce que les scripts Access partagent : où une application Access s'applique, et la liste exacte
+"""Ce que le garde-fou Access utilise : où une application Access s'applique, et la liste exacte
 des chemins que le connecteur Claude ouvre (décision 003).
 
 Une application Access couvre une ou plusieurs « destinations » : un hôte (tout le site) ou un hôte
@@ -19,8 +19,6 @@ CHEMINS_CONNECTEUR = (
     '/.well-known/oauth-protected-resource',  # couvre aussi /.well-known/oauth-protected-resource/mcp
 )
 
-# Le pare-feu de la zone compare des chemins exacts : la description de /mcp y est nommée à part.
-CHEMINS_PARE_FEU = CHEMINS_CONNECTEUR + ('/.well-known/oauth-protected-resource/mcp',)
 
 NOM_APP_CONNECTEUR = 'crazybrain-connecteur'
 

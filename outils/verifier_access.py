@@ -129,7 +129,7 @@ def apres(hote):
         print(f'{hote}/mcp refuse sans jeton (401) et indique la découverte OAuth : bon.')
     elif bloque_par_pare_feu(code, corps):
         print(f'::warning::{hote}/mcp : le pare-feu de la zone bloque ce serveur ; il bloquera aussi claude.ai '
-              f'tant que l\'exception du pare-feu manque (voir outils/poser_pare_feu.py).')
+              f'tant que l\'exception du pare-feu manque (posée par smalldek/cluster, cloudflare/pare-feu.tf).')
     elif code in (301, 302, 303, 307) and 'cloudflareaccess.com' in entetes.get('Location', ''):
         print(f'::warning::{hote}/mcp renvoie encore vers Access : l\'ouverture du connecteur n\'est pas active.')
     else:

@@ -39,12 +39,11 @@ derrière il n'y a aujourd'hui que l'outil `bonjour`. Sa réponse : « Go ».
 3. **Access laisse passer la liste exacte des chemins du connecteur** : `/mcp`, `/token`,
    `/register`, `/.well-known/oauth-authorization-server`, `/.well-known/oauth-protected-resource`
    (liste dans `outils/commun_access.py`). Une application Access « crazybrain-connecteur » en
-   « bypass » (laisser passer) les couvre, posée par `outils/poser_ouverture_connecteur.py`. À chaque
+   « bypass » (laisser passer) les couvre, posée au départ par `outils/poser_ouverture_connecteur.py`, aujourd'hui par `smalldek/cluster` (voir la mise à jour plus bas). À chaque
    déploiement, `outils/verifier_access.py avant` exige que tout le site reste fermé et **refuse toute
    autre ouverture** ; ses tests (`tests/outils/`) le prouvent.
 4. **Une exception au pare-feu de la zone**, limitée à l'hôte `crazybrain.dekermadec.net` et à ces
-   mêmes chemins, placée avant la règle « hors de France » (`outils/poser_pare_feu.py` ; il la pose
-   si le jeton du dépôt en a le droit, sinon il donne la marche à suivre dans le tableau de bord).
+   mêmes chemins, placée avant la règle « hors de France » (prévue dans `outils/poser_pare_feu.py`, posée finalement par `smalldek/cluster` le 05/11).
 5. **Le serveur MCP est sans session** (`@modelcontextprotocol/sdk`, transport HTTP standard) :
    chaque appel est indépendant, sans Durable Object. Un seul outil pour l'étape 1c : `bonjour`.
 
@@ -72,3 +71,11 @@ derrière il n'y a aujourd'hui que l'outil `bonjour`. Sa réponse : « Go ».
   jetons et d'ajouter des droits par outil (les « scopes »).
 - Un jeton du connecteur n'ouvre pas l'API de la page (`/api/*` exige toujours le jeton Access) :
   un test d'acceptation le vérifie.
+
+## Mise à jour du 05/11/2026 : un seul maître pour Cloudflare
+
+La configuration Cloudflare (Access, pare-feu, DNS) est désormais décrite en fichiers dans le dépôt
+privé `smalldek/cluster` (dossier `cloudflare/`, OpenTofu) et appliquée par ses GitHub Actions.
+Deux outils qui posent la même chose finissent par se contredire : les scripts `poser_access.py`,
+`poser_ouverture_connecteur.py` et `poser_pare_feu.py` sont retirés, et le déploiement de ce dépôt ne
+fait plus que vérifier (`outils/verifier_access.py`). Les choix ci-dessus ne changent pas.

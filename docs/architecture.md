@@ -71,8 +71,9 @@ de connexion, puis garde un jeton et le présente à chaque appel.
   session ; un outil, `bonjour`, qui répond « Bonjour depuis Crazybrain ! » et le nombre de tâches.
 - **Ouverture limitée** : Access laisse passer `/mcp`, `/token`, `/register` et les deux adresses
   de découverte (application « crazybrain-connecteur », en bypass) ; le garde-fou du déploiement
-  refuse toute autre ouverture. Le pare-feu de la zone a besoin d'une exception sur ces mêmes
-  chemins (`outils/poser_pare_feu.py`).
+  refuse toute autre ouverture. Le pare-feu de la zone a une exception sur ces mêmes
+  chemins. Access et cette exception sont décrits et posés par le dépôt privé `smalldek/cluster`
+  (dossier `cloudflare/`, OpenTofu) depuis le 05/11 ; ce dépôt les vérifie seulement.
 - **Un jeton du connecteur n'ouvre pas `/api/*`**, qui exige toujours le jeton Access.
 
 Outils prévus : chercher, lire, créer, modifier, commenter, lier, tagger (étape 2) ; tester une
