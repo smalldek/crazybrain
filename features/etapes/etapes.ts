@@ -388,3 +388,27 @@ When('je restaure cette tâche', async function (this: Monde) {
 Then("cette tâche, relue, a une date d'archivage", async function (this: Monde) {
   assert.ok(((await relire(this)) as unknown as { archiveLe: string | null }).archiveLe);
 });
+
+// --- Tous les tags (tâche 3.6) ---
+
+interface TagLu { elementId: string; cle: string; valeur: string }
+const tousLesTags = new WeakMap<Monde, TagLu[]>();
+
+When('je demande tous les tags', async function (this: Monde) {
+  const reponse = await this.appeler('/api/tags');
+  assert.equal(reponse.status, 200);
+  tousLesTags.set(this, (this.corps as { tags: TagLu[] }).tags);
+});
+
+Then('les tags contiennent {string} pour {string}', async function (this: Monde, tag: string, titre: string) {
+  const tags = tousLesTags.get(this) ?? [];
+  const ids = (await listeDesTaches(this)).filter((t) => t.titre === titre).map((t) => t.id);
+  const [cle, valeur = ''] = tag.split(':');
+  assert.ok(tags.some((t) => ids.includes(t.elementId) && t.cle === cle && t.valeur === valeur), JSON.stringify(tags));
+});
+
+Then('les tags ne contiennent pas {string}', function (this: Monde, tag: string) {
+  const tags = tousLesTags.get(this) ?? [];
+  const [cle, valeur = ''] = tag.split(':');
+  assert.ok(!tags.some((t) => t.cle === cle && t.valeur === valeur), JSON.stringify(tags));
+});

@@ -144,3 +144,40 @@ When('je suis le lien vers {string}', async function (this: Monde, titre: string
 When('je retire le lien {string} vers {string}', async function (this: Monde, sorte: string, titre: string) {
   await lienAffiche(this, sorte, titre).getByRole('button', { name: /^Retirer le lien/ }).click();
 });
+
+// --- Tags (tâche 3.6) ---
+
+const blocTags = (monde: Monde): Locator => panneau(monde).getByRole('region', { name: 'Tags' });
+
+When('je tente de poser le tag {string} dans le détail', async function (this: Monde, tag: string) {
+  await blocTags(this).getByLabel('Nouveau tag').fill(tag);
+  await blocTags(this).getByRole('button', { name: 'Poser' }).click();
+});
+
+When('je pose le tag {string} dans le détail', async function (this: Monde, tag: string) {
+  await blocTags(this).getByLabel('Nouveau tag').fill(tag);
+  await blocTags(this).getByRole('button', { name: 'Poser' }).click();
+  await expect(blocTags(this).getByLabel('Nouveau tag')).toHaveValue('');
+});
+
+When('je retire le tag {string} dans le détail', async function (this: Monde, tag: string) {
+  await blocTags(this).getByRole('button', { name: `Retirer le tag ${tag}` }).click();
+  await expect(blocTags(this).getByRole('button', { name: `Retirer le tag ${tag}` })).toHaveCount(0);
+});
+
+Then('le détail montre les tags {string}', async function (this: Monde, attendus: string) {
+  await expect(blocTags(this).locator('li.tag:not(.tag-projet) span')).toHaveText(attendus.split(', '));
+});
+
+Then('le champ des tags propose {string}', async function (this: Monde, tag: string) {
+  await expect(blocTags(this).locator(`datalist option[value="${tag}"]`)).toHaveCount(1);
+});
+
+Then('le détail montre le projet {string} parmi les tags', async function (this: Monde, titre: string) {
+  await expect(blocTags(this).getByRole('link', { name: `projet:${titre}` })).toBeVisible();
+});
+
+Then('la carte {string} montre {string}', async function (this: Monde, titre: string, texte: string) {
+  const carte = page(this).locator('#kanban li').filter({ has: page(this).getByRole('button', { name: titre, exact: true }) });
+  await expect(carte.locator('.etiquette', { hasText: texte })).toBeVisible();
+});

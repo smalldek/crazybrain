@@ -78,6 +78,9 @@ api.post('/elements/:id/tags', async (c) => {
   return c.json({ tag }, ajoute ? 201 : 200);
 });
 
+// Tous les tags posés, pour l'écran : la complétion, les couloirs et les filtres.
+api.get('/tags', async (c) => c.json({ tags: await service(c).tousLesTags() }));
+
 // Retirer un tag : DELETE /api/elements/<id>/tags/<cle:valeur> (le texte du tag, encodé dans l'adresse).
 api.delete('/elements/:id/tags/:tag', async (c) => {
   await service(c).detagger(c.req.param('id'), decodeURIComponent(c.req.param('tag')), 'adrien');

@@ -52,6 +52,15 @@ export class DepotRelations {
     return results.map((l) => ({ elementId: l.element_id, cle: l.cle, valeur: l.valeur }));
   }
 
+  /** Tous les tags des éléments non supprimés : pour l'écran (complétion, couloirs, filtres). */
+  async tousLesTags(): Promise<InstantaneTag[]> {
+    const { results } = await this.db
+      .prepare(`SELECT t.element_id, t.cle, t.valeur FROM tags t JOIN elements e ON e.id = t.element_id
+                WHERE e.archive_le IS NULL ORDER BY t.cle, t.valeur, t.element_id`)
+      .all<{ element_id: string; cle: string; valeur: string }>();
+    return results.map((l) => ({ elementId: l.element_id, cle: l.cle, valeur: l.valeur }));
+  }
+
   async tagExiste(tag: InstantaneTag): Promise<boolean> {
     return (await this.db.prepare('SELECT 1 FROM tags WHERE element_id = ? AND cle = ? AND valeur = ?')
       .bind(tag.elementId, tag.cle, tag.valeur).first()) !== null;

@@ -67,6 +67,10 @@ export const api = {
   modifier: async (id: string, changements: Changements): Promise<Element> =>
     (await appeler<{ element: Element }>(adresse(id), json('PATCH', changements))).element,
   supprimer: (id: string): Promise<void> => appeler<void>(adresse(id), { method: 'DELETE' }),
+  tags: async (): Promise<Tag[]> => (await appeler<{ tags: Tag[] }>('/api/tags')).tags,
+  tagger: (id: string, texte: string): Promise<unknown> => appeler(`${adresse(id)}/tags`, json('POST', { tag: texte })),
+  detagger: (id: string, texte: string): Promise<void> =>
+    appeler<void>(`${adresse(id)}/tags/${encodeURIComponent(texte)}`, { method: 'DELETE' }),
   commenter: async (id: string, texte: string): Promise<Commentaire> =>
     (await appeler<{ commentaire: Commentaire }>(`${adresse(id)}/commentaires`, json('POST', { texte }))).commentaire,
   lier: async (source: string, cible: string, type: string): Promise<Lien> =>
