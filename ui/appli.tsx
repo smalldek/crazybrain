@@ -3,11 +3,11 @@
 // Un composant React est une fonction qui rend ce qu'il faut afficher à partir de son état ;
 // quand l'état change (useState), React refait l'affichage tout seul.
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { adresseElement, adresseVue, elementDeLAdresse, naviguer, useAdresse, vueDe, type Vue } from './adresse';
+import { adresseElement, adresseVue, elementDeLAdresse, naviguer, parametresIci, useAdresse, vueDe, type Vue } from './adresse';
 import { api, type Changements, type Element, type Tag } from './api';
 import { PanneauDetail } from './panneau-detail';
 import { LigneTache } from './ligne-tache';
-import { rangsAPoser, type StatutColonne } from './kanban';
+import { ecrireCritere, lireCritere, rangsAPoser, type Critere, type StatutColonne } from './kanban';
 import { appliquer, ordonner } from './liste';
 import { VueKanban } from './vue-kanban';
 
@@ -26,11 +26,20 @@ export function Appli() {
   const [message, setMessage] = useState<Message>({ texte: 'Chargement…' });
   const [titre, setTitre] = useState('');
   const [envoi, setEnvoi] = useState(false);
-  const chemin = useAdresse();
+  const { chemin, parametres } = useAdresse();
   const vue = vueDe(chemin);
   const ouvert = elementDeLAdresse(chemin);
-  const fermer = useCallback(() => naviguer(adresseVue(vueDe(window.location.pathname))), []);
-  const ouvrir = (id: string): void => naviguer(adresseElement(id, vue));
+  // Ouvrir ou fermer un détail garde les réglages de la vue (les couloirs du kanban, dans l'adresse).
+  const fermer = useCallback(() => naviguer(adresseVue(vueDe(window.location.pathname)) + parametresIci()), []);
+  const ouvrir = (id: string): void => naviguer(adresseElement(id, vue) + parametresIci());
+  const critere = lireCritere(parametres.get('couloirs'));
+  const changerCritere = (c: Critere): void => {
+    const p = new URLSearchParams(window.location.search);
+    const texte = ecrireCritere(c);
+    if (texte) p.set('couloirs', texte); else p.delete('couloirs');
+    const recherche = p.toString();
+    naviguer(window.location.pathname + (recherche ? `?${recherche}` : ''));
+  };
 
   const erreur = (e: unknown): void => setMessage({ texte: e instanceof Error ? e.message : String(e), erreur: true });
 
@@ -158,7 +167,7 @@ export function Appli() {
             ))}
           </ul>
         ) : (
-          elements && <VueKanban elements={elements} tags={tags} ouvert={ouvert} ouvrir={ouvrir}
+          elements && <VueKanban elements={elements} tags={tags} critere={critere} changerCritere={changerCritere} ouvert={ouvert} ouvrir={ouvrir}
             poser={(id, statut, ordre) => void poser(id, statut, ordre)} />
         )}
       </main>

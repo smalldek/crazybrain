@@ -266,7 +266,11 @@ au titre sur un téléphone.
     glisser dans sa colonne change son ordre (`rang`, posé de 1000 en 1000). À la souris, au doigt
     après un appui long (un glissement court fait défiler), au clavier. Toucher une carte ouvre son
     détail (`/kanban/e/<id>`). Glisser-déposer par la bibliothèque dnd-kit (05/11).
-  - 3.5 Les couloirs : par parent, par priorité, ou par une clé de tag au choix.
+  - 3.5 ✓ Les couloirs : par parent, par priorité, ou par une clé de tag au choix (une liste au-dessus
+    du kanban, retenue dans l'adresse : `/kanban?couloirs=tag:composant`). Chaque couloir a ses trois
+    colonnes ; une carte change de colonne, pas de couloir (changer de couloir se fait dans le
+    détail). Un élément qui porte plusieurs valeurs de la clé va dans le couloir de la première
+    (05/11).
   - 3.6 ✓ Les tags clé:valeur à l'écran, avec complétion ; `projet:<nom>` comme lien vers le projet.
     Dans le détail : chaque tag avec sa croix, un champ qui propose les tags déjà utilisés (les plus
     fréquents d'abord) et les projets ; taper `projet:<nom>` range l'élément dans ce projet, montré

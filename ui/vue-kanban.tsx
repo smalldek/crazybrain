@@ -11,12 +11,17 @@ import { CSS } from '@dnd-kit/utilities';
 import { useEffect, useMemo, useState } from 'react';
 import type { Element, Tag } from './api';
 import { aujourdhui } from './dates';
-import { colonneDe, colonnesDe, COLONNES, deplacer, type StatutColonne } from './kanban';
+import {
+  colonneDe, colonnesDe, COLONNES, couloirsDe, deplacer, ecrireCritere, lireCritere, type Critere, type StatutColonne,
+} from './kanban';
 import { projetDe, tagsParElement } from './tags';
 
 interface Proprietes {
   readonly elements: readonly Element[];
   readonly tags: readonly Tag[];
+  /** Les couloirs choisis, et comment en changer. */
+  readonly critere: Critere;
+  readonly changerCritere: (c: Critere) => void;
   readonly ouvert: string | null;
   readonly ouvrir: (id: string) => void;
   /**
@@ -26,16 +31,58 @@ interface Proprietes {
   readonly poser: (id: string, statut: StatutColonne, ordre: readonly string[]) => void;
 }
 
-export function VueKanban({ elements, tags, ouvert, ouvrir, poser }: Proprietes) {
-  const parId = useMemo(() => new Map(elements.map((e) => [e.id, e])), [elements]);
+export function VueKanban({ elements, tags, critere, changerCritere, ouvert, ouvrir, poser }: Proprietes) {
+  const parElement = useMemo(() => tagsParElement(tags), [tags]);
   // Ce que montre une carte sous son titre : son projet et ses tags.
-  const etiquettes = useMemo(() => {
-    const parElement = tagsParElement(tags);
-    return new Map(elements.map((e) => {
-      const projet = projetDe(e.id, elements);
-      return [e.id, [...(projet ? [`projet:${projet.titre}`] : []), ...(parElement.get(e.id) ?? [])]];
-    }));
-  }, [elements, tags]);
+  const etiquettes = useMemo(() => new Map(elements.map((e) => {
+    const projet = projetDe(e.id, elements);
+    return [e.id, [...(projet ? [`projet:${projet.titre}`] : []), ...(parElement.get(e.id) ?? [])]];
+  })), [elements, parElement]);
+  const couloirs = useMemo(() => couloirsDe(elements, critere, parElement), [elements, critere, parElement]);
+  const cles = [...new Set(tags.map((t) => t.cle))].sort((a, b) => a.localeCompare(b, 'fr'));
+  const choix = ecrireCritere(critere) ?? '';
+
+  return (
+    <>
+      <div className="reglages">
+        <label htmlFor="couloirs">Couloirs</label>
+        <select id="couloirs" value={choix} onChange={(e) => changerCritere(lireCritere(e.target.value || null))}>
+          <option value="">Aucun</option>
+          <option value="parent">Par parent</option>
+          <option value="priorite">Par priorité</option>
+          {critere.sorte === 'tag' && !cles.includes(critere.cle) && <option value={choix}>Par tag {critere.cle}</option>}
+          {cles.map((c) => <option key={c} value={`tag:${c}`}>Par tag {c}</option>)}
+        </select>
+      </div>
+      <div className="kanban" id="kanban">
+        {critere.sorte === 'aucun'
+          ? <Tableau elements={elements} etiquettes={etiquettes} ouvert={ouvert} ouvrir={ouvrir} poser={poser} />
+          : couloirs.map((c) => (
+            <section key={c.cle} className="couloir" aria-label={`Couloir ${c.titre}`}>
+              <h2 className="titre-couloir">{c.titre} <span className="compte">{c.elements.length}</span></h2>
+              <Tableau elements={c.elements} etiquettes={etiquettes} ouvert={ouvert} ouvrir={ouvrir} poser={poser} />
+            </section>
+          ))}
+      </div>
+    </>
+  );
+}
+
+interface ProprietesTableau {
+  readonly elements: readonly Element[];
+  readonly etiquettes: ReadonlyMap<string, readonly string[]>;
+  readonly ouvert: string | null;
+  readonly ouvrir: (id: string) => void;
+  readonly poser: (id: string, statut: StatutColonne, ordre: readonly string[]) => void;
+}
+
+/**
+ * Un tableau de trois colonnes, avec son propre glisser-déposer : une carte change de colonne (de
+ * statut) mais reste dans son couloir. Changer de couloir, c'est changer le parent, la priorité ou
+ * le tag, dans le détail.
+ */
+function Tableau({ elements, etiquettes, ouvert, ouvrir, poser }: ProprietesTableau) {
+  const parId = useMemo(() => new Map(elements.map((e) => [e.id, e])), [elements]);
   const depuisServeur = useMemo(() => colonnesDe(elements), [elements]);
   // Pendant un glissement, les colonnes bougent ici avant d'être enregistrées.
   const [colonnes, setColonnes] = useState(depuisServeur);
@@ -79,7 +126,7 @@ export function VueKanban({ elements, tags, ouvert, ouvrir, poser }: Proprietes)
     // peut poser une carte sur le bout visible de la colonne voisine sans que le kanban défile.
     <DndContext sensors={capteurs} autoScroll={{ threshold: { x: 0.08, y: 0.15 } }} accessibility={{ screenReaderInstructions: { draggable: CONSIGNES } }} collisionDetection={sousLeDoigt} onDragStart={debut} onDragOver={survol}
       onDragEnd={fin} onDragCancel={() => { setPrise(null); setColonnes(depuisServeur); }}>
-      <div className="kanban" id="kanban">
+      <div className="tableau">
         {COLONNES.map((c) => (
           <Colonne key={c.statut} statut={c.statut} titre={c.titre} ids={colonnes[c.statut]}
             parId={parId} etiquettes={etiquettes} ouvert={ouvert} ouvrir={ouvrir} />
