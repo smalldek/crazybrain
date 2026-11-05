@@ -256,7 +256,12 @@ au titre sur un téléphone.
     grand écran, en plein écran sur le téléphone ; tous les champs s'y modifient (statut, type,
     priorité, parent, description, échéance, jour et heure prévus, estimation). Une flèche sur
     chaque ligne l'ouvre ; la croix, Échap ou le bouton Retour le ferment (05/11).
-  - 3.3 Commentaires et liens dans le panneau.
+  - 3.3 ✓ Commentaires et liens dans le panneau : la liste des commentaires (auteur, date, retours à
+    la ligne gardés) et un champ pour commenter ; les liens lus dans le bon sens (« bloque » depuis
+    la source, « bloqué par » depuis la cible), un lien mène à l'autre élément, une croix le retire,
+    et on en pose un en choisissant sa sorte et l'élément (05/11). La date « modifié le » ne bouge
+    toujours pas pour un commentaire ou un lien (remarque de 2.6) : à trancher avec le tri
+    « modifié récemment », qui n'existe pas encore.
   - 3.4 Le kanban : colonnes par statut, glisser une carte change son statut, l'ordre à la main
     (`rang`).
   - 3.5 Les couloirs : par parent, par priorité, ou par une clé de tag au choix.

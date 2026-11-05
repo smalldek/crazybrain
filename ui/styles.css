@@ -66,5 +66,31 @@ li .ouvrir:hover, li .ouvrir:focus-visible { background: var(--fond); color: var
 .dates { color: var(--doux); font-size: .8rem; margin: 4px 0 0; }
 @media (max-width: 720px) {
   .mise-en-page.avec-panneau { display: block; }
-  .panneau { position: fixed; inset: 0; z-index: 10; border-left: 0; max-height: none; }
+  /* Hauteur fixée à l'écran : sans elle, le panneau grandit avec son contenu et le bas devient inatteignable. */
+  .panneau { position: fixed; inset: 0; z-index: 10; border-left: 0; height: 100dvh; min-height: 0; max-height: 100dvh; }
 }
+
+/* Les liens et les commentaires, sous le formulaire du détail. */
+.bloc { border-top: 1px solid var(--bord); margin-top: 18px; padding-top: 12px; }
+.bloc h3 { font-size: 1rem; margin: 0 0 8px; }
+.vide-doux, .doux { color: var(--doux); font-size: .9rem; }
+.vide-doux { margin: 0 0 8px; }
+.relations li { display: flex; align-items: center; gap: 8px; padding: 4px 0; background: none; border: 0;
+                margin: 0; border-radius: 0; }
+.relations .sorte { color: var(--doux); font-size: .85rem; flex: none; min-width: 6.5rem; }
+.relations a { flex: 1; min-width: 0; color: var(--accent); overflow-wrap: anywhere; }
+.relations .retirer { flex: none; width: 32px; height: 32px; border: 0; border-radius: 8px; background: none;
+                      color: var(--doux); font-size: 1.2rem; cursor: pointer; }
+.commentaires { list-style: none; margin: 0 0 8px; padding: 0; }
+.commentaires li { display: block; padding: 8px 10px; margin-bottom: 6px; border-radius: 8px; background: var(--fond); border: 0; }
+.commentaires .entete { color: var(--doux); font-size: .8rem; margin-bottom: 2px; }
+.commentaires .texte { white-space: pre-wrap; overflow-wrap: anywhere; }
+.ajout { display: flex; gap: 8px; flex-wrap: wrap; }
+.ajout.colonne { flex-direction: column; align-items: flex-start; }
+.ajout select, .ajout textarea { font: inherit; font-size: .95rem; padding: 8px; border-radius: 8px;
+  border: 1px solid var(--bord); background: var(--fond); color: var(--texte); }
+.ajout select { flex: 1 1 8rem; min-width: 0; }
+.ajout textarea { width: 100%; resize: vertical; }
+.ajout button { font: inherit; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--accent);
+                background: none; color: var(--accent); cursor: pointer; }
+.ajout button:disabled { opacity: .5; cursor: default; }
