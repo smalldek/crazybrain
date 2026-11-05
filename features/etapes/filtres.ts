@@ -81,3 +81,63 @@ When("j'ouvre le backlog", async function (this: Monde) {
   await page(this).getByRole('navigation', { name: 'Vues' }).getByRole('link', { name: 'Backlog' }).click();
   await expect(page(this).locator('#liste.backlog')).toBeVisible();
 });
+
+// --- Les projets et les releases (tâche 3.8, features/projets.feature) ---
+
+Given('le projet {string} contient la tâche faite {string}', async function (this: Monde, parent: string, titre: string) {
+  await creer(this, { titre, parent: projets.get(parent), statut: 'fait' });
+});
+
+const vueProjets = (monde: Monde) => page(monde).locator('#projets');
+const ligneProjet = (monde: Monde, titre: string) =>
+  vueProjets(monde).getByRole('region', { name: 'Projets' }).locator('li')
+    .filter({ has: page(monde).getByRole('button', { name: titre, exact: true }) });
+
+When("j'ouvre la vue des projets", async function (this: Monde) {
+  await page(this).getByRole('navigation', { name: 'Vues' }).getByRole('link', { name: 'Projets' }).click();
+  await expect(vueProjets(this)).toBeVisible();
+});
+
+Then('le projet {string} est en retrait sous {string}', async function (this: Monde, sous: string, parent: string) {
+  await expect(ligneProjet(this, sous)).toHaveAttribute('data-profondeur', '1');
+  await expect(ligneProjet(this, parent)).toHaveAttribute('data-profondeur', '0');
+  const titres = await vueProjets(this).locator('.arbre li .titre').allTextContents();
+  expect(titres.indexOf(sous)).toBeGreaterThan(titres.indexOf(parent));
+});
+
+Then('le projet {string} en est à {string}', async function (this: Monde, titre: string, compte: string) {
+  await expect(ligneProjet(this, titre).locator('.compte')).toHaveText(compte);
+});
+
+When('je touche le projet {string}', async function (this: Monde, titre: string) {
+  await ligneProjet(this, titre).getByRole('button', { name: titre, exact: true }).click();
+});
+
+When('je demande à voir le contenu de {string}', async function (this: Monde, titre: string) {
+  await vueProjets(this).getByRole('link', { name: `Voir le contenu de « ${titre} »` }).click();
+  await expect(page(this).locator('#liste')).toBeVisible();
+});
+
+When('je crée le projet {string}', async function (this: Monde, titre: string) {
+  const champ = vueProjets(this).getByLabel('Nouveau projet');
+  await champ.fill(titre);
+  await champ.press('Enter');
+  await expect(champ).toHaveValue('');
+});
+
+Then('la vue des projets montre {string}', async function (this: Monde, titre: string) {
+  await expect(ligneProjet(this, titre)).toHaveCount(1);
+});
+
+const ligneRelease = (monde: Monde, nom: string) =>
+  vueProjets(monde).getByRole('region', { name: 'Releases' }).locator('li')
+    .filter({ has: page(monde).getByRole('link', { name: nom, exact: true }) });
+
+Then('la release {string} en est à {string}', async function (this: Monde, nom: string, compte: string) {
+  await expect(ligneRelease(this, nom).locator('.compte')).toHaveText(compte);
+});
+
+When('je touche la release {string}', async function (this: Monde, nom: string) {
+  await ligneRelease(this, nom).getByRole('link', { name: nom, exact: true }).click();
+  await expect(page(this).locator('#kanban')).toBeVisible();
+});

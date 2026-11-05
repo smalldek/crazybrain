@@ -164,3 +164,13 @@ li .ouvrir:hover, li .ouvrir:focus-visible { background: var(--fond); color: var
 .criteres select, .criteres input { width: 100%; font: inherit; font-size: .9rem; padding: 6px 8px; border-radius: 8px;
   border: 1px solid var(--bord); background: var(--fond); color: var(--texte); }
 .criteres .effacer { align-self: end; color: var(--accent); }
+
+/* Les projets en arbre et les releases, chacun avec son avancement. */
+#projets h2 { font-size: 1.1rem; margin: 16px 0 8px; }
+#projets .nouveau-projet { margin-bottom: 10px; }
+#projets .nouveau-projet input { padding: 8px 12px; font-size: 1rem; }
+.arbre li a.titre { flex: 1; min-width: 0; color: inherit; text-decoration: none; padding: 6px 0; overflow-wrap: anywhere; }
+.arbre li .titre { cursor: pointer; font-weight: 500; }
+.avancement { flex: none; display: flex; align-items: center; gap: 6px; font-size: .8rem; color: var(--doux); }
+.avancement meter { width: 4.5rem; height: 8px; }
+.arbre .voir { flex: none; font-size: .85rem; color: var(--accent); padding: 6px 4px; }
