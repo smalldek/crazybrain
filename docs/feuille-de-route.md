@@ -25,7 +25,7 @@ tâche en a besoin, elle le dit (« Il faut du projet Cloudflare »), et Adrien 
 |---|---|---|
 | 0. Cadrage | Vision, fonctionnalités, architecture, cette feuille de route | Fait le 03/11 |
 | 1. Socle | Le site, la connexion Google, la base, l'API, le connecteur testé, modifier une tâche, le modèle complet | Fait le 05/11 |
-| 2. Connecteur Claude | Claude lit, crée et modifie les tâches depuis une conversation | **En cours** |
+| 2. Connecteur Claude | Claude lit, crée et modifie les tâches depuis une conversation | Fait le 05/11 |
 | 3. Kanban, détail, tags, filtres | Le premier vrai écran de travail | — |
 | 4. Requêtes enregistrées, tableaux de bord | Claude écrit des requêtes, l'outil les rejoue | — |
 | 5. L'appli sur le téléphone | Icône, partage, rappels, tâches récurrentes | — |
@@ -211,8 +211,7 @@ au titre sur un téléphone.
 ## Étape 2 — Connecteur Claude
 
 - **Livre** : les outils du connecteur. C'est aussi la saisie rapide par l'IA.
-- **Construite le 05/11** ; reste l'appel réel depuis une conversation (2.6), fait par Claude
-  lui-même après le déploiement.
+- **Finie le 05/11** : construite, puis essayée pour de vrai depuis une session du projet (2.6).
 - **Tâches** :
   - 2.1 Lire : `chercher_elements` (texte, statut, type, projet avec ses sous-projets, parent, tags,
     en retard, aujourd'hui, échéance, jour planifié ; les faits exclus par défaut) et
@@ -226,7 +225,21 @@ au titre sur un téléphone.
   - 2.5 Des descriptions d'outils et des consignes de serveur écrites pour Claude (le modèle, les
     valeurs permises, « en retard » compté au jour de Paris), et 8 scénarios d'acceptation qui
     jouent OAuth puis les appels MCP (`features/connecteur-outils.feature`). **Fait.**
-  - 2.6 Le test réel : Claude appelle les outils depuis une session du projet d'Adrien.
+  - 2.6 Le test réel : Claude appelle les outils depuis une session du projet d'Adrien. **Fait le
+    05/11**, sur la base de production, avec des éléments de test marqués `ESSAI-2.6` (un projet,
+    quatre tâches), tous archivés à la fin ; les deux tâches d'Adrien n'ont pas été touchées. Les 13
+    outils répondent. Vérifié : une tâche rattachée au projet par son titre exact puis par son id ;
+    une sous-tâche rangée dans le projet par `parent` ; « en retard », « aujourd'hui » (comptés au
+    5 novembre, jour de Paris), échéance au plus tard, jour planifié, tag par clé seule ou
+    `cle:valeur`, texte, statut, type, parent ; les faites exclues par défaut ; modifier (titre,
+    statut fait avec sa date, champ vidé par `null`, description Markdown) ; commentaire signé
+    `claude` ; lien `bloque` posé puis retiré ; tag posé puis retiré ; supprimer, l'élément sort des
+    listes, restaurer le remet. Les refus disent pourquoi : projet inconnu (les éléments d'avant
+    restent créés, la réponse donne le rang refusé et s'arrête là), jour impossible (`2026-13-45`),
+    id inconnu.
+    Une remarque, sans correction pour l'instant : commenter, tagger ou lier ne change pas la date
+    de modification de l'élément (`modifieLe`) ; seul un changement de ses champs la change. À
+    trancher quand l'écran trie par « modifié récemment » (étape 3).
 - **Au passage** : l'API de la page et le connecteur passent par le même service d'application
   (`src/application/service-elements.ts`) ; une règle n'est écrite qu'une fois.
 - **Fait quand** : dans une conversation, « crée trois tâches pour le projet X » les fait
