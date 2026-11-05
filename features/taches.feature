@@ -92,3 +92,22 @@ Fonctionnalité: Noter une tâche et la retrouver
     Quand je renomme cette tâche en "Lire le courrier"
     Alors la modification est acceptée
     Et le journal de cette tâche ne contient que "element_cree"
+
+  Scénario: Supprimer une tâche l'archive : elle quitte la liste, et se restaure
+    Étant donné que je suis connecté par Cloudflare Access
+    Et que j'ai créé la tâche "Tâche à jeter"
+    Quand je supprime cette tâche
+    Alors la réponse est 204
+    Et la liste des tâches ne contient pas "Tâche à jeter"
+    Et cette tâche, relue, a une date d'archivage
+    Quand j'envoie à cette tâche la modification {"titre": "Ressuscitée"}
+    Alors la modification est refusée comme invalide
+    Quand je restaure cette tâche
+    Alors la réponse est 200
+    Et la liste des tâches contient "Tâche à jeter"
+    Et le journal de cette tâche contient "element_cree" puis "element_archive" puis "element_restaure"
+
+  Scénario: Supprimer une tâche inconnue
+    Étant donné que je suis connecté par Cloudflare Access
+    Quand je supprime la tâche "inconnue-456"
+    Alors la réponse est 404

@@ -1,6 +1,7 @@
 // Les phrases des scénarios, reliées au code qui les joue.
 import assert from 'node:assert/strict';
 import { Given, Then, When } from '@cucumber/cucumber';
+import { VERSION_FORME } from '../../src/domaine/evenement';
 import type { Monde } from '../support/monde';
 
 interface TacheLue {
@@ -101,7 +102,7 @@ Then(
     assert.equal(ligne.avant, null);
     assert.deepEqual(JSON.parse(ligne.apres ?? 'null'), tache);
     assert.equal(ligne.auteur, auteur);
-    assert.equal(ligne.version_forme, 3);
+    assert.equal(ligne.version_forme, VERSION_FORME);
     assert.equal(ligne.date, tache.creeLe);
   },
 );
@@ -230,7 +231,7 @@ Then(
     assert.equal(etatApres.statut, apres);
     assert.ok(etatApres.faitLe);
     assert.equal(ligne.auteur, auteur);
-    assert.equal(ligne.version_forme, 3);
+    assert.equal(ligne.version_forme, VERSION_FORME);
   },
 );
 
@@ -368,4 +369,22 @@ Then('cette tâche, relue, a {int} commentaire de {string} qui dit {string}', as
 
 Then('le journal de cette tâche contient {string} puis {string} puis {string}', async function (this: Monde, a: string, b: string, c: string) {
   assert.deepEqual(await typesDuJournal(this), [a, b, c]);
+});
+
+// --- Supprimer (archiver) une tâche (tâche 1.5) ---
+
+When('je supprime cette tâche', async function (this: Monde) {
+  await this.appeler(`/api/elements/${tacheDuScenario(this).id}`, { method: 'DELETE' });
+});
+
+When('je supprime la tâche {string}', async function (this: Monde, id: string) {
+  await this.appeler(`/api/elements/${encodeURIComponent(id)}`, { method: 'DELETE' });
+});
+
+When('je restaure cette tâche', async function (this: Monde) {
+  await this.appeler(`/api/elements/${tacheDuScenario(this).id}/restaurer`, { method: 'POST' });
+});
+
+Then("cette tâche, relue, a une date d'archivage", async function (this: Monde) {
+  assert.ok(((await relire(this)) as unknown as { archiveLe: string | null }).archiveLe);
 });

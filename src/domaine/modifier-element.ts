@@ -62,6 +62,9 @@ export function modifierElement(commande: CommandeModifierElement): { element: E
     throw new ErreurDomaine(`Rien à modifier : donner au moins un de ces champs : ${CHAMPS_MODIFIABLES.join(', ')}.`);
   }
   const avant = commande.element;
+  if (avant.archiveLe) {
+    throw new ErreurDomaine('Cet élément est supprimé : le restaurer avant de le modifier.');
+  }
   const apres = appliquerChangements(avant, commande.changements, commande.maintenant, commande.contexteParent);
   if (apres === avant) {
     return { element: avant, evenement: null };
