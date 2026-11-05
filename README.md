@@ -44,7 +44,7 @@ Pour essayer l'API à la main en local : `npx wrangler d1 migrations apply crazy
 | `src/infra/` | Le dépôt D1 (le seul code qui écrit du SQL) |
 | `src/connecteur/` | Le connecteur Claude : le serveur MCP (outil `bonjour`) et la page de consentement OAuth |
 | `src/index.ts` | Les routes de l'API (Hono), le serveur OAuth du connecteur |
-| `outils/` | Les scripts du déploiement : la porte Access, l'ouverture du connecteur, le garde-fou, le pare-feu |
+| `outils/` | Le garde-fou du déploiement : il vérifie Access sans le modifier (Access et le pare-feu sont posés par le dépôt privé `smalldek/cluster`) |
 | `migrations/` | Le schéma de la base, migration par migration |
 | `public/` | La page |
 | `tests/unitaires/`, `tests/outils/`, `features/` | Les tests unitaires (domaine, garde-fou Access), les scénarios d'acceptation |

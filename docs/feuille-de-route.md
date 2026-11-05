@@ -167,9 +167,11 @@ détaille chaque champ.
 Depuis le 05/11, les portes Access et l'exception au pare-feu de Crazybrain sont décrites en code
 dans le dépôt du projet Cloudflare. Les scripts du déploiement de Crazybrain qui les posent
 (`outils/poser_access.py`, `poser_ouverture_connecteur.py`, `poser_pare_feu.py`) font doublon :
-deux mains sur le même réglage finissent par se contredire. Ils deviennent des vérifications
-seules ; le garde-fou (refuser une mise en ligne sans Access) reste. **Il faut du projet
-Cloudflare** : confirmer que tout ce que ces scripts posaient est bien dans son code.
+deux mains sur le même réglage finissent par se contredire. **Fait le 05/11** : les trois scripts sont
+retirés, le déploiement ne fait plus que vérifier ; le garde-fou (refuser une mise en ligne sans
+Access) reste. Vérifié avant : tout ce qu'ils posaient (l'application Access « crazybrain »,
+« crazybrain-connecteur » et ses cinq chemins, l'exception au pare-feu) est dans le code du projet
+Cloudflare.
 
 ### 1.5 Supprimer une tâche (grosse maille)
 

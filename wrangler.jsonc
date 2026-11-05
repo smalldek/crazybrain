@@ -1,6 +1,6 @@
 // Worker de Crazybrain : l'API (src/, routes /api/*) et la page (dossier public/), avec la base D1.
 // Pas d'adresse de secours en workers.dev : le site ne vit que sur son sous-domaine, que
-// Cloudflare Access ferme (connexion Google ; outils/poser_access.py, vérifié à chaque déploiement).
+// Cloudflare Access ferme (connexion Google ; posé par smalldek/cluster, vérifié à chaque déploiement).
 // Le Worker vérifie en plus le jeton d'Access sur chaque appel /api/* (deuxième serrure).
 // Exception (décision 003) : le connecteur Claude (/mcp) et les adresses OAuth que les serveurs
 // d'Anthropic appellent sont ouverts dans Access ; /mcp exige alors un jeton OAuth du Worker.
