@@ -65,18 +65,19 @@ When("j'ouvre la page d'autorisation", async function (this: Monde) {
   this.reponse = await fetch(client(this).adresseAutorisation(), { headers: entetesAdrien(this), redirect: 'manual' });
 });
 
-When("j'autorise Claude sur la page de consentement", async function (this: Monde) {
-  const c = client(this);
-  const page = await fetch(c.adresseAutorisation(), { headers: entetesAdrien(this), redirect: 'manual' });
+/** Adrien passe la page de consentement et clique « Autoriser » ; Claude reçoit son code. */
+async function autoriser(monde: Monde): Promise<void> {
+  const c = client(monde);
+  const page = await fetch(c.adresseAutorisation(), { headers: entetesAdrien(monde), redirect: 'manual' });
   const html = await page.text();
   assert.equal(page.status, 200, html);
   assert.ok(html.includes('claude.ai'), "La page doit dire où part le jeton.");
   const poignee = /name="poignee" value="([^"]+)"/.exec(html)?.[1];
   assert.ok(poignee, 'Pas de poignée dans la page de consentement.');
 
-  const accord = await fetch(`${this.worker.adresse}/authorize`, {
+  const accord = await fetch(`${monde.worker.adresse}/authorize`, {
     method: 'POST',
-    headers: { ...entetesAdrien(this), cookie: cookiesDe(page), 'content-type': 'application/x-www-form-urlencoded' },
+    headers: { ...entetesAdrien(monde), cookie: cookiesDe(page), 'content-type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ poignee, decision: 'autoriser' }),
     redirect: 'manual',
   });
@@ -85,6 +86,19 @@ When("j'autorise Claude sur la page de consentement", async function (this: Mond
   assert.equal(`${retour.origin}${retour.pathname}`, RETOUR_CLAUDE);
   assert.equal(retour.searchParams.get('state'), c.etat);
   c.code = retour.searchParams.get('code') ?? undefined;
+}
+
+When("j'autorise Claude sur la page de consentement", async function (this: Monde) {
+  await autoriser(this);
+});
+
+// Tout le parcours d'un coup, pour les scénarios des outils : Adrien connecté, Claude enregistré,
+// autorisé, et muni de son jeton.
+Given('Claude est branché sur Crazybrain par le connecteur', async function (this: Monde) {
+  this.jeton = await this.serrure.jeton();
+  this.clientOAuth = await ClientOAuth.enregistrer(this.worker.adresse);
+  await autoriser(this);
+  this.jetonOAuth = await client(this).echangerCode();
 });
 
 When('Claude échange le code contre un jeton', async function (this: Monde) {
@@ -113,7 +127,106 @@ async function mcp(monde: Monde, methode: string, parametres: Record<string, unk
 
 Then("l'outil {string} est proposé par le connecteur", async function (this: Monde, outil: string) {
   const { result } = await mcp(this, 'tools/list');
-  assert.deepEqual(result?.tools?.map((t) => t.name), [outil]);
+  assert.ok(result?.tools?.map((t) => t.name).includes(outil), JSON.stringify(result?.tools?.map((t) => t.name)));
+});
+
+Then('le connecteur propose les outils {string}', async function (this: Monde, liste: string) {
+  const { result } = await mcp(this, 'tools/list');
+  assert.deepEqual(result?.tools?.map((t) => t.name).sort(), liste.split(', ').sort());
+});
+
+// --- Les outils de l'étape 2 ---
+
+interface ResultatOutil { texte: string; erreur: boolean; json: unknown }
+const resultats = new WeakMap<Monde, ResultatOutil>();
+// Les ids des éléments créés par Claude dans le scénario, par titre.
+const idsParTitre = new WeakMap<Monde, Map<string, string>>();
+
+function ids(monde: Monde): Map<string, string> {
+  let m = idsParTitre.get(monde);
+  if (!m) idsParTitre.set(monde, (m = new Map()));
+  return m;
+}
+
+/** Remplace « {id:Titre} » par l'id de l'élément créé sous ce titre dans le scénario. */
+function avecIds(monde: Monde, texteJson: string): string {
+  return texteJson.replace(/\{id:([^}]+)\}/g, (_, titre: string) => {
+    const id = ids(monde).get(titre);
+    assert.ok(id, `aucun élément « ${titre} » créé par Claude dans ce scénario`);
+    return id;
+  });
+}
+
+async function outil(monde: Monde, nom: string, args: unknown): Promise<ResultatOutil> {
+  const { result } = await mcp(monde, 'tools/call', { name: nom, arguments: args });
+  const brut = result as { content?: { text: string }[]; isError?: boolean } | undefined;
+  const t = brut?.content?.[0]?.text ?? '';
+  let json: unknown = null;
+  try { json = JSON.parse(t); } catch { json = null; }
+  const r = { texte: t, erreur: brut?.isError === true, json };
+  resultats.set(monde, r);
+  // Retient les ids des éléments créés.
+  const crees = (json as { crees?: { id: string; titre: string }[] } | null)?.crees ?? [];
+  for (const e of crees) ids(monde).set(e.titre, e.id);
+  return r;
+}
+
+function dernier(monde: Monde): ResultatOutil {
+  const r = resultats.get(monde);
+  assert.ok(r, "aucun outil appelé");
+  return r;
+}
+
+When('Claude appelle {string} avec {}', async function (this: Monde, nom: string, args: string) {
+  await outil(this, nom, JSON.parse(avecIds(this, args)) as unknown);
+});
+
+When('Claude appelle {string}', async function (this: Monde, nom: string) {
+  await outil(this, nom, {});
+});
+
+Then("l'outil répond sans erreur", function (this: Monde) {
+  assert.equal(dernier(this).erreur, false, dernier(this).texte);
+});
+
+Then("l'outil refuse en disant {string}", function (this: Monde, morceau: string) {
+  const r = dernier(this);
+  assert.equal(r.erreur, true, r.texte);
+  assert.ok(r.texte.includes(morceau), r.texte);
+});
+
+Then("l'outil a créé {int} éléments", function (this: Monde, nombre: number) {
+  assert.equal(((dernier(this).json as { crees: unknown[] }).crees).length, nombre, dernier(this).texte);
+});
+
+Then('la recherche trouve exactement {string}', function (this: Monde, titres: string) {
+  const trouves = ((dernier(this).json as { elements: { titre: string }[] }).elements).map((e) => e.titre).sort();
+  assert.deepEqual(trouves, titres === '' ? [] : titres.split(', ').sort(), dernier(this).texte);
+});
+
+Then('la recherche trouve {string} et pas {string}', function (this: Monde, oui: string, non: string) {
+  const trouves = ((dernier(this).json as { elements: { titre: string }[] }).elements).map((e) => e.titre);
+  for (const t of oui.split(', ')) assert.ok(trouves.includes(t), `« ${t} » absent : ${JSON.stringify(trouves)}`);
+  for (const t of non.split(', ')) assert.ok(!trouves.includes(t), `« ${t} » présent à tort`);
+});
+
+Then("l'élément lu a {string} égal à {}", function (this: Monde, champ: string, valeur: string) {
+  const lu = dernier(this).json as Record<string, unknown>;
+  assert.deepEqual(lu[champ], JSON.parse(valeur), dernier(this).texte);
+});
+
+Then('le journal de {string} ne contient que des événements de {string}', async function (this: Monde, titre: string, auteur: string) {
+  const id = ids(this).get(titre);
+  assert.ok(id);
+  const lignes = await this.worker.requete<{ auteur: string }>(`SELECT auteur FROM evenements WHERE element_id = '${id}'`);
+  assert.ok(lignes.length > 0);
+  assert.deepEqual([...new Set(lignes.map((l) => l.auteur))], [auteur]);
+});
+
+Then('la page, connectée par Access, montre {string}', async function (this: Monde, titre: string) {
+  const reponse = await fetch(`${this.worker.adresse}/api/elements`, { headers: entetesAdrien(this) });
+  const { elements } = (await reponse.json()) as { elements: { titre: string }[] };
+  assert.ok(elements.some((e) => e.titre === titre), `« ${titre} » absent de la liste de la page`);
 });
 
 Then(
