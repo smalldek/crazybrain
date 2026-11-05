@@ -1,7 +1,7 @@
 // Les règles du kanban : les colonnes, l'ordre à la main, le déplacement d'une carte.
 import { describe, expect, it } from 'vitest';
 import type { Element } from '../../ui/api';
-import { colonnesDe, deplacer, rangsAPoser } from '../../ui/kanban';
+import { colonnesDe, couloirsDe, deplacer, ecrireCritere, lireCritere, rangsAPoser } from '../../ui/kanban';
 
 function element(id: string, champs: Partial<Element> = {}): Element {
   return {
@@ -56,5 +56,49 @@ describe('rangsAPoser', () => {
   it('numérote de 1000 en 1000 et n’envoie que les rangs qui changent', () => {
     const elements = [element('a', { rang: 1000 }), element('b', { rang: 3000 }), element('c')];
     expect(rangsAPoser(['a', 'c', 'b'], elements)).toEqual([{ id: 'c', rang: 2000 }]);
+  });
+});
+
+describe('les couloirs', () => {
+  const elements = [
+    element('a', { priorite: 'haute', parent: 'p' }),
+    element('b', { priorite: 'urgente' }),
+    element('c'),
+    element('p', { titre: 'Projet P', type: 'projet' }),
+  ];
+
+  it('le critère va et vient par l’adresse', () => {
+    for (const c of [{ sorte: 'aucun' }, { sorte: 'parent' }, { sorte: 'priorite' }, { sorte: 'tag', cle: 'composant' }] as const) {
+      expect(lireCritere(ecrireCritere(c))).toEqual(c);
+    }
+    expect(lireCritere('nimporte')).toEqual({ sorte: 'aucun' });
+  });
+
+  it('par priorité : dans l’ordre des priorités, puis « Sans priorité »', () => {
+    const couloirs = couloirsDe(elements, { sorte: 'priorite' }, new Map());
+    expect(couloirs.map((c) => [c.titre, c.elements.map((e) => e.id)])).toEqual([
+      ['Urgente', ['b']], ['Haute', ['a']], ['Sans priorité', ['c', 'p']],
+    ]);
+  });
+
+  it('par parent : un couloir par parent, nommé par son titre, puis « Sans parent »', () => {
+    const couloirs = couloirsDe(elements, { sorte: 'parent' }, new Map());
+    expect(couloirs.map((c) => [c.titre, c.elements.map((e) => e.id)])).toEqual([
+      ['Projet P', ['a']], ['Sans parent', ['b', 'c', 'p']],
+    ]);
+  });
+
+  it('par clé de tag : une valeur par couloir, la première si plusieurs, la clé seule à part', () => {
+    const tags = new Map<string, string[]>([
+      ['a', ['composant:pxe', 'composant:dns']], ['b', ['composant:pxe']], ['c', ['composant', 'urgent']],
+    ]);
+    const couloirs = couloirsDe(elements, { sorte: 'tag', cle: 'composant' }, tags);
+    expect(couloirs.map((c) => [c.titre, c.elements.map((e) => e.id)])).toEqual([
+      ['composant', ['c']], ['composant:dns', ['a']], ['composant:pxe', ['b']], ['Sans composant', ['p']],
+    ]);
+  });
+
+  it('sans critère, un seul couloir avec tout', () => {
+    expect(couloirsDe(elements, { sorte: 'aucun' }, new Map())).toHaveLength(1);
   });
 });

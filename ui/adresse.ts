@@ -9,23 +9,34 @@ export { adresseElement, adresseVue, elementDeLAdresse, vueDe, type Vue } from '
 
 /** L'adresse du panneau d'un élément, dans la vue où l'on est. */
 export function adresseIci(id: string): string {
-  return adresseElement(id, vueDe(window.location.pathname));
+  return adresseElement(id, vueDe(window.location.pathname)) + window.location.search;
 }
 
 const AVERTIR = 'crazybrain:adresse';
 
-/** Va à une adresse de l'appli, sans recharger : l'historique du navigateur la retient. */
+/**
+ * Va à une adresse de l'appli (chemin, et paramètres après « ? » s'il y en a), sans recharger :
+ * l'historique du navigateur la retient.
+ */
 export function naviguer(chemin: string): void {
-  if (chemin === window.location.pathname) return;
+  if (chemin === window.location.pathname + window.location.search) return;
   window.history.pushState(null, '', chemin);
   window.dispatchEvent(new Event(AVERTIR));
 }
 
+/** L'adresse courante : le chemin, et les paramètres (`?couloirs=…`). */
+export interface Adresse {
+  readonly chemin: string;
+  readonly parametres: URLSearchParams;
+}
+
+const lire = (): Adresse => ({ chemin: window.location.pathname, parametres: new URLSearchParams(window.location.search) });
+
 /** L'adresse courante ; le composant se redessine quand elle change (lien, bouton Retour). */
-export function useAdresse(): string {
-  const [chemin, setChemin] = useState(window.location.pathname);
+export function useAdresse(): Adresse {
+  const [adresse, setAdresse] = useState(lire);
   useEffect(() => {
-    const suivre = (): void => setChemin(window.location.pathname);
+    const suivre = (): void => setAdresse(lire());
     window.addEventListener('popstate', suivre);
     window.addEventListener(AVERTIR, suivre);
     return () => {
@@ -33,5 +44,10 @@ export function useAdresse(): string {
       window.removeEventListener(AVERTIR, suivre);
     };
   }, []);
-  return chemin;
+  return adresse;
+}
+
+/** Les paramètres de l'adresse courante, à garder quand on change d'écran dans la même vue. */
+export function parametresIci(): string {
+  return window.location.search;
 }

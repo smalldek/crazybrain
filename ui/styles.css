@@ -107,7 +107,7 @@ li .ouvrir:hover, li .ouvrir:focus-visible { background: var(--fond); color: var
 .vue-kanban main { max-width: none; }
 /* Les colonnes ont toutes la hauteur de la plus longue, et leur liste de cartes la remplit : on peut
    poser une carte n'importe où dans une colonne, même loin sous sa dernière carte. */
-.kanban { display: grid; grid-template-columns: repeat(3, minmax(15rem, 1fr)); gap: 12px; align-items: stretch; }
+.tableau { display: grid; grid-template-columns: repeat(3, minmax(15rem, 1fr)); gap: 12px; align-items: stretch; }
 .colonne { background: var(--carte); border: 1px solid var(--bord); border-radius: 12px; padding: 10px; min-width: 0;
            display: flex; flex-direction: column; }
 .colonne h2 { font-size: .95rem; margin: 2px 4px 10px; display: flex; justify-content: space-between; }
@@ -126,7 +126,7 @@ li .ouvrir:hover, li .ouvrir:focus-visible { background: var(--fond); color: var
 .priorite-urgente, .priorite-haute { border-color: var(--erreur); color: var(--erreur); }
 .echeance.en-retard { color: var(--erreur); font-weight: 600; }
 @media (max-width: 720px) {
-  .kanban { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: 16px;
+  .tableau { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: 16px;
             margin: 0 -16px; padding: 0 16px 8px; }
   .colonne { flex: 0 0 82%; scroll-snap-align: start; }
 }
@@ -142,3 +142,11 @@ li .ouvrir:hover, li .ouvrir:focus-visible { background: var(--fond); color: var
 .ajout input { flex: 1 1 10rem; min-width: 0; font: inherit; font-size: .95rem; padding: 8px; border-radius: 8px;
                border: 1px solid var(--bord); background: var(--fond); color: var(--texte); }
 .etiquette { color: var(--texte); }
+
+/* Les couloirs : une rangée par valeur (parent, priorité, tag), chacune avec ses trois colonnes. */
+.reglages { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: .9rem; color: var(--doux); }
+.reglages select { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--bord);
+                   background: var(--carte); color: var(--texte); }
+.couloir { margin-bottom: 18px; }
+.titre-couloir { font-size: 1rem; margin: 0 0 8px; display: flex; gap: 8px; align-items: baseline; }
+.titre-couloir .compte { color: var(--doux); font-weight: normal; font-size: .9rem; }

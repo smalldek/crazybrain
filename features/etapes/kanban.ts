@@ -1,6 +1,6 @@
 // Les phrases du kanban (features/kanban.feature), jouées dans le navigateur.
 // Le glisser-déposer se joue comme une personne : appuyer, bouger par petits pas, relâcher.
-import { Then, When } from '@cucumber/cucumber';
+import { Given, Then, When } from '@cucumber/cucumber';
 import { expect, type Locator, type Page } from 'playwright/test';
 import type { Monde } from '../support/monde';
 
@@ -110,4 +110,49 @@ When('je glisse au doigt la carte {string} vers la colonne suivante', async func
 
 When('je touche la carte {string}', async function (this: Monde, titre: string) {
   await carte(this, titre).getByRole('button', { name: titre, exact: true }).click();
+});
+
+// --- Les couloirs (tâche 3.5) ---
+
+/** Crée une tâche par l'API, depuis le navigateur de test (qui porte l'en-tête d'Access). */
+async function creer(monde: Monde, corps: Record<string, unknown>): Promise<string> {
+  const reponse = await page(monde).request.post(`${monde.worker.adresse}/api/elements`, { data: corps });
+  expect(reponse.status()).toBe(201);
+  return ((await reponse.json()) as { element: { id: string } }).element.id;
+}
+
+Given('la tâche {string} existe avec le tag {string}', async function (this: Monde, titre: string, tag: string) {
+  const id = await creer(this, { titre });
+  const reponse = await page(this).request.post(`${this.worker.adresse}/api/elements/${id}/tags`, { data: { tag } });
+  expect(reponse.status()).toBe(201);
+});
+
+Given('la tâche {string} existe avec la priorité {string}', async function (this: Monde, titre: string, priorite: string) {
+  await creer(this, { titre, priorite });
+});
+
+When('je choisis les couloirs {string}', async function (this: Monde, choix: string) {
+  await page(this).getByLabel('Couloirs').selectOption({ label: choix });
+});
+
+const couloir = (monde: Monde, nom: string): Locator =>
+  page(monde).locator('#kanban').getByRole('region', { name: `Couloir ${nom}`, exact: true });
+
+Then('la carte {string} est dans le couloir {string}, colonne {string}', async function (this: Monde, titre: string, nom: string, col: string) {
+  await expect(couloir(this, nom).getByRole('region', { name: col, exact: true }).getByRole('button', { name: titre, exact: true })).toBeVisible();
+});
+
+Then("l'adresse demande les couloirs {string}", async function (this: Monde, valeur: string) {
+  await expect.poll(() => new URL(page(this).url()).searchParams.get('couloirs')).toBe(valeur);
+});
+
+When('je glisse la carte {string} dans la colonne {string} du couloir {string}', async function (this: Monde, titre: string, col: string, nom: string) {
+  const c = couloir(this, nom);
+  const laCarte = c.locator('li').filter({ has: page(this).getByRole('button', { name: titre, exact: true }) });
+  await laCarte.scrollIntoViewIfNeeded();
+  const de = await centre(laCarte);
+  const cible = await c.getByRole('region', { name: col, exact: true }).locator('ol').boundingBox();
+  if (!cible) throw new Error(`Colonne « ${col} » invisible.`);
+  await glisser(this, de, { x: cible.x + cible.width / 2, y: de.y });
+  await expect(c.getByRole('region', { name: col, exact: true }).getByRole('button', { name: titre, exact: true })).toBeVisible();
 });

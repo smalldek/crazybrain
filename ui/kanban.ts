@@ -73,3 +73,73 @@ export function deplacer(
   }
   return { ...nouvelles, [arrivee]: cible };
 }
+
+// --- Les couloirs (tâche 3.5) ---
+
+/** Comment découper le kanban en couloirs (des rangées) : pas du tout, par parent, par priorité, par une clé de tag. */
+export type Critere =
+  | { readonly sorte: 'aucun' }
+  | { readonly sorte: 'parent' }
+  | { readonly sorte: 'priorite' }
+  | { readonly sorte: 'tag'; readonly cle: string };
+
+/** Le critère tel qu'il s'écrit dans l'adresse (`?couloirs=priorite`, `?couloirs=tag:composant`). */
+export function lireCritere(texte: string | null): Critere {
+  if (texte === 'parent' || texte === 'priorite') return { sorte: texte };
+  const tag = /^tag:(.+)$/.exec(texte ?? '');
+  return tag?.[1] ? { sorte: 'tag', cle: tag[1] } : { sorte: 'aucun' };
+}
+
+export function ecrireCritere(c: Critere): string | null {
+  return c.sorte === 'aucun' ? null : c.sorte === 'tag' ? `tag:${c.cle}` : c.sorte;
+}
+
+/** Un couloir : son nom, et les éléments qui y vont. */
+export interface Couloir {
+  readonly cle: string;
+  readonly titre: string;
+  readonly elements: Element[];
+}
+
+const PRIORITES: readonly [string, string][] = [['urgente', 'Urgente'], ['haute', 'Haute'], ['normale', 'Normale'], ['basse', 'Basse']];
+
+/**
+ * Range les éléments en couloirs. Un élément va dans un seul couloir : pour une clé de tag dont il
+ * porte plusieurs valeurs, la première dans l'ordre alphabétique. Ceux qui n'ont pas de valeur vont
+ * dans un dernier couloir « Sans … ». Les couloirs vides ne s'affichent pas.
+ * `tags` : les tags de chaque élément, en texte (`cle:valeur`).
+ */
+export function couloirsDe(elements: readonly Element[], critere: Critere, tags: ReadonlyMap<string, readonly string[]>): Couloir[] {
+  if (critere.sorte === 'aucun') return [{ cle: '', titre: '', elements: [...elements] }];
+  const groupes = new Map<string, { titre: string; elements: Element[] }>();
+  const ajouter = (cle: string, titre: string, e: Element): void => {
+    const g = groupes.get(cle) ?? { titre, elements: [] };
+    g.elements.push(e);
+    groupes.set(cle, g);
+  };
+  const titres = new Map(elements.map((e) => [e.id, e.titre]));
+  const SANS = '\u0000sans'; // la clé du couloir « Sans … », qui ne peut pas être celle d'un autre
+  for (const e of elements) {
+    if (critere.sorte === 'parent') {
+      if (e.parent) ajouter(e.parent, titres.get(e.parent) ?? 'Parent supprimé', e);
+      else ajouter(SANS, 'Sans parent', e);
+    } else if (critere.sorte === 'priorite') {
+      const p = PRIORITES.find(([v]) => v === e.priorite);
+      if (p) ajouter(p[0], p[1], e); else ajouter(SANS, 'Sans priorité', e);
+    } else {
+      const valeurs = (tags.get(e.id) ?? [])
+        .filter((t) => t === critere.cle || t.startsWith(`${critere.cle}:`))
+        .map((t) => (t === critere.cle ? '' : t.slice(critere.cle.length + 1)))
+        .sort((a, b) => a.localeCompare(b, 'fr'));
+      const v = valeurs[0];
+      if (v === undefined) ajouter(SANS, `Sans ${critere.cle}`, e);
+      else ajouter(`v:${v}`, v === '' ? critere.cle : `${critere.cle}:${v}`, e);
+    }
+  }
+  const ordre = critere.sorte === 'priorite'
+    ? PRIORITES.map(([v]) => v)
+    : [...groupes].sort(([, a], [, b]) => a.titre.localeCompare(b.titre, 'fr')).map(([c]) => c);
+  return [...ordre.filter((c) => c !== SANS), SANS]
+    .filter((c) => groupes.has(c))
+    .map((c) => ({ cle: c, titre: groupes.get(c)?.titre ?? '', elements: groupes.get(c)?.elements ?? [] }));
+}

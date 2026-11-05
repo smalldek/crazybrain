@@ -57,3 +57,28 @@ Fonctionnalité: Le kanban
     Et l'adresse de la page commence par "/kanban/e/"
     Quand je ferme le détail
     Alors l'adresse de la page est "/kanban"
+
+  @ordinateur
+  Scénario: Des couloirs par une clé de tag au choix, qui restent dans l'adresse
+    Étant donné que la tâche "Couloir : brancher le serveur" existe avec le tag "composant:pxe"
+    Et que la tâche "Couloir : régler le DNS" existe avec le tag "composant:dns"
+    Et que j'ouvre la page
+    Et que j'ouvre le kanban
+    Quand je choisis les couloirs "Par tag composant"
+    Alors la carte "Couloir : brancher le serveur" est dans le couloir "composant:pxe", colonne "À faire"
+    Et la carte "Couloir : régler le DNS" est dans le couloir "composant:dns", colonne "À faire"
+    Et l'adresse de la page est "/kanban"
+    Et l'adresse demande les couloirs "tag:composant"
+    Quand je glisse la carte "Couloir : brancher le serveur" dans la colonne "En cours" du couloir "composant:pxe"
+    Et je recharge la page
+    Alors la carte "Couloir : brancher le serveur" est dans le couloir "composant:pxe", colonne "En cours"
+
+  Scénario: Des couloirs par priorité, sur le téléphone
+    Étant donné que la tâche "Couloir : payer la cantine" existe avec la priorité "urgente"
+    Et que j'ouvre la page
+    Et que j'ouvre le kanban
+    Quand je choisis les couloirs "Par priorité"
+    Alors la carte "Couloir : payer la cantine" est dans le couloir "Urgente", colonne "À faire"
+    Quand je touche la carte "Couloir : payer la cantine"
+    Et je ferme le détail
+    Alors l'adresse demande les couloirs "priorite"
