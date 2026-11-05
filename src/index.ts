@@ -9,15 +9,12 @@ import { AuthorizationError, CimdFetchError, OAuthProvider, type OAuthHelpers } 
 import { createRemoteJWKSet } from 'jose';
 import { Hono, type Context } from 'hono';
 import { jetonAccessValide } from './acces/jeton-access';
+import { api } from './api/routes';
+import { ErreurConflit, ErreurIntrouvable } from './application/erreurs';
+import { ServiceElements } from './application/service-elements';
 import { echapper, pageConsentement } from './connecteur/page-consentement';
 import { repondreMcp } from './connecteur/serveur-mcp';
-import { archiverElement, restaurerElement } from './domaine/archiver-element';
-import { creerElement } from './domaine/creer-element';
 import { ErreurDomaine } from './domaine/erreur-domaine';
-import { CHAMPS_MODIFIABLES, modifierElement, type ChangementsElement, type ContexteParent } from './domaine/modifier-element';
-import { relations } from './api/relations';
-import { DepotElements } from './infra/depot-elements';
-import { DepotRelations } from './infra/depot-relations';
 
 /** Ce que Cloudflare donne au Worker : la base et les variables de wrangler.jsonc. */
 interface Env {
@@ -128,136 +125,12 @@ app.post('/authorize', async (c) => {
   }
 });
 
-app.get('/api/elements', async (c) => {
-  const elements = await new DepotElements(c.env.DB).lister();
-  return c.json({ elements: elements.map((e) => e.instantane()) });
-});
-
-// Créer une tâche : le titre, et si on veut, les autres champs dès le départ (type, parent, échéance…).
-app.post('/api/elements', async (c) => {
-  const corps: unknown = await c.req.json().catch(() => null);
-  const lu = lireChangements(corps);
-  if (typeof lu === 'string') return c.json({ erreur: lu }, 400);
-  const { titre, ...champs } = lu;
-  if (typeof titre !== 'string') return c.json({ erreur: 'Le corps doit contenir au moins {"titre": "..."}.' }, 400);
-  const depot = new DepotElements(c.env.DB);
-  const contexte = await contexteDesChangements(depot, champs);
-  if (typeof contexte === 'string') return c.json({ erreur: contexte }, 400);
-  const { element, evenement } = creerElement({
-    idElement: crypto.randomUUID(),
-    idEvenement: crypto.randomUUID(),
-    titre,
-    champs,
-    ...contexte,
-    auteur: 'adrien', // Les appels de la page viennent d'Adrien ; Claude passera par le connecteur (étape 2).
-    maintenant: new Date(),
-  });
-  await depot.enregistrerCreation(element, evenement);
-  return c.json({ element: element.instantane() }, 201);
-});
-
-app.get('/api/types', async (c) => c.json({ types: await new DepotElements(c.env.DB).types() }));
-
-// Lire un élément, avec ses liens (où il est source ou cible), ses tags et ses commentaires.
-app.get('/api/elements/:id', async (c) => {
-  const id = c.req.param('id');
-  const element = await new DepotElements(c.env.DB).lire(id);
-  if (!element) return c.json({ erreur: 'Tâche inconnue.' }, 404);
-  const depot = new DepotRelations(c.env.DB);
-  const [liens, tags, commentaires] = await Promise.all([depot.liensDe(id), depot.tagsDe(id), depot.commentairesDe(id)]);
-  return c.json({ element: element.instantane(), liens, tags, commentaires });
-});
-
-// Supprimer une tâche : elle est archivée (sort de la liste, se restaure). 204 : rien à rendre.
-app.delete('/api/elements/:id', async (c) => {
-  const depot = new DepotElements(c.env.DB);
-  const actuel = await depot.lire(c.req.param('id'));
-  if (!actuel) return c.json({ erreur: 'Tâche inconnue.' }, 404);
-  const { element, evenement } = archiverElement({ element: actuel, idEvenement: crypto.randomUUID(), auteur: 'adrien', maintenant: new Date() });
-  await depot.enregistrerModification(element, evenement);
-  return c.body(null, 204);
-});
-
-app.post('/api/elements/:id/restaurer', async (c) => {
-  const depot = new DepotElements(c.env.DB);
-  const actuel = await depot.lire(c.req.param('id'));
-  if (!actuel) return c.json({ erreur: 'Tâche inconnue.' }, 404);
-  const { element, evenement } = restaurerElement({ element: actuel, idEvenement: crypto.randomUUID(), auteur: 'adrien', maintenant: new Date() });
-  await depot.enregistrerModification(element, evenement);
-  return c.json({ element: element.instantane() });
-});
-
-app.route('/api', relations);
-
-// Modifier une tâche : seuls les champs envoyés changent. Si deux modifications se croisent, la
-// dernière gagne (Adrien est seul utilisateur).
-app.patch('/api/elements/:id', async (c) => {
-  const changements = lireChangements(await c.req.json().catch(() => null));
-  if (typeof changements === 'string') return c.json({ erreur: changements }, 400);
-  const depot = new DepotElements(c.env.DB);
-  const actuel = await depot.lire(c.req.param('id'));
-  if (!actuel) return c.json({ erreur: 'Tâche inconnue.' }, 404);
-  const contexte = await contexteDesChangements(depot, changements);
-  if (typeof contexte === 'string') return c.json({ erreur: contexte }, 400);
-  const { element, evenement } = modifierElement({
-    element: actuel,
-    changements,
-    ...contexte,
-    idEvenement: crypto.randomUUID(),
-    auteur: 'adrien',
-    maintenant: new Date(),
-  });
-  if (evenement) await depot.enregistrerModification(element, evenement);
-  return c.json({ element: element.instantane() });
-});
-
-/** Les champs facultatifs, qu'on vide avec null ; les nombres ; les autres sont du texte. */
-const CHAMPS_NULLABLES = new Set<string>(['parent', 'description', 'priorite', 'echeance', 'jourPlanifie', 'heurePlanifiee', 'estimation', 'rang']);
-const CHAMPS_NOMBRES = new Set<string>(['estimation', 'rang']);
-
-/**
- * Vérifie la forme d'un corps de création ou de modification (le domaine vérifiera les valeurs) :
- * un objet qui n'a que des champs connus, chacun du bon genre (texte, nombre, ou null s'il est
- * facultatif). Rend les changements, ou le message d'erreur.
- */
-function lireChangements(corps: unknown): ChangementsElement | string {
-  const attendu = `Le corps doit être un objet avec ces champs : ${CHAMPS_MODIFIABLES.join(', ')}.`;
-  if (typeof corps !== 'object' || corps === null || Array.isArray(corps)) return attendu;
-  const champs = corps as Record<string, unknown>;
-  const connus: readonly string[] = CHAMPS_MODIFIABLES;
-  const inconnus = Object.keys(champs).filter((cle) => !connus.includes(cle));
-  if (inconnus.length > 0) return `Champ inconnu : ${inconnus.join(', ')}. ${attendu}`;
-  for (const [cle, valeur] of Object.entries(champs)) {
-    if (valeur === null && CHAMPS_NULLABLES.has(cle)) continue;
-    const genre = CHAMPS_NOMBRES.has(cle) ? 'number' : 'string';
-    if (typeof valeur !== genre) {
-      return `Le champ ${cle} doit être ${genre === 'number' ? 'un nombre' : 'du texte'}${CHAMPS_NULLABLES.has(cle) ? ' ou null' : ''}.`;
-    }
-  }
-  return champs as ChangementsElement;
-}
-
-/**
- * Ce que les changements demandent de vérifier en base : que le type existe, que le parent existe,
- * et ses ancêtres (pour que le domaine refuse une boucle). Rend le contexte, ou le message d'erreur.
- */
-async function contexteDesChangements(
-  depot: DepotElements,
-  changements: ChangementsElement,
-): Promise<{ contexteParent?: ContexteParent } | string> {
-  if (typeof changements.type === 'string' && /^[a-z][a-z0-9_]*$/.test(changements.type) && !(await depot.typeExiste(changements.type))) {
-    return `Type inconnu : « ${changements.type} ». Les types : ${(await depot.types()).map((t) => t.code).join(', ')}.`;
-  }
-  if (typeof changements.parent !== 'string') return {};
-  const ancetresDuParent = await depot.lignee(changements.parent);
-  if (ancetresDuParent.length === 0) return `Parent inconnu : « ${changements.parent} ».`;
-  return { contexteParent: { ancetresDuParent } };
-}
+app.route('/api', api);
 
 app.onError((erreur, c) => {
-  if (erreur instanceof ErreurDomaine) {
-    return c.json({ erreur: erreur.message }, 400);
-  }
+  if (erreur instanceof ErreurDomaine) return c.json({ erreur: erreur.message }, 400);
+  if (erreur instanceof ErreurIntrouvable) return c.json({ erreur: erreur.message }, 404);
+  if (erreur instanceof ErreurConflit) return c.json({ erreur: erreur.message }, 409);
   console.error(erreur);
   return c.json({ erreur: 'Erreur interne.' }, 500);
 });
@@ -274,7 +147,7 @@ function fournisseur(origine: string): OAuthProvider<Env> {
   if (!f) {
     f = new OAuthProvider<Env>({
       apiRoute: '/mcp',
-      apiHandler: { fetch: (requete, env) => repondreMcp(requete, { compterTaches: () => new DepotElements(env.DB).compter() }) },
+      apiHandler: { fetch: (requete, env) => repondreMcp(requete, new ServiceElements(env.DB)) },
       defaultHandler: { fetch: (requete, env, ctx) => app.fetch(requete, env, ctx) },
       authorizeEndpoint: '/authorize',
       tokenEndpoint: '/token',
