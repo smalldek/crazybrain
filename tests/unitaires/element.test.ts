@@ -1,8 +1,9 @@
 // Règles de l'entité Element (une tâche, plus tard aussi un projet, un objectif…).
 import { describe, expect, it } from 'vitest';
-import { Echeance } from '../../src/domaine/echeance';
+import { Jour } from '../../src/domaine/jour';
 import { Element, lireStatut } from '../../src/domaine/element';
 import { ErreurDomaine } from '../../src/domaine/erreur-domaine';
+import { Heure } from '../../src/domaine/heure';
 import { Titre } from '../../src/domaine/titre';
 
 const maintenant = new Date('2026-11-03T08:30:00.000Z');
@@ -28,9 +29,17 @@ describe('Element', () => {
   it('donne son instantané, une photo en données simples', () => {
     expect(pain().instantane()).toEqual({
       id: 'el-1',
+      type: 'tache',
+      parent: null,
       titre: 'Acheter du pain',
+      description: null,
       statut: 'a_faire',
+      priorite: null,
       echeance: null,
+      jourPlanifie: null,
+      heurePlanifiee: null,
+      estimation: null,
+      rang: null,
       faitLe: null,
       creeLe: '2026-11-03T08:30:00.000Z',
       modifieLe: '2026-11-03T08:30:00.000Z',
@@ -38,7 +47,7 @@ describe('Element', () => {
   });
 
   it('se reconstitue depuis son instantané (relu en base)', () => {
-    const element = pain().changerEcheance(Echeance.creer('2026-11-12'), plusTard).changerStatut('fait', plusTard);
+    const element = pain().changerEcheance(Jour.creer('2026-11-12'), plusTard).changerStatut('fait', plusTard);
 
     expect(Element.depuisInstantane(element.instantane()).instantane()).toEqual(element.instantane());
   });
@@ -76,10 +85,38 @@ describe('Element', () => {
   });
 
   it('reçoit une échéance, puis la perd', () => {
-    const date = pain().changerEcheance(Echeance.creer('2026-11-12'), plusTard);
+    const date = pain().changerEcheance(Jour.creer('2026-11-12'), plusTard);
     expect(date.echeance?.valeur).toBe('2026-11-12');
 
     expect(date.changerEcheance(null, plusTard).echeance).toBeNull();
+  });
+});
+
+describe('Element : le reste du modèle (tâche 1.3)', () => {
+  it('relit un instantané d’une forme ancienne, sans les champs récents', () => {
+    const ancien = { id: 'el-1', titre: 'Vieux', statut: 'a_faire' as const, creeLe: maintenant.toISOString(), modifieLe: maintenant.toISOString() };
+
+    const relu = Element.depuisInstantane(ancien).instantane();
+
+    expect(relu).toMatchObject({ type: 'tache', parent: null, echeance: null, rang: null, faitLe: null });
+  });
+
+  it('refuse d’être son propre parent', () => {
+    expect(() => pain().changerParent('el-1', plusTard)).toThrow(ErreurDomaine);
+  });
+
+  it('refuse une heure planifiée sans jour planifié', () => {
+    expect(() => pain().planifier(null, Heure.creer('09:30'), plusTard)).toThrow(ErreurDomaine);
+  });
+
+  it('se planifie un jour, avec ou sans heure', () => {
+    const planifie = pain().planifier(Jour.creer('2026-11-10'), Heure.creer('09:30'), plusTard);
+
+    expect(planifie.instantane()).toMatchObject({ jourPlanifie: '2026-11-10', heurePlanifiee: '09:30' });
+  });
+
+  it('refuse un rang qui n’est pas un nombre fini', () => {
+    expect(() => pain().changer({ rang: Number.NaN }, plusTard)).toThrow(ErreurDomaine);
   });
 });
 

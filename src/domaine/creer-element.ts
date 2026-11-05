@@ -1,4 +1,5 @@
 import { Element } from './element';
+import { appliquerChangements, type ChangementsElement, type ContexteParent } from './modifier-element';
 import { VERSION_FORME, type Auteur, type Evenement } from './evenement';
 import { Titre } from './titre';
 
@@ -9,6 +10,10 @@ export interface CommandeCreerElement {
   readonly titre: string;
   readonly auteur: Auteur;
   readonly maintenant: Date;
+  /** Les autres champs, donnés dès la création (type, parent, échéance…). Mêmes règles qu'une modification. */
+  readonly champs?: Omit<ChangementsElement, 'titre'>;
+  /** Obligatoire quand `champs.parent` est donné. */
+  readonly contexteParent?: ContexteParent;
 }
 
 /**
@@ -16,11 +21,12 @@ export interface CommandeCreerElement {
  * L'appelant enregistre les deux dans la même transaction (tout ou rien).
  */
 export function creerElement(commande: CommandeCreerElement): { element: Element; evenement: Evenement } {
-  const element = Element.creer({
+  const nouveau = Element.creer({
     id: commande.idElement,
     titre: Titre.creer(commande.titre),
     maintenant: commande.maintenant,
   });
+  const element = appliquerChangements(nouveau, commande.champs ?? {}, commande.maintenant, commande.contexteParent);
   const evenement: Evenement = {
     id: commande.idEvenement,
     elementId: element.id,

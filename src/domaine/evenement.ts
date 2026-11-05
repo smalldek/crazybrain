@@ -26,6 +26,8 @@ export interface Evenement {
 /**
  * Version actuelle de la forme des instantanés.
  * 1 : id, titre, statut, creeLe, modifieLe (03/11/2026).
- * 2 : ajoute echeance et faitLe (tâche 1.2, 05/11/2026). Un instantané de forme 1 se lit avec les deux à null.
+ * 2 : ajoute echeance et faitLe (tâche 1.2, 05/11/2026).
+ * 3 : ajoute type, parent, description, priorite, jourPlanifie, heurePlanifiee, estimation, rang (tâche 1.3).
+ * Un instantané d'une forme plus ancienne se lit avec les champs qui lui manquent à null (type : tache).
  */
-export const VERSION_FORME = 2;
+export const VERSION_FORME = 3;

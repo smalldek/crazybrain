@@ -13,7 +13,7 @@ import { echapper, pageConsentement } from './connecteur/page-consentement';
 import { repondreMcp } from './connecteur/serveur-mcp';
 import { creerElement } from './domaine/creer-element';
 import { ErreurDomaine } from './domaine/erreur-domaine';
-import { modifierElement, type ChangementsElement } from './domaine/modifier-element';
+import { CHAMPS_MODIFIABLES, modifierElement, type ChangementsElement, type ContexteParent } from './domaine/modifier-element';
 import { DepotElements } from './infra/depot-elements';
 
 /** Ce que Cloudflare donne au Worker : la base et les variables de wrangler.jsonc. */
@@ -130,22 +130,30 @@ app.get('/api/elements', async (c) => {
   return c.json({ elements: elements.map((e) => e.instantane()) });
 });
 
+// Créer une tâche : le titre, et si on veut, les autres champs dès le départ (type, parent, échéance…).
 app.post('/api/elements', async (c) => {
   const corps: unknown = await c.req.json().catch(() => null);
-  const titre = typeof corps === 'object' && corps !== null && 'titre' in corps ? corps.titre : undefined;
-  if (typeof titre !== 'string') {
-    return c.json({ erreur: 'Le corps doit être {"titre": "..."}.' }, 400);
-  }
+  const lu = lireChangements(corps);
+  if (typeof lu === 'string') return c.json({ erreur: lu }, 400);
+  const { titre, ...champs } = lu;
+  if (typeof titre !== 'string') return c.json({ erreur: 'Le corps doit contenir au moins {"titre": "..."}.' }, 400);
+  const depot = new DepotElements(c.env.DB);
+  const contexte = await contexteDesChangements(depot, champs);
+  if (typeof contexte === 'string') return c.json({ erreur: contexte }, 400);
   const { element, evenement } = creerElement({
     idElement: crypto.randomUUID(),
     idEvenement: crypto.randomUUID(),
     titre,
+    champs,
+    ...contexte,
     auteur: 'adrien', // Les appels de la page viennent d'Adrien ; Claude passera par le connecteur (étape 2).
     maintenant: new Date(),
   });
-  await new DepotElements(c.env.DB).enregistrerCreation(element, evenement);
+  await depot.enregistrerCreation(element, evenement);
   return c.json({ element: element.instantane() }, 201);
 });
+
+app.get('/api/types', async (c) => c.json({ types: await new DepotElements(c.env.DB).types() }));
 
 app.get('/api/elements/:id', async (c) => {
   const element = await new DepotElements(c.env.DB).lire(c.req.param('id'));
@@ -161,9 +169,12 @@ app.patch('/api/elements/:id', async (c) => {
   const depot = new DepotElements(c.env.DB);
   const actuel = await depot.lire(c.req.param('id'));
   if (!actuel) return c.json({ erreur: 'Tâche inconnue.' }, 404);
+  const contexte = await contexteDesChangements(depot, changements);
+  if (typeof contexte === 'string') return c.json({ erreur: contexte }, 400);
   const { element, evenement } = modifierElement({
     element: actuel,
     changements,
+    ...contexte,
     idEvenement: crypto.randomUUID(),
     auteur: 'adrien',
     maintenant: new Date(),
@@ -172,25 +183,47 @@ app.patch('/api/elements/:id', async (c) => {
   return c.json({ element: element.instantane() });
 });
 
+/** Les champs facultatifs, qu'on vide avec null ; les nombres ; les autres sont du texte. */
+const CHAMPS_NULLABLES = new Set<string>(['parent', 'description', 'priorite', 'echeance', 'jourPlanifie', 'heurePlanifiee', 'estimation', 'rang']);
+const CHAMPS_NOMBRES = new Set<string>(['estimation', 'rang']);
+
 /**
- * Vérifie la forme du corps d'un PATCH (le domaine vérifiera les valeurs) : un objet avec seulement
- * titre (texte), statut (texte), echeance (texte ou null). Rend les changements, ou le message d'erreur.
+ * Vérifie la forme d'un corps de création ou de modification (le domaine vérifiera les valeurs) :
+ * un objet qui n'a que des champs connus, chacun du bon genre (texte, nombre, ou null s'il est
+ * facultatif). Rend les changements, ou le message d'erreur.
  */
 function lireChangements(corps: unknown): ChangementsElement | string {
-  const attendu = 'Le corps doit être un objet avec titre, statut ou echeance (texte AAAA-MM-JJ, ou null).';
+  const attendu = `Le corps doit être un objet avec ces champs : ${CHAMPS_MODIFIABLES.join(', ')}.`;
   if (typeof corps !== 'object' || corps === null || Array.isArray(corps)) return attendu;
   const champs = corps as Record<string, unknown>;
-  const inconnus = Object.keys(champs).filter((cle) => !['titre', 'statut', 'echeance'].includes(cle));
+  const connus: readonly string[] = CHAMPS_MODIFIABLES;
+  const inconnus = Object.keys(champs).filter((cle) => !connus.includes(cle));
   if (inconnus.length > 0) return `Champ inconnu : ${inconnus.join(', ')}. ${attendu}`;
-  const { titre, statut, echeance } = champs;
-  if (titre !== undefined && typeof titre !== 'string') return attendu;
-  if (statut !== undefined && typeof statut !== 'string') return attendu;
-  if (echeance !== undefined && echeance !== null && typeof echeance !== 'string') return attendu;
-  return {
-    ...(titre === undefined ? {} : { titre }),
-    ...(statut === undefined ? {} : { statut }),
-    ...(echeance === undefined ? {} : { echeance }),
-  };
+  for (const [cle, valeur] of Object.entries(champs)) {
+    if (valeur === null && CHAMPS_NULLABLES.has(cle)) continue;
+    const genre = CHAMPS_NOMBRES.has(cle) ? 'number' : 'string';
+    if (typeof valeur !== genre) {
+      return `Le champ ${cle} doit être ${genre === 'number' ? 'un nombre' : 'du texte'}${CHAMPS_NULLABLES.has(cle) ? ' ou null' : ''}.`;
+    }
+  }
+  return champs as ChangementsElement;
+}
+
+/**
+ * Ce que les changements demandent de vérifier en base : que le type existe, que le parent existe,
+ * et ses ancêtres (pour que le domaine refuse une boucle). Rend le contexte, ou le message d'erreur.
+ */
+async function contexteDesChangements(
+  depot: DepotElements,
+  changements: ChangementsElement,
+): Promise<{ contexteParent?: ContexteParent } | string> {
+  if (typeof changements.type === 'string' && /^[a-z][a-z0-9_]*$/.test(changements.type) && !(await depot.typeExiste(changements.type))) {
+    return `Type inconnu : « ${changements.type} ». Les types : ${(await depot.types()).map((t) => t.code).join(', ')}.`;
+  }
+  if (typeof changements.parent !== 'string') return {};
+  const ancetresDuParent = await depot.lignee(changements.parent);
+  if (ancetresDuParent.length === 0) return `Parent inconnu : « ${changements.parent} ».`;
+  return { contexteParent: { ancetresDuParent } };
 }
 
 app.onError((erreur, c) => {

@@ -1,8 +1,13 @@
-import { Echeance } from './echeance';
+import { CodeType, TYPE_PAR_DEFAUT } from './code-type';
+import { Description } from './description';
 import { ErreurDomaine } from './erreur-domaine';
+import { Estimation } from './estimation';
+import { Heure } from './heure';
+import { Jour } from './jour';
+import { lirePriorite, type Priorite } from './priorite';
 import { Titre } from './titre';
 
-/** Statuts d'un élément. Trois pour l'instant ; les statuts propres à chaque type viendront avec les types (tâche 1.3). */
+/** Statuts d'un élément. Trois pour l'instant ; des statuts propres à chaque type pourront venir avec le kanban (étape 3). */
 export const STATUTS = ['a_faire', 'en_cours', 'fait'] as const;
 export type Statut = (typeof STATUTS)[number];
 
@@ -16,75 +21,183 @@ export function lireStatut(texte: string): Statut {
 }
 
 /**
- * Instantané d'un élément : ses valeurs en données simples (texte, dates ISO), sans règles.
+ * Instantané d'un élément : ses valeurs en données simples (texte, nombres, dates ISO), sans règles.
  * C'est la forme qu'on range dans le journal et qu'on relit de la base, comme un DTO en .NET.
  */
 export interface InstantaneElement {
   readonly id: string;
+  /** Code du type : tache, projet, epic… */
+  readonly type: string;
+  /** Id de l'élément qui le contient, ou null. */
+  readonly parent: string | null;
   readonly titre: string;
+  /** Markdown, ou null. */
+  readonly description: string | null;
   readonly statut: Statut;
+  readonly priorite: Priorite | null;
   /** Jour AAAA-MM-JJ, ou null. */
   readonly echeance: string | null;
+  /** Le jour où Adrien prévoit de le faire, AAAA-MM-JJ, ou null. */
+  readonly jourPlanifie: string | null;
+  /** Une heure HH:MM sur ce jour, pour le mode journée ; seulement s'il y a un jour planifié. */
+  readonly heurePlanifiee: string | null;
+  /** Temps prévu, en minutes, ou null. */
+  readonly estimation: number | null;
+  /** Ordre choisi à la main (plus petit = plus haut), ou null. */
+  readonly rang: number | null;
   /** Date ISO du passage à « fait », ou null. */
   readonly faitLe: string | null;
   readonly creeLe: string;
   readonly modifieLe: string;
 }
 
+/** Les valeurs d'un élément, déjà validées. */
+interface Valeurs {
+  readonly id: string;
+  readonly type: CodeType;
+  readonly parent: string | null;
+  readonly titre: Titre;
+  readonly description: Description | null;
+  readonly statut: Statut;
+  readonly priorite: Priorite | null;
+  readonly echeance: Jour | null;
+  readonly jourPlanifie: Jour | null;
+  readonly heurePlanifiee: Heure | null;
+  readonly estimation: Estimation | null;
+  readonly rang: number | null;
+  readonly faitLe: Date | null;
+  readonly creeLe: Date;
+  readonly modifieLe: Date;
+}
+
 /**
- * Entité « élément » : une identité (id) qui ne change pas, des valeurs qui évoluent.
- * Elle est immuable : chaque changement rend un nouvel élément (comme un `record` C# et son `with`),
- * ce qui garde l'ancien intact pour écrire l'« avant » du journal.
+ * Entité « élément » (une tâche, un projet, un objectif…) : une identité (id) qui ne change pas,
+ * des valeurs qui évoluent. Elle est immuable : chaque changement rend un nouvel élément (comme un
+ * `record` C# et son `with`), ce qui garde l'ancien intact pour écrire l'« avant » du journal.
  */
 export class Element {
-  private constructor(
-    public readonly id: string,
-    public readonly titre: Titre,
-    public readonly statut: Statut,
-    public readonly echeance: Echeance | null,
-    public readonly faitLe: Date | null,
-    public readonly creeLe: Date,
-    public readonly modifieLe: Date,
-  ) {}
+  private constructor(private readonly v: Valeurs) {}
 
-  /** Un nouvel élément. L'id et l'heure viennent de l'appelant : le domaine reste prévisible à tester. */
-  static creer(params: { id: string; titre: Titre; maintenant: Date }): Element {
-    return new Element(params.id, params.titre, 'a_faire', null, null, params.maintenant, params.maintenant);
+  get id(): string { return this.v.id; }
+  get type(): CodeType { return this.v.type; }
+  get parent(): string | null { return this.v.parent; }
+  get titre(): Titre { return this.v.titre; }
+  get description(): Description | null { return this.v.description; }
+  get statut(): Statut { return this.v.statut; }
+  get priorite(): Priorite | null { return this.v.priorite; }
+  get echeance(): Jour | null { return this.v.echeance; }
+  get jourPlanifie(): Jour | null { return this.v.jourPlanifie; }
+  get heurePlanifiee(): Heure | null { return this.v.heurePlanifiee; }
+  get estimation(): Estimation | null { return this.v.estimation; }
+  get rang(): number | null { return this.v.rang; }
+  get faitLe(): Date | null { return this.v.faitLe; }
+  get creeLe(): Date { return this.v.creeLe; }
+  get modifieLe(): Date { return this.v.modifieLe; }
+
+  /** Un nouvel élément « à faire ». L'id et l'heure viennent de l'appelant : le domaine reste prévisible à tester. */
+  static creer(params: { id: string; titre: Titre; maintenant: Date; type?: CodeType }): Element {
+    return new Element({
+      id: params.id,
+      type: params.type ?? CodeType.creer(TYPE_PAR_DEFAUT),
+      parent: null,
+      titre: params.titre,
+      description: null,
+      statut: 'a_faire',
+      priorite: null,
+      echeance: null,
+      jourPlanifie: null,
+      heurePlanifiee: null,
+      estimation: null,
+      rang: null,
+      faitLe: null,
+      creeLe: params.maintenant,
+      modifieLe: params.maintenant,
+    });
   }
 
-  /** Reconstitue un élément relu en base ; chaque valeur repasse par ses règles. */
-  static depuisInstantane(etat: InstantaneElement): Element {
-    return new Element(
-      etat.id,
-      Titre.creer(etat.titre),
-      lireStatut(etat.statut),
-      etat.echeance === null ? null : Echeance.creer(etat.echeance),
-      etat.faitLe === null ? null : new Date(etat.faitLe),
-      new Date(etat.creeLe),
-      new Date(etat.modifieLe),
-    );
+  /**
+   * Reconstitue un élément relu en base ou dans le journal ; chaque valeur repasse par ses règles.
+   * Un instantané d'une forme plus ancienne (sans les champs récents) se lit avec ces champs vides.
+   */
+  static depuisInstantane(etat: Partial<InstantaneElement> & Pick<InstantaneElement, 'id' | 'titre' | 'statut' | 'creeLe' | 'modifieLe'>): Element {
+    return new Element({
+      id: etat.id,
+      type: CodeType.creer(etat.type ?? TYPE_PAR_DEFAUT),
+      parent: etat.parent ?? null,
+      titre: Titre.creer(etat.titre),
+      description: etat.description == null ? null : Description.creer(etat.description),
+      statut: lireStatut(etat.statut),
+      priorite: etat.priorite == null ? null : lirePriorite(etat.priorite),
+      echeance: etat.echeance == null ? null : Jour.creer(etat.echeance),
+      jourPlanifie: etat.jourPlanifie == null ? null : Jour.creer(etat.jourPlanifie),
+      heurePlanifiee: etat.heurePlanifiee == null ? null : Heure.creer(etat.heurePlanifiee),
+      estimation: etat.estimation == null ? null : Estimation.creer(etat.estimation),
+      rang: etat.rang ?? null,
+      faitLe: etat.faitLe == null ? null : new Date(etat.faitLe),
+      creeLe: new Date(etat.creeLe),
+      modifieLe: new Date(etat.modifieLe),
+    });
   }
 
   renommer(titre: Titre, maintenant: Date): Element {
-    return new Element(this.id, titre, this.statut, this.echeance, this.faitLe, this.creeLe, maintenant);
+    return this.avec({ titre }, maintenant);
   }
 
   /** Passer à « fait » note quand ; quitter « fait » l'efface. Rester « fait » garde la date d'origine. */
   changerStatut(statut: Statut, maintenant: Date): Element {
     const faitLe = statut !== 'fait' ? null : this.statut === 'fait' ? this.faitLe : maintenant;
-    return new Element(this.id, this.titre, statut, this.echeance, faitLe, this.creeLe, maintenant);
+    return this.avec({ statut, faitLe }, maintenant);
   }
 
-  changerEcheance(echeance: Echeance | null, maintenant: Date): Element {
-    return new Element(this.id, this.titre, this.statut, echeance, this.faitLe, this.creeLe, maintenant);
+  changerEcheance(echeance: Jour | null, maintenant: Date): Element {
+    return this.avec({ echeance }, maintenant);
+  }
+
+  /** Un élément ne peut pas être son propre parent. Les boucles plus longues se vérifient avec ses ancêtres (modifierElement). */
+  changerParent(parent: string | null, maintenant: Date): Element {
+    if (parent === this.id) {
+      throw new ErreurDomaine('Un élément ne peut pas être son propre parent.');
+    }
+    return this.avec({ parent }, maintenant);
+  }
+
+  /** Planifier un jour, avec une heure facultative. Sans jour, pas d'heure. */
+  planifier(jour: Jour | null, heure: Heure | null, maintenant: Date): Element {
+    if (jour === null && heure !== null) {
+      throw new ErreurDomaine('Une heure planifiée demande un jour planifié.');
+    }
+    return this.avec({ jourPlanifie: jour, heurePlanifiee: heure }, maintenant);
+  }
+
+  /** Les champs sans règle entre eux (type, description, priorité, estimation, rang). */
+  changer(
+    champs: Partial<Pick<Valeurs, 'type' | 'description' | 'priorite' | 'estimation' | 'rang'>>,
+    maintenant: Date,
+  ): Element {
+    if (champs.rang !== undefined && champs.rang !== null && !Number.isFinite(champs.rang)) {
+      throw new ErreurDomaine('Le rang doit être un nombre.');
+    }
+    return this.avec(champs, maintenant);
+  }
+
+  private avec(champs: Partial<Valeurs>, maintenant: Date): Element {
+    return new Element({ ...this.v, ...champs, modifieLe: maintenant });
   }
 
   instantane(): InstantaneElement {
     return {
       id: this.id,
+      type: this.type.valeur,
+      parent: this.parent,
       titre: this.titre.valeur,
+      description: this.description?.valeur ?? null,
       statut: this.statut,
+      priorite: this.priorite,
       echeance: this.echeance?.valeur ?? null,
+      jourPlanifie: this.jourPlanifie?.valeur ?? null,
+      heurePlanifiee: this.heurePlanifiee?.valeur ?? null,
+      estimation: this.estimation?.minutes ?? null,
+      rang: this.rang,
       faitLe: this.faitLe?.toISOString() ?? null,
       creeLe: this.creeLe.toISOString(),
       modifieLe: this.modifieLe.toISOString(),

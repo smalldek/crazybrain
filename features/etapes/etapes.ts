@@ -101,7 +101,7 @@ Then(
     assert.equal(ligne.avant, null);
     assert.deepEqual(JSON.parse(ligne.apres ?? 'null'), tache);
     assert.equal(ligne.auteur, auteur);
-    assert.equal(ligne.version_forme, 2);
+    assert.equal(ligne.version_forme, 3);
     assert.equal(ligne.date, tache.creeLe);
   },
 );
@@ -230,6 +230,71 @@ Then(
     assert.equal(etatApres.statut, apres);
     assert.ok(etatApres.faitLe);
     assert.equal(ligne.auteur, auteur);
-    assert.equal(ligne.version_forme, 2);
+    assert.equal(ligne.version_forme, 3);
   },
 );
+
+// --- Le modèle complet (tâche 1.3) ---
+
+// Tous les éléments créés dans le scénario, dans l'ordre.
+const lignees = new WeakMap<Monde, TacheLue[]>();
+
+function memoriser(monde: Monde, element: TacheLue): void {
+  creees.set(monde, element);
+  lignees.set(monde, [...(lignees.get(monde) ?? []), element]);
+}
+
+async function creerElementJson(monde: Monde, corps: Record<string, unknown>): Promise<void> {
+  await monde.appeler('/api/elements', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(corps),
+  });
+  if (monde.reponse?.status === 201) memoriser(monde, (monde.corps as { element: TacheLue }).element);
+}
+
+function premier(monde: Monde): TacheLue {
+  const tous = lignees.get(monde);
+  assert.ok(tous?.[0], 'aucun élément créé dans ce scénario');
+  return tous[0];
+}
+
+When('je demande la liste des types', async function (this: Monde) {
+  await this.appeler('/api/types');
+});
+
+Then('les types sont {string}', function (this: Monde, attendus: string) {
+  assert.equal(this.reponse?.status, 200);
+  const codes = (this.corps as { types: { code: string }[] }).types.map((t) => t.code);
+  assert.deepEqual(codes, attendus.split(', '));
+});
+
+Given("j'ai créé l'élément {}", async function (this: Monde, json: string) {
+  await creerElementJson(this, JSON.parse(json) as Record<string, unknown>);
+  assert.equal(this.reponse?.status, 201, JSON.stringify(this.corps));
+});
+
+When('je crée dans cet élément l\'élément {}', async function (this: Monde, json: string) {
+  const parent = tacheDuScenario(this);
+  await creerElementJson(this, { ...(JSON.parse(json) as Record<string, unknown>), parent: parent.id });
+});
+
+When('je range le premier élément dans le dernier', async function (this: Monde) {
+  await modifier(this, premier(this).id, { parent: tacheDuScenario(this).id });
+});
+
+Then('cette tâche, relue, a les valeurs {}', async function (this: Monde, json: string) {
+  const tache = (await relire(this)) as unknown as Record<string, unknown>;
+  for (const [cle, valeur] of Object.entries(JSON.parse(json) as Record<string, unknown>)) {
+    assert.deepEqual(tache[cle], valeur, `champ ${cle}`);
+  }
+});
+
+Then('cette tâche, relue, a pour parent le premier élément', async function (this: Monde) {
+  assert.equal(((await relire(this)) as unknown as { parent: string }).parent, premier(this).id);
+});
+
+Then("le premier élément, relu, n'a pas de parent", async function (this: Monde) {
+  await this.appeler(`/api/elements/${premier(this).id}`);
+  assert.equal((this.corps as { element: { parent: string | null } }).element.parent, null);
+});
