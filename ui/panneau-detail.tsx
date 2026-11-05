@@ -4,6 +4,7 @@
 import { useEffect, useId, useState, type FormEvent, type ReactNode } from 'react';
 import { api, type Element, type ElementComplet, type TypeElement } from './api';
 import { brouillonDe, changementsDepuis, parentsPossibles, type Brouillon } from './formulaire';
+import { dateLisible, RelationsDetail } from './relations-detail';
 
 interface Proprietes {
   readonly id: string;
@@ -39,6 +40,12 @@ export function PanneauDetail({ id, elements, fermer, modifie }: Proprietes) {
     );
     return () => { actif = false; };
   }, [id]);
+
+  // Relit l'élément (après un lien ou un commentaire) sans toucher au formulaire en cours de saisie.
+  const relire = async (): Promise<void> => {
+    const complet = await api.lire(id);
+    setEtat({ sorte: 'pret', complet });
+  };
 
   useEffect(() => {
     api.types().then(setTypes, () => setTypes([]));
@@ -90,6 +97,7 @@ export function PanneauDetail({ id, elements, fermer, modifie }: Proprietes) {
     // Le parent actuel peut manquer de la liste (archivé, ou pas encore chargé) : on le garde choisi.
     const parentInconnu = element.parent !== null && !parents.some((p) => p.id === element.parent);
     contenu = (
+      <>
       <form onSubmit={(e) => void enregistrer(e)} className="formulaire">
         <Champ libelle="Titre">{(id) => <input id={id} maxLength={200} required {...champ('titre')} />}</Champ>
         <div className="rangee">
@@ -133,6 +141,9 @@ export function PanneauDetail({ id, elements, fermer, modifie }: Proprietes) {
           {element.faitLe && <> · fait le {dateLisible(element.faitLe)}</>}
         </p>
       </form>
+      <RelationsDetail id={element.id} liens={etat.complet.liens} commentaires={etat.complet.commentaires}
+        elements={elements} relire={relire} />
+      </>
     );
   }
 
@@ -154,8 +165,4 @@ export function PanneauDetail({ id, elements, fermer, modifie }: Proprietes) {
 function Champ({ libelle, children }: { libelle: string; children: (id: string) => ReactNode }) {
   const id = useId();
   return <div className="champ"><label htmlFor={id}>{libelle}</label>{children(id)}</div>;
-}
-
-function dateLisible(iso: string): string {
-  return new Date(iso).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Paris' });
 }

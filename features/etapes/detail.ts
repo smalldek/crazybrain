@@ -100,3 +100,47 @@ Then("le panneau de détail est fermé et l'adresse est celle de la liste", asyn
   await expect(panneau(this)).toHaveCount(0);
   expect(new URL(page(this).url()).pathname).toBe('/');
 });
+
+// --- Liens et commentaires (tâche 3.3) ---
+
+/** Les \n du scénario deviennent de vrais retours à la ligne. */
+const lignes = (texte: string): string => texte.replace(/\\n/g, '\n');
+
+When("j'écris le commentaire {string}", async function (this: Monde, texte: string) {
+  await panneau(this).getByLabel('Nouveau commentaire').fill(lignes(texte));
+  await panneau(this).getByRole('button', { name: 'Commenter' }).click();
+  await expect(panneau(this).getByLabel('Nouveau commentaire')).toHaveValue('');
+});
+
+Then("le détail montre le commentaire d'Adrien {string}", async function (this: Monde, texte: string) {
+  const commentaire = panneau(this).getByRole('region', { name: 'Commentaires' }).locator('li')
+    .filter({ hasText: lignes(texte).split('\n')[0] ?? texte });
+  await expect(commentaire).toHaveCount(1);
+  await expect(commentaire.locator('.entete')).toContainText('Adrien');
+  // innerText garde les retours à la ligne (white-space: pre-wrap) : le texte est rendu tel quel.
+  expect(await commentaire.locator('.texte').innerText()).toBe(lignes(texte));
+});
+
+When('je lie avec {string} la tâche {string}', async function (this: Monde, sorte: string, titre: string) {
+  const liens = panneau(this).getByRole('region', { name: 'Liens' });
+  await liens.getByLabel('Sorte de lien').selectOption({ label: sorte });
+  await liens.getByLabel('Élément à lier').selectOption({ label: titre });
+  await liens.getByRole('button', { name: 'Lier' }).click();
+});
+
+function lienAffiche(monde: Monde, sorte: string, titre: string): Locator {
+  return panneau(monde).getByRole('region', { name: 'Liens' }).locator('li')
+    .filter({ hasText: sorte }).filter({ has: page(monde).getByRole('link', { name: titre, exact: true }) });
+}
+
+Then('le détail montre le lien {string} vers {string}', async function (this: Monde, sorte: string, titre: string) {
+  await expect(lienAffiche(this, sorte, titre)).toHaveCount(1);
+});
+
+When('je suis le lien vers {string}', async function (this: Monde, titre: string) {
+  await panneau(this).getByRole('region', { name: 'Liens' }).getByRole('link', { name: titre, exact: true }).click();
+});
+
+When('je retire le lien {string} vers {string}', async function (this: Monde, sorte: string, titre: string) {
+  await lienAffiche(this, sorte, titre).getByRole('button', { name: /^Retirer le lien/ }).click();
+});

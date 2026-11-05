@@ -4,5 +4,5 @@
   "compilerOptions": {
     "types": ["node"]
   },
-  "include": ["tests", "features", "src/domaine", "src/acces", "ui/api.ts", "ui/liste.ts", "ui/dates.ts", "ui/formulaire.ts", "ui/chemins.ts", "vitest.config.ts"]
+  "include": ["tests", "features", "src/domaine", "src/acces", "ui/api.ts", "ui/liste.ts", "ui/dates.ts", "ui/formulaire.ts", "ui/chemins.ts", "ui/relations.ts", "vitest.config.ts"]
 }

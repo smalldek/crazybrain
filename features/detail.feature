@@ -76,3 +76,25 @@ Fonctionnalité: Le panneau de détail d'un élément
   Scénario: Une adresse d'élément inconnue le dit
     Quand j'ouvre l'adresse "/e/n-existe-pas"
     Alors le détail dit "Élément inconnu"
+
+  Scénario: Commenter une tâche depuis son détail
+    Étant donné que j'ouvre la page
+    Et que je tape la tâche "Détail : appeler le plombier" et j'appuie sur Entrée
+    Et que je touche la flèche de la tâche "Détail : appeler le plombier"
+    Quand j'écris le commentaire "Il passe jeudi.\nPrévoir la clé de la cave."
+    Alors le détail montre le commentaire d'Adrien "Il passe jeudi.\nPrévoir la clé de la cave."
+    Quand je recharge la page
+    Alors le détail montre le commentaire d'Adrien "Il passe jeudi.\nPrévoir la clé de la cave."
+
+  Scénario: Lier deux tâches, suivre le lien, puis le retirer
+    Étant donné que j'ouvre la page
+    Et que je tape la tâche "Détail : acheter la peinture" et j'appuie sur Entrée
+    Et que je tape la tâche "Détail : peindre la chambre" et j'appuie sur Entrée
+    Et que je touche la flèche de la tâche "Détail : acheter la peinture"
+    Quand je lie avec "Bloque" la tâche "Détail : peindre la chambre"
+    Alors le détail montre le lien "Bloque" vers "Détail : peindre la chambre"
+    Quand je suis le lien vers "Détail : peindre la chambre"
+    Alors le panneau de détail montre "Détail : peindre la chambre"
+    Et le détail montre le lien "Bloqué par" vers "Détail : acheter la peinture"
+    Quand je retire le lien "Bloqué par" vers "Détail : acheter la peinture"
+    Alors le détail dit "Aucun lien."
