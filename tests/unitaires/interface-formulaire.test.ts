@@ -78,5 +78,8 @@ describe('les vues', () => {
     expect(adresseVue('kanban')).toBe('/kanban');
     expect(vueDe('/backlog/e/abc')).toBe('backlog');
     expect(elementDeLAdresse('/backlog/e/abc')).toBe('abc');
+    expect(vueDe('/projets')).toBe('projets');
+    expect(adresseElement('abc', 'projets')).toBe('/projets/e/abc');
+    expect(elementDeLAdresse('/projets/e/abc')).toBe('abc');
   });
 });

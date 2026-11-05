@@ -285,10 +285,18 @@ au titre sur un téléphone.
     priorité, puis échéance, puis du plus ancien (05/11). Reste : sur un kanban filtré, réordonner
     une carte renumérote les cartes visibles seulement ; à revoir si l'ordre des cartes cachées
     en souffre à l'usage.
-  - 3.8 Les projets et sous-projets à l'écran ; les releases par le tag `release:<nom>`.
+  - 3.8 ✓ Les projets et sous-projets à l'écran ; les releases par le tag `release:<nom>`. Un onglet
+    Projets (`/projets`) : l'arbre des projets, les sous-projets en retrait, chacun avec son
+    avancement (éléments faits sur le total, à toute profondeur, sans compter les sous-projets) ;
+    toucher un projet ouvre son détail, « Voir » montre son contenu dans la liste (filtre
+    « Dans ») ; un champ y crée un projet. Dessous, les releases : une par valeur du tag
+    `release`, les ouvertes d'abord, avec leur avancement ; toucher une release ouvre le kanban
+    filtré sur son tag (05/11).
 - **Fait quand** : glisser une carte d'une colonne à l'autre change son statut ; les couloirs se
   font par une clé de tag au choix ; cliquer une carte ouvre son panneau ; le filtre
   `composant:pxe` ne montre que ces éléments ; l'adresse d'un élément l'ouvre directement.
+  ✓ Tenu le 05/11 : chaque critère a son scénario joué dans le navigateur (`features/kanban.feature`,
+  `detail.feature`, `filtres.feature`, `projets.feature`). Reste à l'usage d'Adrien sur la vraie base.
 
 ## Étape 4 — Requêtes enregistrées, tableaux de bord
 
