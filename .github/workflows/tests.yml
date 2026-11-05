@@ -22,7 +22,9 @@ jobs:
         run: npm run verifier-types
       - name: Tests unitaires (domaine)
         run: npm test
-      - name: Tests d'acceptation (scénarios Gherkin, Worker et base D1 locaux)
+      - name: Navigateur des tests de la page (Chromium, pour Playwright)
+        run: npx playwright install --with-deps chromium
+      - name: Tests d'acceptation (scénarios Gherkin sur l'API, le connecteur, et la page dans un vrai navigateur)
         run: npm run test:acceptation
       - name: Tests du garde-fou Access (l'ouverture du connecteur, et rien d'autre)
         run: python3 -m unittest discover -s tests/outils -v

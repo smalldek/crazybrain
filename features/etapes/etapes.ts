@@ -7,6 +7,8 @@ interface TacheLue {
   id: string;
   titre: string;
   statut: string;
+  echeance: string | null;
+  faitLe: string | null;
   creeLe: string;
   modifieLe: string;
 }
@@ -99,7 +101,135 @@ Then(
     assert.equal(ligne.avant, null);
     assert.deepEqual(JSON.parse(ligne.apres ?? 'null'), tache);
     assert.equal(ligne.auteur, auteur);
-    assert.equal(ligne.version_forme, 1);
+    assert.equal(ligne.version_forme, 2);
     assert.equal(ligne.date, tache.creeLe);
+  },
+);
+
+// --- Modifier une tâche (tâche 1.2) ---
+
+function tacheDuScenario(monde: Monde): TacheLue {
+  const tache = creees.get(monde);
+  assert.ok(tache, 'aucune tâche créée dans ce scénario');
+  return tache;
+}
+
+async function modifier(monde: Monde, id: string, corps: unknown): Promise<void> {
+  await monde.appeler(`/api/elements/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(corps),
+  });
+}
+
+async function relire(monde: Monde): Promise<TacheLue> {
+  const reponse = await monde.appeler(`/api/elements/${tacheDuScenario(monde).id}`);
+  assert.equal(reponse.status, 200, JSON.stringify(monde.corps));
+  return (monde.corps as { element: TacheLue }).element;
+}
+
+async function typesDuJournal(monde: Monde): Promise<string[]> {
+  const lignes = await monde.worker.requete<LigneEvenement>(
+    `SELECT * FROM evenements WHERE element_id = '${tacheDuScenario(monde).id}' ORDER BY date, rowid`);
+  return lignes.map((l) => l.type);
+}
+
+Given("j'ai créé la tâche {string}", async function (this: Monde, titre: string) {
+  await this.appeler('/api/elements', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ titre }),
+  });
+  assert.equal(this.reponse?.status, 201, JSON.stringify(this.corps));
+  creees.set(this, (this.corps as { element: TacheLue }).element);
+});
+
+When('je passe cette tâche au statut {string}', async function (this: Monde, statut: string) {
+  await modifier(this, tacheDuScenario(this).id, { statut });
+});
+
+When('je renomme cette tâche en {string}', async function (this: Monde, titre: string) {
+  await modifier(this, tacheDuScenario(this).id, { titre });
+});
+
+When('je renomme la tâche {string} en {string}', async function (this: Monde, id: string, titre: string) {
+  await modifier(this, id, { titre });
+});
+
+When("je donne à cette tâche l'échéance {string}", async function (this: Monde, echeance: string) {
+  await modifier(this, tacheDuScenario(this).id, { echeance });
+});
+
+When("je retire l'échéance de cette tâche", async function (this: Monde) {
+  await modifier(this, tacheDuScenario(this).id, { echeance: null });
+});
+
+When('j\'envoie à cette tâche la modification {}', async function (this: Monde, json: string) {
+  await modifier(this, tacheDuScenario(this).id, JSON.parse(json) as unknown);
+});
+
+When('je lis cette tâche', async function (this: Monde) {
+  await this.appeler(`/api/elements/${tacheDuScenario(this).id}`);
+});
+
+Then('la modification est acceptée', function (this: Monde) {
+  assert.equal(this.reponse?.status, 200, JSON.stringify(this.corps));
+});
+
+Then('la modification est refusée comme invalide', function (this: Monde) {
+  assert.equal(this.reponse?.status, 400, JSON.stringify(this.corps));
+});
+
+Then('la réponse dit que la tâche est inconnue', function (this: Monde) {
+  assert.equal(this.reponse?.status, 404, JSON.stringify(this.corps));
+});
+
+Then('cette tâche, relue, a le statut {string} et une date de fin', async function (this: Monde, statut: string) {
+  const tache = await relire(this);
+  assert.equal(tache.statut, statut);
+  assert.ok(tache.faitLe, 'date de fin absente');
+});
+
+Then('cette tâche, relue, a le statut {string} et pas de date de fin', async function (this: Monde, statut: string) {
+  const tache = await relire(this);
+  assert.equal(tache.statut, statut);
+  assert.equal(tache.faitLe, null);
+});
+
+Then("cette tâche, relue, a l'échéance {string}", async function (this: Monde, echeance: string) {
+  assert.equal((await relire(this)).echeance, echeance);
+});
+
+Then("cette tâche, relue, n'a pas d'échéance", async function (this: Monde) {
+  assert.equal((await relire(this)).echeance, null);
+});
+
+Then('la liste des tâches ne contient pas {string}', async function (this: Monde, titre: string) {
+  const titres = (await listeDesTaches(this)).map((t) => t.titre);
+  assert.ok(!titres.includes(titre), `« ${titre} » encore dans la liste`);
+});
+
+Then('le journal de cette tâche ne contient que {string}', async function (this: Monde, type: string) {
+  assert.deepEqual(await typesDuJournal(this), [type]);
+});
+
+Then('le journal de cette tâche contient {string} puis {string}', async function (this: Monde, premier: string, second: string) {
+  assert.deepEqual(await typesDuJournal(this), [premier, second]);
+});
+
+Then(
+  "le dernier événement a l'avant au statut {string}, l'après au statut {string}, et l'auteur {string}",
+  async function (this: Monde, avant: string, apres: string, auteur: string) {
+    const lignes = await this.worker.requete<LigneEvenement>(
+      `SELECT * FROM evenements WHERE element_id = '${tacheDuScenario(this).id}' ORDER BY date DESC, rowid DESC LIMIT 1`);
+    const [ligne] = lignes;
+    assert.ok(ligne);
+    assert.equal(ligne.type, 'element_modifie');
+    assert.equal((JSON.parse(ligne.avant ?? 'null') as TacheLue).statut, avant);
+    const etatApres = JSON.parse(ligne.apres ?? 'null') as TacheLue;
+    assert.equal(etatApres.statut, apres);
+    assert.ok(etatApres.faitLe);
+    assert.equal(ligne.auteur, auteur);
+    assert.equal(ligne.version_forme, 2);
   },
 );

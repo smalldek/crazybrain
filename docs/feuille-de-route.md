@@ -11,8 +11,11 @@ deux) et se vérifie seule. Seules les tâches de l'étape en cours sont détail
 L'état d'avancement (étape en cours, ce qui est fait) est tenu dans le vault d'Adrien,
 `informatique/crazybrain.md`. Ce fichier dit ce que contient chaque étape.
 
-**Qui fait quoi.** Claude construit (code, tests, doc, PR). Adrien teste sur son téléphone ou dans
-claude.ai quand une tâche le demande. La configuration du compte Cloudflare (Access, pare-feu,
+**Qui fait quoi.** Claude construit (code, tests, doc, PR) et **vérifie lui-même**, par des tests
+automatiques : unitaires, d'acceptation sur l'API, et la page jouée dans un vrai navigateur à la
+taille d'un téléphone (consigne d'Adrien du 05/11 : « tu fais du test auto et tu vérifies toi
+même »). Adrien n'intervient que pour ce qu'aucun test ne peut faire à sa place (un réglage de son
+compte claude.ai, par exemple). La configuration du compte Cloudflare (Access, pare-feu,
 DNS, Email Routing) vit en code dans un autre dépôt, géré par le projet « Cloudflare » : quand une
 tâche en a besoin, elle le dit (« Il faut du projet Cloudflare »), et Adrien fait la demande là-bas.
 
@@ -51,7 +54,7 @@ connecteur. Plan revu le 05/11 : on finit le socle avant d'ouvrir l'étape 2.
   le Worker est le serveur OAuth, `/authorize` reste derrière Access avec une page de consentement,
   seules les adresses du connecteur sont ouvertes ; l'outil `bonjour` répond avec le nombre de
   tâches. L'exception au pare-feu « hors de France » est posée en code par le projet Cloudflare
-  depuis le 05/11. **Reste le vrai test, tâche 1.1.**
+  depuis le 05/11. **Vérifié le 05/11** (tâche 1.1).
 - **1d. Le squelette** (03/11, vérifié par Adrien sur son téléphone) : décision 002, base D1
   (`elements`, `evenements`), API créer et lister, page liste avec saisie rapide, tests
   unitaires et d'acceptation lancés avant chaque déploiement.
@@ -60,17 +63,21 @@ connecteur. Plan revu le 05/11 : on finit le socle avant d'ouvrir l'étape 2.
 
 | Tâche | Ce qu'elle livre | Il faut d'Adrien |
 |---|---|---|
-| 1.1 | Le connecteur testé pour de vrai dans claude.ai | Ajouter le connecteur, faire le test |
-| 1.2 | Modifier une tâche : la cocher, la renommer, lui donner une échéance | Le test sur le téléphone |
+| 1.1 | Le connecteur testé pour de vrai dans claude.ai | **Fait le 05/11** |
+| 1.2 | Modifier une tâche : la cocher, la renommer, lui donner une échéance | **Fait le 05/11** |
 | 1.3 | Le modèle de données complet en base : types, parent, projets, liens, tags, commentaires | Rien |
-| 1.4 | Le déploiement ne pose plus rien dans Cloudflare, il vérifie seulement | Accord du projet Cloudflare |
+| 1.4 | Le déploiement ne pose plus rien dans Cloudflare, il vérifie seulement | **Fait le 05/11** |
 | 1.5 | Supprimer (archiver) une tâche | Rien |
 
-**Fait quand (étape 1)** : le connecteur répond dans une conversation d'Adrien ; depuis le
-téléphone, Adrien crée, coche, renomme et date une tâche, et tout survit au rechargement ; la base
-a toutes les tables dont l'étape 2 a besoin.
+**Fait quand (étape 1)** : le connecteur répond dans une conversation d'Adrien ; sur la page, à la
+taille d'un téléphone, on crée, coche, renomme et date une tâche, et tout survit au rechargement
+(tests dans le navigateur) ; la base a toutes les tables dont l'étape 2 a besoin.
 
 ### 1.1 Vérifier le connecteur dans claude.ai
+
+**Fait le 05/11.** Adrien a ajouté le connecteur dans claude.ai ; depuis une session de son projet,
+Claude a appelé `bonjour` et reçu « Bonjour depuis Crazybrain ! 2 tâches en base ». L'appel sans
+jeton est refusé (401), vérifié par les tests d'acceptation (`features/connecteur.feature`).
 
 **Pourquoi d'abord** : c'est le pari dont dépendent les étapes 2 et 4 ([architecture](architecture.md),
 « Hypothèses à vérifier »). Tant qu'il n'est pas vérifié, construire les outils du connecteur
@@ -111,6 +118,10 @@ sans connexion est refusé.
 
 ### 1.2 Modifier une tâche
 
+**Fait le 05/11**, vérifié par les tests : unitaires du domaine (échéance, statuts, modification),
+neuf scénarios d'API (`features/taches.feature`) et cinq scénarios de la page dans Chromium à la
+taille d'un téléphone (`features/page.feature`). Ce qui suit est le détail prévu, tel que construit.
+
 **Pourquoi** : aujourd'hui l'API sait seulement créer et lister. On ne peut ni cocher une tâche
 faite, ni corriger une faute de frappe. Le connecteur de l'étape 2 en aura besoin (« passe cette
 tâche en fait »), et Adrien aussi, tout de suite, pour se servir de la liste.
@@ -146,10 +157,10 @@ tâche en fait »), et Adrien aussi, tout de suite, pour se servir de la liste.
   modification écrit un événement avec l'avant, l'après et l'auteur ;
 - puis le test d'Adrien.
 
-**Il faut d'Adrien** : le test sur le téléphone. Rien du projet Cloudflare (la migration est
+**Il faut d'Adrien** : rien (les tests de la page remplacent le test sur le téléphone). Rien du projet Cloudflare (la migration est
 appliquée par le déploiement, qui a déjà le droit sur la base).
 
-**Fait quand** : depuis le téléphone, Adrien coche une tâche, en renomme une autre, donne une
+**Fait quand** : sur la page, à la taille d'un téléphone, on coche une tâche, en renomme une autre, donne une
 échéance à une troisième, recharge la page, et retrouve tout.
 
 ### 1.3 Le modèle de données complet (grosse maille)

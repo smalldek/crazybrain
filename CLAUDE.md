@@ -28,6 +28,10 @@ Adrien veut apprendre à travailler avec l'IA.
 - **Mode apprentissage** : chaque PR explique en mots simples ce qui est fait et pourquoi, pour
   qu'Adrien apprenne. Un terme technique s'explique la première fois qu'il apparaît. Pas de
   remplissage : ce qui a été fait, pourquoi ce choix, ce qu'on a vérifié, ce qui reste.
+- **Claude vérifie lui-même, par des tests automatiques** (Adrien, 05/11 : « tu fais du test auto
+  et tu vérifies toi même ») : tests unitaires du domaine, scénarios d'acceptation sur l'API, et la
+  page jouée dans un vrai navigateur à la taille d'un téléphone (`features/page.feature`,
+  Playwright). On ne demande à Adrien que ce qu'aucun test ne peut faire à sa place.
 - Une fonctionnalité qui repose sur une hypothèse non vérifiée (`docs/architecture.md`,
   « Hypothèses à vérifier ») commence par la vérifier.
 

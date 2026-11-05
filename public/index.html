@@ -22,8 +22,16 @@
             border: 1px solid var(--bord); background: var(--carte); color: var(--texte); }
     input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
     ul { list-style: none; margin: 0; padding: 0; }
-    li { background: var(--carte); border: 1px solid var(--bord); border-radius: 10px; padding: 12px 14px;
-         margin-bottom: 8px; overflow-wrap: anywhere; }
+    li { background: var(--carte); border: 1px solid var(--bord); border-radius: 10px; padding: 8px 10px;
+         margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
+    li input[type=checkbox] { width: 22px; height: 22px; flex: none; margin: 0; accent-color: var(--accent); }
+    li .titre { flex: 1; min-width: 0; text-align: left; font: inherit; color: inherit; background: none; border: 0;
+                padding: 6px 0; overflow-wrap: anywhere; cursor: text; }
+    li input.edition { flex: 1; min-width: 0; padding: 6px 8px; font-size: 1rem; }
+    li input[type=date] { width: auto; flex: none; font-size: .85rem; padding: 4px 6px; color: var(--doux); }
+    li input[type=date].en-retard { color: var(--erreur); border-color: var(--erreur); }
+    li.fait { opacity: .6; }
+    li.fait .titre { text-decoration: line-through; }
     .etat { color: var(--doux); margin: 8px 0; }
     .erreur { color: var(--erreur); }
   </style>
@@ -68,12 +76,92 @@
       return corps;
     }
 
+    // Envoie une modification (seuls les champs donnés changent), puis recharge la liste.
+    async function modifier(id, changements) {
+      try {
+        await appeler('/api/elements/' + encodeURIComponent(id), {
+          method: 'PATCH',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(changements),
+        });
+      } catch (e) {
+        afficherMessage(e.message, true);
+        return;
+      }
+      await charger();
+    }
+
+    // Le jour d'aujourd'hui sur le téléphone, au format AAAA-MM-JJ (celui des échéances).
+    function aujourdhui() {
+      const d = new Date();
+      return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-');
+    }
+
+    // Toucher le titre le remplace par un champ : Entrée ou quitter le champ enregistre, Échap annule.
+    function editerTitre(element, bouton) {
+      const champTitre = document.createElement('input');
+      champTitre.className = 'edition';
+      champTitre.value = element.titre;
+      champTitre.maxLength = 200;
+      champTitre.setAttribute('aria-label', 'Titre de la tâche');
+      let fini = false;
+      const terminer = async (enregistrer) => {
+        if (fini) return;
+        fini = true;
+        const titre = champTitre.value.trim();
+        if (enregistrer && titre !== '' && titre !== element.titre) {
+          await modifier(element.id, { titre });
+        } else {
+          champTitre.replaceWith(bouton);
+        }
+      };
+      champTitre.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); terminer(true); }
+        if (e.key === 'Escape') { e.preventDefault(); terminer(false); }
+      });
+      champTitre.addEventListener('blur', () => terminer(true));
+      bouton.replaceWith(champTitre);
+      champTitre.focus();
+    }
+
+    function ligneDe(element) {
+      const fait = element.statut === 'fait';
+      const ligne = document.createElement('li');
+      ligne.dataset.id = element.id;
+      if (fait) ligne.classList.add('fait');
+
+      const coche = document.createElement('input');
+      coche.type = 'checkbox';
+      coche.checked = fait;
+      coche.setAttribute('aria-label', fait ? 'Marquer à faire' : 'Marquer comme faite');
+      coche.addEventListener('change', () => modifier(element.id, { statut: coche.checked ? 'fait' : 'a_faire' }));
+
+      const titre = document.createElement('button');
+      titre.type = 'button';
+      titre.className = 'titre';
+      titre.textContent = element.titre; // textContent : le titre n'est jamais interprété comme du HTML
+      titre.addEventListener('click', () => editerTitre(element, titre));
+
+      const echeance = document.createElement('input');
+      echeance.type = 'date';
+      echeance.value = element.echeance || '';
+      echeance.setAttribute('aria-label', 'Échéance');
+      if (!fait && element.echeance && element.echeance < aujourdhui()) {
+        echeance.classList.add('en-retard');
+        echeance.title = 'Échéance dépassée';
+      }
+      echeance.addEventListener('change', () => modifier(element.id, { echeance: echeance.value || null }));
+
+      ligne.append(coche, titre, echeance);
+      return ligne;
+    }
+
+    // Les tâches à faire d'abord (les plus récentes en haut), les faites ensuite.
     function afficher(elements) {
-      liste.replaceChildren(...elements.map((element) => {
-        const ligne = document.createElement('li');
-        ligne.textContent = element.titre; // textContent : le titre n'est jamais interprété comme du HTML
-        return ligne;
-      }));
+      const aFaire = elements.filter((e) => e.statut !== 'fait');
+      const faites = elements.filter((e) => e.statut === 'fait')
+        .sort((a, b) => (b.faitLe || '').localeCompare(a.faitLe || ''));
+      liste.replaceChildren(...aFaire.concat(faites).map(ligneDe));
       afficherMessage(elements.length === 0 ? 'Aucune tâche pour l’instant.' : '');
     }
 

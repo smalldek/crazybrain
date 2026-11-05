@@ -4,6 +4,7 @@ import { AfterAll, BeforeAll, setDefaultTimeout, setWorldConstructor, World } fr
 import { AUDIENCE_DE_TEST, SerrureDeTest } from './serrure-de-test';
 import { WorkerLocal } from './worker-local';
 import type { ClientOAuth } from './client-oauth';
+import type { BrowserContext, Page } from 'playwright';
 
 setDefaultTimeout(30_000);
 
@@ -27,6 +28,9 @@ export class Monde extends World {
   /** Le client OAuth que « Claude » a enregistré dans ce scénario, et ce qu'il a obtenu. */
   clientOAuth: ClientOAuth | undefined;
   jetonOAuth: string | undefined;
+  /** Le navigateur des scénarios @navigateur (voir navigateur.ts). */
+  contexte: BrowserContext | undefined;
+  page: Page | undefined;
 
   get serrure(): SerrureDeTest {
     if (!serrure) throw new Error('Serrure de test non démarrée.');

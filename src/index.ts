@@ -13,6 +13,7 @@ import { echapper, pageConsentement } from './connecteur/page-consentement';
 import { repondreMcp } from './connecteur/serveur-mcp';
 import { creerElement } from './domaine/creer-element';
 import { ErreurDomaine } from './domaine/erreur-domaine';
+import { modifierElement, type ChangementsElement } from './domaine/modifier-element';
 import { DepotElements } from './infra/depot-elements';
 
 /** Ce que Cloudflare donne au Worker : la base et les variables de wrangler.jsonc. */
@@ -145,6 +146,52 @@ app.post('/api/elements', async (c) => {
   await new DepotElements(c.env.DB).enregistrerCreation(element, evenement);
   return c.json({ element: element.instantane() }, 201);
 });
+
+app.get('/api/elements/:id', async (c) => {
+  const element = await new DepotElements(c.env.DB).lire(c.req.param('id'));
+  if (!element) return c.json({ erreur: 'Tâche inconnue.' }, 404);
+  return c.json({ element: element.instantane() });
+});
+
+// Modifier une tâche : seuls les champs envoyés changent. Si deux modifications se croisent, la
+// dernière gagne (Adrien est seul utilisateur).
+app.patch('/api/elements/:id', async (c) => {
+  const changements = lireChangements(await c.req.json().catch(() => null));
+  if (typeof changements === 'string') return c.json({ erreur: changements }, 400);
+  const depot = new DepotElements(c.env.DB);
+  const actuel = await depot.lire(c.req.param('id'));
+  if (!actuel) return c.json({ erreur: 'Tâche inconnue.' }, 404);
+  const { element, evenement } = modifierElement({
+    element: actuel,
+    changements,
+    idEvenement: crypto.randomUUID(),
+    auteur: 'adrien',
+    maintenant: new Date(),
+  });
+  if (evenement) await depot.enregistrerModification(element, evenement);
+  return c.json({ element: element.instantane() });
+});
+
+/**
+ * Vérifie la forme du corps d'un PATCH (le domaine vérifiera les valeurs) : un objet avec seulement
+ * titre (texte), statut (texte), echeance (texte ou null). Rend les changements, ou le message d'erreur.
+ */
+function lireChangements(corps: unknown): ChangementsElement | string {
+  const attendu = 'Le corps doit être un objet avec titre, statut ou echeance (texte AAAA-MM-JJ, ou null).';
+  if (typeof corps !== 'object' || corps === null || Array.isArray(corps)) return attendu;
+  const champs = corps as Record<string, unknown>;
+  const inconnus = Object.keys(champs).filter((cle) => !['titre', 'statut', 'echeance'].includes(cle));
+  if (inconnus.length > 0) return `Champ inconnu : ${inconnus.join(', ')}. ${attendu}`;
+  const { titre, statut, echeance } = champs;
+  if (titre !== undefined && typeof titre !== 'string') return attendu;
+  if (statut !== undefined && typeof statut !== 'string') return attendu;
+  if (echeance !== undefined && echeance !== null && typeof echeance !== 'string') return attendu;
+  return {
+    ...(titre === undefined ? {} : { titre }),
+    ...(statut === undefined ? {} : { statut }),
+    ...(echeance === undefined ? {} : { echeance }),
+  };
+}
 
 app.onError((erreur, c) => {
   if (erreur instanceof ErreurDomaine) {

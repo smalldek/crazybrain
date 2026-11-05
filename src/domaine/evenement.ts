@@ -3,8 +3,8 @@ import type { InstantaneElement } from './element';
 /** Qui a fait la modification. */
 export type Auteur = 'adrien' | 'claude';
 
-/** Les sortes d'événements. Une seule pour le squelette. */
-export type TypeEvenement = 'element_cree';
+/** Les sortes d'événements. */
+export type TypeEvenement = 'element_cree' | 'element_modifie';
 
 /**
  * Une ligne du journal (décision 002) : on garde le résultat (avant, après), jamais l'ordre donné,
@@ -23,5 +23,9 @@ export interface Evenement {
   readonly date: string;
 }
 
-/** Version actuelle de la forme des instantanés. */
-export const VERSION_FORME = 1;
+/**
+ * Version actuelle de la forme des instantanés.
+ * 1 : id, titre, statut, creeLe, modifieLe (03/11/2026).
+ * 2 : ajoute echeance et faitLe (tâche 1.2, 05/11/2026). Un instantané de forme 1 se lit avec les deux à null.
+ */
+export const VERSION_FORME = 2;

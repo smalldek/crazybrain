@@ -112,8 +112,9 @@ Champs d'un élément :
 | `rang` | L'ordre choisi à la main dans une colonne ou une liste. |
 | `cree_le`, `modifie_le`, `fait_le` | Les dates de vie de l'élément. |
 
-**Déjà en base (migration `0001`, étape 1d)** : `elements` avec `id`, `titre`, `statut`,
-`cree_le`, `modifie_le` ; `evenements` avec `id`, `element_id`, `type`, `version_forme`, `avant` et
+**Déjà en base (migration `0001`, étape 1d ; `0002`, tâche 1.2)** : `elements` avec `id`, `titre`,
+`statut` (`a_faire`, `en_cours`, `fait`), `echeance` (jour AAAA-MM-JJ), `fait_le`, `cree_le`,
+`modifie_le` ; `evenements` avec `id`, `element_id`, `type`, `version_forme`, `avant` et
 `apres` (JSON), `auteur`, `date`. Le journal n'a pas de clé étrangère vers `elements` : il doit
 survivre à la suppression d'un élément. Les autres champs et tables arrivent par de nouvelles
 migrations, quand une étape en a besoin.
@@ -166,7 +167,7 @@ dépend.
 
 | Hypothèse | Pourquoi elle compte | Comment on vérifie | Quand | Si elle est fausse |
 |---|---|---|---|---|
-| Un connecteur MCP marche avec les connecteurs claude.ai : Worker serveur OAuth, `/authorize` derrière Access, ouverture limitée aux adresses du connecteur ([décision 003](decisions/003-connecteur-claude.md)). **Construit le 04/11, en attente du test d'Adrien.** | Le connecteur porte les étapes 2 et 4. | Les tests d'acceptation (`features/connecteur.feature`) jouent tout le parcours OAuth contre le Worker local. Reste le vrai test : Adrien ajoute le connecteur dans claude.ai, Claude appelle `bonjour` et reçoit la réponse. | Étape 1c, avant le socle. | Replis : Access en fournisseur OIDC, ou OAuth avec Google directement. Si rien ne marche, on revoit le socle. |
+| Un connecteur MCP marche avec les connecteurs claude.ai : Worker serveur OAuth, `/authorize` derrière Access, ouverture limitée aux adresses du connecteur ([décision 003](decisions/003-connecteur-claude.md)). **Vérifié le 05/11** : depuis une session du projet d'Adrien, Claude appelle `bonjour` par le connecteur et reçoit la réponse. | Le connecteur porte les étapes 2 et 4. | Les tests d'acceptation (`features/connecteur.feature`) jouent tout le parcours OAuth contre le Worker local. Reste le vrai test : Adrien ajoute le connecteur dans claude.ai, Claude appelle `bonjour` et reçoit la réponse. | Étape 1c, avant le socle. | Replis : Access en fournisseur OIDC, ou OAuth avec Google directement. Si rien ne marche, on revoit le socle. |
 | Une requête SQL peut s'exécuter en lecture seule sur D1. | Une requête écrite par Claude ne doit rien modifier. | La série de requêtes d'écriture du test, toutes refusées. | Étape 4. | Repli : exécuter les requêtes sur une copie de la base, refaite régulièrement. |
 | L'appli installée survit à l'expiration de la connexion Access. | Quand la session Access expire, les appels de l'appli reçoivent la page de connexion au lieu des données : l'appli peut sembler vide ou bloquée. | Une durée de session courte en test ; on observe ce que fait l'appli. Elle doit détecter l'expiration et rouvrir la connexion. | Visible dès l'étape 1, traitée à l'étape 5. | Session Access longue, plus la détection et la reconnexion dans l'appli. |
 | Web Push est assez fiable sur Android. | Les rappels. | Des rappels de test sur plusieurs jours, téléphone en veille ; on mesure le retard. | Étape 5. | Appli native, plus tard. |
