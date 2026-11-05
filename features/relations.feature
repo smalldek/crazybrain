@@ -76,3 +76,14 @@ Fonctionnalité: Liens, tags et commentaires (tâche 1.3)
     Alors l'accès est refusé
     Quand je commente "intrus"
     Alors l'accès est refusé
+
+  Scénario: La liste de tous les tags, sans ceux des tâches supprimées
+    Étant donné que je suis connecté par Cloudflare Access
+    Et que j'ai créé la tâche "Tags : gardée"
+    Et que je pose le tag "lieu:garage"
+    Et que j'ai créé la tâche "Tags : supprimée"
+    Et que je pose le tag "lieu:grenier"
+    Et que je supprime cette tâche
+    Quand je demande tous les tags
+    Alors les tags contiennent "lieu:garage" pour "Tags : gardée"
+    Et les tags ne contiennent pas "lieu:grenier"

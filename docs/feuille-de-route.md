@@ -267,7 +267,11 @@ au titre sur un téléphone.
     après un appui long (un glissement court fait défiler), au clavier. Toucher une carte ouvre son
     détail (`/kanban/e/<id>`). Glisser-déposer par la bibliothèque dnd-kit (05/11).
   - 3.5 Les couloirs : par parent, par priorité, ou par une clé de tag au choix.
-  - 3.6 Les tags clé:valeur à l'écran, avec complétion ; `projet:<nom>` comme lien vers le projet.
+  - 3.6 ✓ Les tags clé:valeur à l'écran, avec complétion ; `projet:<nom>` comme lien vers le projet.
+    Dans le détail : chaque tag avec sa croix, un champ qui propose les tags déjà utilisés (les plus
+    fréquents d'abord) et les projets ; taper `projet:<nom>` range l'élément dans ce projet, montré
+    en tête des tags comme un lien. Les cartes du kanban montrent projet et tags. API :
+    `GET /api/tags` rend tous les tags posés (05/11).
   - 3.7 Les filtres (type, statut, priorité, tag, parent, dates) et le backlog.
   - 3.8 Les projets et sous-projets à l'écran ; les releases par le tag `release:<nom>`.
 - **Fait quand** : glisser une carte d'une colonne à l'autre change son statut ; les couloirs se

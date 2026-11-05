@@ -98,3 +98,50 @@ Fonctionnalité: Le panneau de détail d'un élément
     Et le détail montre le lien "Bloqué par" vers "Détail : acheter la peinture"
     Quand je retire le lien "Bloqué par" vers "Détail : acheter la peinture"
     Alors le détail dit "Aucun lien."
+
+  Scénario: Poser et retirer des tags depuis le détail ; le kanban les montre
+    Étant donné que j'ouvre la page
+    Et que je tape la tâche "Détail : flasher le routeur" et j'appuie sur Entrée
+    Et que je touche la flèche de la tâche "Détail : flasher le routeur"
+    Quand je pose le tag "composant:pxe" dans le détail
+    Et je pose le tag "urgent" dans le détail
+    Alors le détail montre les tags "composant:pxe, urgent"
+    Quand je retire le tag "urgent" dans le détail
+    Et je recharge la page
+    Alors le détail montre les tags "composant:pxe"
+    Quand je ferme le détail
+    Et j'ouvre le kanban
+    Alors la carte "Détail : flasher le routeur" montre "composant:pxe"
+
+  Scénario: Le champ des tags propose ceux déjà utilisés
+    Étant donné que j'ouvre la page
+    Et que je tape la tâche "Détail : tag d'origine" et j'appuie sur Entrée
+    Et que je touche la flèche de la tâche "Détail : tag d'origine"
+    Et que je pose le tag "lieu:cellier" dans le détail
+    Et que je ferme le détail
+    Et que je tape la tâche "Détail : autre tâche du cellier" et j'appuie sur Entrée
+    Quand je touche la flèche de la tâche "Détail : autre tâche du cellier"
+    Alors le champ des tags propose "lieu:cellier"
+
+  Scénario: Taper projet:<nom> range la tâche dans ce projet
+    Étant donné que j'ouvre la page
+    Et que je tape la tâche "Détail : Jardin" et j'appuie sur Entrée
+    Et que je touche la flèche de la tâche "Détail : Jardin"
+    Et que dans le détail je choisis "Projet" pour "Type"
+    Et que j'enregistre le détail
+    Et que je ferme le détail
+    Et que je tape la tâche "Détail : tailler la haie" et j'appuie sur Entrée
+    Et que je touche la flèche de la tâche "Détail : tailler la haie"
+    Quand je pose le tag "projet:détail : jardin" dans le détail
+    Alors dans le détail "Contenu dans" montre "Détail : Jardin (projet)"
+    Et le détail montre le projet "Détail : Jardin" parmi les tags
+    Quand je recharge la page
+    Alors dans le détail "Contenu dans" montre "Détail : Jardin (projet)"
+    Et le détail montre le projet "Détail : Jardin" parmi les tags
+
+  Scénario: Un projet inconnu dans les tags est expliqué
+    Étant donné que j'ouvre la page
+    Et que je tape la tâche "Détail : sans projet" et j'appuie sur Entrée
+    Et que je touche la flèche de la tâche "Détail : sans projet"
+    Quand je tente de poser le tag "projet:Inexistant" dans le détail
+    Alors le détail dit "Aucun projet ne s'appelle « Inexistant »."

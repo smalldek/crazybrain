@@ -140,6 +140,11 @@ export class ServiceElements {
   }
 
   /** Pose un tag ; le reposer ne change rien. Rend le tag et s'il a été ajouté. */
+  /** Tous les tags posés (éléments non supprimés). */
+  tousLesTags(): Promise<InstantaneTag[]> {
+    return this.relations.tousLesTags();
+  }
+
   async tagger(elementId: string, texte: string, auteur: Auteur): Promise<{ tag: InstantaneTag; ajoute: boolean }> {
     const tag = Tag.lire(texte);
     await this.exiger(elementId);

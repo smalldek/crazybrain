@@ -9,12 +9,14 @@ import {
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useEffect, useMemo, useState } from 'react';
-import type { Element } from './api';
+import type { Element, Tag } from './api';
 import { aujourdhui } from './dates';
 import { colonneDe, colonnesDe, COLONNES, deplacer, type StatutColonne } from './kanban';
+import { projetDe, tagsParElement } from './tags';
 
 interface Proprietes {
   readonly elements: readonly Element[];
+  readonly tags: readonly Tag[];
   readonly ouvert: string | null;
   readonly ouvrir: (id: string) => void;
   /**
@@ -24,8 +26,16 @@ interface Proprietes {
   readonly poser: (id: string, statut: StatutColonne, ordre: readonly string[]) => void;
 }
 
-export function VueKanban({ elements, ouvert, ouvrir, poser }: Proprietes) {
+export function VueKanban({ elements, tags, ouvert, ouvrir, poser }: Proprietes) {
   const parId = useMemo(() => new Map(elements.map((e) => [e.id, e])), [elements]);
+  // Ce que montre une carte sous son titre : son projet et ses tags.
+  const etiquettes = useMemo(() => {
+    const parElement = tagsParElement(tags);
+    return new Map(elements.map((e) => {
+      const projet = projetDe(e.id, elements);
+      return [e.id, [...(projet ? [`projet:${projet.titre}`] : []), ...(parElement.get(e.id) ?? [])]];
+    }));
+  }, [elements, tags]);
   const depuisServeur = useMemo(() => colonnesDe(elements), [elements]);
   // Pendant un glissement, les colonnes bougent ici avant d'être enregistrées.
   const [colonnes, setColonnes] = useState(depuisServeur);
@@ -72,7 +82,7 @@ export function VueKanban({ elements, ouvert, ouvrir, poser }: Proprietes) {
       <div className="kanban" id="kanban">
         {COLONNES.map((c) => (
           <Colonne key={c.statut} statut={c.statut} titre={c.titre} ids={colonnes[c.statut]}
-            parId={parId} ouvert={ouvert} ouvrir={ouvrir} />
+            parId={parId} etiquettes={etiquettes} ouvert={ouvert} ouvrir={ouvrir} />
         ))}
       </div>
       <DragOverlay>{elementPris ? <Carte element={elementPris} flottante /> : null}</DragOverlay>
@@ -85,11 +95,12 @@ interface ProprietesColonne {
   readonly titre: string;
   readonly ids: readonly string[];
   readonly parId: ReadonlyMap<string, Element>;
+  readonly etiquettes: ReadonlyMap<string, readonly string[]>;
   readonly ouvert: string | null;
   readonly ouvrir: (id: string) => void;
 }
 
-function Colonne({ statut, titre, ids, parId, ouvert, ouvrir }: ProprietesColonne) {
+function Colonne({ statut, titre, ids, parId, etiquettes, ouvert, ouvrir }: ProprietesColonne) {
   // La colonne elle-même accepte une carte (utile quand elle est vide).
   const { setNodeRef } = useDroppable({ id: statut });
   return (
@@ -99,7 +110,7 @@ function Colonne({ statut, titre, ids, parId, ouvert, ouvrir }: ProprietesColonn
         <ol ref={setNodeRef} className="cartes">
           {ids.map((id) => {
             const element = parId.get(id);
-            return element ? <CarteGlissable key={id} element={element} ouverte={id === ouvert} ouvrir={() => ouvrir(id)} /> : null;
+            return element ? <CarteGlissable key={id} element={element} etiquettes={etiquettes.get(id) ?? []} ouverte={id === ouvert} ouvrir={() => ouvrir(id)} /> : null;
           })}
         </ol>
       </SortableContext>
@@ -107,7 +118,7 @@ function Colonne({ statut, titre, ids, parId, ouvert, ouvrir }: ProprietesColonn
   );
 }
 
-function CarteGlissable({ element, ouverte, ouvrir }: { element: Element; ouverte: boolean; ouvrir: () => void }) {
+function CarteGlissable({ element, etiquettes, ouverte, ouvrir }: { element: Element; etiquettes: readonly string[]; ouverte: boolean; ouvrir: () => void }) {
   // Le rôle reste « élément de liste » : la carte contient déjà un bouton (son titre), et un bouton
   // dans un bouton trouble les lecteurs d'écran.
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -117,7 +128,7 @@ function CarteGlissable({ element, ouverte, ouvrir }: { element: Element; ouvert
   return (
     <li ref={setNodeRef} style={style} className={isDragging ? 'carte-place' : undefined} data-id={element.id}
       {...attributes} {...listeners}>
-      <Carte element={element} ouverte={ouverte} ouvrir={ouvrir} />
+      <Carte element={element} etiquettes={etiquettes} ouverte={ouverte} ouvrir={ouvrir} />
     </li>
   );
 }
@@ -136,7 +147,15 @@ const CONSIGNES = 'Pour prendre une carte, appuyer sur Espace. Les flèches la d
 
 const PRIORITE: Record<string, string> = { urgente: 'Urgente', haute: 'Haute', normale: 'Normale', basse: 'Basse' };
 
-function Carte({ element, ouverte, ouvrir, flottante }: { element: Element; ouverte?: boolean; ouvrir?: () => void; flottante?: boolean }) {
+interface ProprietesCarte {
+  readonly element: Element;
+  readonly etiquettes?: readonly string[];
+  readonly ouverte?: boolean;
+  readonly ouvrir?: () => void;
+  readonly flottante?: boolean;
+}
+
+function Carte({ element, etiquettes = [], ouverte, ouvrir, flottante }: ProprietesCarte) {
   const enRetard = element.statut !== 'fait' && element.echeance !== null && element.echeance < aujourdhui();
   const classes = ['carte', ouverte && 'ouverte', flottante && 'flottante', element.statut === 'fait' && 'fait'].filter(Boolean).join(' ');
   return (
@@ -146,6 +165,7 @@ function Carte({ element, ouverte, ouvrir, flottante }: { element: Element; ouve
         {element.type !== 'tache' && <span className="pastille">{element.type}</span>}
         {element.priorite && <span className={`pastille priorite-${element.priorite}`}>{PRIORITE[element.priorite]}</span>}
         {element.echeance && <span className={enRetard ? 'echeance en-retard' : 'echeance'}>{jourCourt(element.echeance)}</span>}
+        {etiquettes.map((t) => <span key={t} className="pastille etiquette">{t}</span>)}
       </div>
     </div>
   );

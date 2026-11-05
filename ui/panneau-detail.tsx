@@ -2,7 +2,7 @@
 // À droite de la liste sur un grand écran, en plein écran sur le téléphone. Son adresse est
 // /e/<id> : on peut la garder, la partager (derrière Access), y revenir.
 import { useEffect, useId, useState, type FormEvent, type ReactNode } from 'react';
-import { api, type Element, type ElementComplet, type TypeElement } from './api';
+import { api, type Element, type ElementComplet, type Tag, type TypeElement } from './api';
 import { brouillonDe, changementsDepuis, parentsPossibles, type Brouillon } from './formulaire';
 import { dateLisible, RelationsDetail } from './relations-detail';
 
@@ -10,6 +10,8 @@ interface Proprietes {
   readonly id: string;
   /** Les éléments de la liste, pour choisir un parent. */
   readonly elements: readonly Element[];
+  /** Tous les tags posés, pour la complétion. */
+  readonly tousLesTags: readonly Tag[];
   readonly fermer: () => void;
   /** Prévient la liste qu'un élément a changé. */
   readonly modifie: () => void;
@@ -23,7 +25,7 @@ type Etat =
   | { readonly sorte: 'introuvable'; readonly message: string }
   | { readonly sorte: 'pret'; readonly complet: ElementComplet };
 
-export function PanneauDetail({ id, elements, fermer, modifie }: Proprietes) {
+export function PanneauDetail({ id, elements, tousLesTags, fermer, modifie }: Proprietes) {
   const [etat, setEtat] = useState<Etat>({ sorte: 'chargement' });
   const [types, setTypes] = useState<TypeElement[]>([]);
   const [brouillon, setBrouillon] = useState<Brouillon | null>(null);
@@ -45,6 +47,14 @@ export function PanneauDetail({ id, elements, fermer, modifie }: Proprietes) {
   const relire = async (): Promise<void> => {
     const complet = await api.lire(id);
     setEtat({ sorte: 'pret', complet });
+    modifie();
+  };
+
+  // Ranger dans un projet (taper projet:<nom> dans les tags) change le parent : le formulaire le suit,
+  // sinon « Enregistrer » remettrait l'ancien.
+  const ranger = async (projet: string): Promise<void> => {
+    await api.modifier(id, { parent: projet });
+    setBrouillon((b) => (b ? { ...b, parent: projet } : b));
   };
 
   useEffect(() => {
@@ -142,7 +152,7 @@ export function PanneauDetail({ id, elements, fermer, modifie }: Proprietes) {
         </p>
       </form>
       <RelationsDetail id={element.id} liens={etat.complet.liens} commentaires={etat.complet.commentaires}
-        elements={elements} relire={relire} />
+        tags={etat.complet.tags} tousLesTags={tousLesTags} elements={elements} relire={relire} ranger={ranger} />
       </>
     );
   }

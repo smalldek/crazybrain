@@ -130,3 +130,15 @@ li .ouvrir:hover, li .ouvrir:focus-visible { background: var(--fond); color: var
             margin: 0 -16px; padding: 0 16px 8px; }
   .colonne { flex: 0 0 82%; scroll-snap-align: start; }
 }
+
+/* Les tags : des pastilles, avec leur croix ; le projet en tête, qui mène au projet. */
+.tags { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.tags .tag { display: inline-flex; align-items: center; gap: 2px; margin: 0; padding: 2px 4px 2px 10px; border-radius: 999px;
+             border: 1px solid var(--bord); background: var(--fond); font-size: .9rem; }
+.tags .tag button { border: 0; background: none; color: var(--doux); font-size: 1rem; width: 24px; height: 24px;
+                    border-radius: 999px; cursor: pointer; }
+.tags .tag-projet { padding-right: 10px; border-color: var(--accent); }
+.tags .tag-projet a { color: var(--accent); text-decoration: none; }
+.ajout input { flex: 1 1 10rem; min-width: 0; font: inherit; font-size: .95rem; padding: 8px; border-radius: 8px;
+               border: 1px solid var(--bord); background: var(--fond); color: var(--texte); }
+.etiquette { color: var(--texte); }
