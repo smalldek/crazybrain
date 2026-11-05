@@ -1,8 +1,28 @@
 // Les appels à l'API du Worker (/api/...), et les formes de données qu'elle rend.
 // Les types viennent du domaine (import de type seulement : aucun code du Worker n'arrive dans la page).
+import type { InstantaneCommentaire } from '../src/domaine/commentaire';
 import type { InstantaneElement } from '../src/domaine/element';
+import type { InstantaneLien } from '../src/domaine/lien';
+import type { InstantaneTag } from '../src/domaine/tag';
 
 export type Element = InstantaneElement;
+export type Lien = InstantaneLien;
+export type Tag = InstantaneTag;
+export type Commentaire = InstantaneCommentaire;
+
+/** Un élément avec tout ce qui s'y rattache, tel que GET /api/elements/:id le rend. */
+export interface ElementComplet {
+  readonly element: Element;
+  readonly liens: Lien[];
+  readonly tags: Tag[];
+  readonly commentaires: Commentaire[];
+}
+
+/** Un type d'élément (tache, projet, epic…) et son nom à l'écran. */
+export interface TypeElement {
+  readonly code: string;
+  readonly libelle: string;
+}
 
 /** Les champs qu'on peut envoyer pour créer ou modifier un élément (null vide un champ facultatif). */
 export type Changements = Partial<Pick<Element,
@@ -39,6 +59,8 @@ const json = (methode: string, corps: unknown): RequestInit => ({
 const adresse = (id: string): string => `/api/elements/${encodeURIComponent(id)}`;
 
 export const api = {
+  lire: (id: string): Promise<ElementComplet> => appeler<ElementComplet>(adresse(id)),
+  types: async (): Promise<TypeElement[]> => (await appeler<{ types: TypeElement[] }>('/api/types')).types,
   lister: async (): Promise<Element[]> => (await appeler<{ elements: Element[] }>('/api/elements')).elements,
   creer: async (champs: Changements & { titre: string }): Promise<Element> =>
     (await appeler<{ element: Element }>('/api/elements', json('POST', champs))).element,

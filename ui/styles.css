@@ -35,3 +35,36 @@ li.fait { opacity: .6; }
 li.fait .titre { text-decoration: line-through; }
 .etat { color: var(--doux); margin: 8px 0; }
 .erreur { color: var(--erreur); }
+
+/* L'élément ouvert, et le bouton qui ouvre son détail. */
+li.ouverte { border-color: var(--accent); }
+li .ouvrir { flex: none; width: 32px; height: 36px; border: 0; border-radius: 8px; background: none;
+             color: var(--doux); font-size: 1.4rem; line-height: 1; cursor: pointer; }
+li .ouvrir:hover, li .ouvrir:focus-visible { background: var(--fond); color: var(--accent); }
+
+/* Le panneau de détail : à droite de la liste sur un grand écran, par-dessus en plein écran sur le téléphone. */
+.mise-en-page.avec-panneau { display: grid; grid-template-columns: minmax(0, 1fr) minmax(22rem, 32rem); }
+.mise-en-page.avec-panneau main { max-width: none; width: 100%; }
+.panneau { background: var(--carte); border-left: 1px solid var(--bord); padding: 16px; min-height: 100vh;
+           position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto; }
+.panneau header { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 12px; }
+.panneau h2 { flex: 1; font-size: 1.2rem; margin: 6px 0 0; overflow-wrap: anywhere; }
+.panneau .fermer { flex: none; width: 40px; height: 40px; border: 0; border-radius: 8px; background: none;
+                   color: var(--doux); font-size: 1.6rem; cursor: pointer; }
+.panneau .fermer:hover { background: var(--fond); }
+.formulaire { display: flex; flex-direction: column; gap: 12px; }
+.formulaire .rangee { display: flex; gap: 10px; flex-wrap: wrap; }
+.formulaire .rangee .champ { flex: 1 1 7rem; }
+.champ { display: flex; flex-direction: column; gap: 4px; font-size: .85rem; color: var(--doux); }
+.champ input, .champ select, .champ textarea { width: 100%; font: inherit; font-size: 1rem; padding: 8px 10px;
+  border-radius: 8px; border: 1px solid var(--bord); background: var(--fond); color: var(--texte); }
+.champ textarea { resize: vertical; }
+.actions { display: flex; align-items: center; gap: 12px; }
+.principal { font: inherit; font-weight: 600; padding: 10px 18px; border-radius: 10px; border: 0;
+             background: var(--accent); color: var(--carte); cursor: pointer; }
+.principal:disabled { opacity: .6; }
+.dates { color: var(--doux); font-size: .8rem; margin: 4px 0 0; }
+@media (max-width: 720px) {
+  .mise-en-page.avec-panneau { display: block; }
+  .panneau { position: fixed; inset: 0; z-index: 10; border-left: 0; max-height: none; }
+}
