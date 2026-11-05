@@ -1,0 +1,10 @@
+// Vérifie l'interface (ui/), qui tourne dans le navigateur : les types du DOM et le JSX de React.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": [],
+    "jsx": "react-jsx"
+  },
+  "include": ["ui", "vite.config.ts"]
+}

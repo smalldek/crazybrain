@@ -101,11 +101,12 @@ jobs:
 
       # L'AUD de l'application Access : le Worker l'exige dans chaque jeton (deuxième serrure).
       # Lue à chaque déploiement, masquée dans le journal, jamais écrite dans le dépôt.
-      - name: Déployer
+      - name: Déployer (construire l'interface, puis envoyer le Worker et dist/)
         if: steps.config.outputs.ok == 'oui'
         run: |
           AUD=$(python3 outils/verifier_access.py aud)
           echo "::add-mask::$AUD"
+          npm run construire
           npx wrangler deploy --var "AUD:$AUD"
 
       - name: Sans connexion, l'adresse refuse-t-elle ?

@@ -4,7 +4,7 @@
 //    @cloudflare/workers-oauth-provider) après qu'Adrien a consenti sur /authorize, page qui reste
 //    derrière Access. Voir docs/decisions/003-connecteur-claude.md.
 // Les routes sont écrites avec Hono (l'équivalent des contrôleurs ASP.NET minimal API). La page
-// (public/) est servie par Cloudflare sans passer par ce code.
+// (dist/, construite depuis ui/) est servie par Cloudflare sans passer par ce code.
 import { AuthorizationError, CimdFetchError, OAuthProvider, type OAuthHelpers } from '@cloudflare/workers-oauth-provider';
 import { createRemoteJWKSet } from 'jose';
 import { Hono, type Context } from 'hono';

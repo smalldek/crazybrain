@@ -30,7 +30,8 @@ Un seul Worker porte tout : les pages, l'API, le connecteur, la réception des m
   vérifie qu'Access protège bien le sous-domaine, comme pour le site du vault. Le jeton Cloudflare
   et les identifiants sont dans les secrets GitHub du dépôt.
 - **Langage et cadriciel** : TypeScript strict, domaine séparé de l'infrastructure, routage par
-  Hono ; pas de cadriciel d'interface avant l'étape 3 ([décision 002](decisions/002-langage-et-modele.md)).
+  Hono ([décision 002](decisions/002-langage-et-modele.md)) ; l'interface en React, construite par
+  Vite de `ui/` vers `dist/` ([décision 004](decisions/004-outil-interface.md)).
 
 ## Client
 
