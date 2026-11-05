@@ -16,11 +16,13 @@ const AVERTIR = 'crazybrain:adresse';
 
 /**
  * Va à une adresse de l'appli (chemin, et paramètres après « ? » s'il y en a), sans recharger :
- * l'historique du navigateur la retient.
+ * l'historique du navigateur la retient (sauf avec `remplacer`).
  */
-export function naviguer(chemin: string): void {
+export function naviguer(chemin: string, { remplacer = false } = {}): void {
   if (chemin === window.location.pathname + window.location.search) return;
-  window.history.pushState(null, '', chemin);
+  // `remplacer` : pour ce qui change à chaque lettre (la recherche), qui ne doit pas remplir l'historique.
+  if (remplacer) window.history.replaceState(null, '', chemin);
+  else window.history.pushState(null, '', chemin);
   window.dispatchEvent(new Event(AVERTIR));
 }
 

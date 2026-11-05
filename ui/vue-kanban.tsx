@@ -17,7 +17,10 @@ import {
 import { projetDe, tagsParElement } from './tags';
 
 interface Proprietes {
+  /** Les éléments montrés (une fois filtrés). */
   readonly elements: readonly Element[];
+  /** Tous les éléments : pour nommer un projet ou un parent même quand le filtre le cache. */
+  readonly tous: readonly Element[];
   readonly tags: readonly Tag[];
   /** Les couloirs choisis, et comment en changer. */
   readonly critere: Critere;
@@ -31,14 +34,20 @@ interface Proprietes {
   readonly poser: (id: string, statut: StatutColonne, ordre: readonly string[]) => void;
 }
 
-export function VueKanban({ elements, tags, critere, changerCritere, ouvert, ouvrir, poser }: Proprietes) {
+export function VueKanban({ elements, tous, tags, critere, changerCritere, ouvert, ouvrir, poser }: Proprietes) {
   const parElement = useMemo(() => tagsParElement(tags), [tags]);
   // Ce que montre une carte sous son titre : son projet et ses tags.
   const etiquettes = useMemo(() => new Map(elements.map((e) => {
-    const projet = projetDe(e.id, elements);
+    const projet = projetDe(e.id, tous);
     return [e.id, [...(projet ? [`projet:${projet.titre}`] : []), ...(parElement.get(e.id) ?? [])]];
-  })), [elements, parElement]);
-  const couloirs = useMemo(() => couloirsDe(elements, critere, parElement), [elements, critere, parElement]);
+  })), [elements, tous, parElement]);
+  // Les couloirs se calculent sur tout (leurs noms restent justes), puis ne gardent que ce qui est montré.
+  const couloirs = useMemo(() => {
+    const montres = new Set(elements.map((e) => e.id));
+    return couloirsDe(tous, critere, parElement)
+      .map((c) => ({ ...c, elements: c.elements.filter((e) => montres.has(e.id)) }))
+      .filter((c) => c.elements.length > 0);
+  }, [elements, tous, critere, parElement]);
   const cles = [...new Set(tags.map((t) => t.cle))].sort((a, b) => a.localeCompare(b, 'fr'));
   const choix = ecrireCritere(critere) ?? '';
 

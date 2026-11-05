@@ -115,7 +115,7 @@ When('je touche la carte {string}', async function (this: Monde, titre: string) 
 // --- Les couloirs (tâche 3.5) ---
 
 /** Crée une tâche par l'API, depuis le navigateur de test (qui porte l'en-tête d'Access). */
-async function creer(monde: Monde, corps: Record<string, unknown>): Promise<string> {
+export async function creer(monde: Monde, corps: Record<string, unknown>): Promise<string> {
   const reponse = await page(monde).request.post(`${monde.worker.adresse}/api/elements`, { data: corps });
   expect(reponse.status()).toBe(201);
   return ((await reponse.json()) as { element: { id: string } }).element.id;
