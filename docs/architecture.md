@@ -29,6 +29,12 @@ Un seul Worker porte tout : les pages, l'API, le connecteur, la réception des m
 - **Déploiement par GitHub Actions** à chaque fusion dans `main`. Avant de déployer, l'Action
   vérifie qu'Access protège bien le sous-domaine, comme pour le site du vault. Le jeton Cloudflare
   et les identifiants sont dans les secrets GitHub du dépôt.
+- **Journal du connecteur** : chaque appel aux adresses de connexion (`/token`, `/register`,
+  `/authorize`, `/.well-known/…`, et `/mcp` quand il refuse) laisse une ligne dans l'espace KV du
+  connecteur, gardée 7 jours : l'heure, l'adresse, la réponse, l'erreur OAuth ; jamais de jeton, de
+  code ni d'identifiant (`src/connecteur/journal-oauth.ts`). Le flux « Lire le journal du connecteur »
+  (à lancer à la main dans Actions) l'affiche. Ajouté le 06/11 : claude.ai perdait la connexion et
+  les journaux de Cloudflare ne sont pas lisibles depuis une session.
 - **Langage et cadriciel** : TypeScript strict, domaine séparé de l'infrastructure, routage par
   Hono ([décision 002](decisions/002-langage-et-modele.md)) ; l'interface en React, construite par
   Vite de `ui/` vers `dist/` ([décision 004](decisions/004-outil-interface.md)).
