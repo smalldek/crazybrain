@@ -1,0 +1,23 @@
+# Lit le journal des échanges de connexion du connecteur Claude (7 derniers jours) : à lancer à la
+# main (onglet Actions, « Lire le journal du connecteur », « Run workflow ») quand claude.ai perd la
+# connexion. Les lignes ne contiennent ni jeton ni identifiant (src/connecteur/journal-oauth.ts).
+name: Lire le journal du connecteur
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lire:
+    runs-on: ubuntu-latest
+    env:
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Le journal
+        run: |
+          echo "::add-mask::$CF_ACCOUNT"
+          python3 outils/lire_journal_connecteur.py

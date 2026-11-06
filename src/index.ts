@@ -12,6 +12,7 @@ import { jetonAccessValide } from './acces/jeton-access';
 import { api } from './api/routes';
 import { ErreurConflit, ErreurIntrouvable } from './application/erreurs';
 import { ServiceElements } from './application/service-elements';
+import { aJournaliser, appelantDe, cleJournal, DUREE_JOURNAL_SECONDES, erreurOAuth, type EntreeJournal } from './connecteur/journal-oauth';
 import { echapper, pageConsentement } from './connecteur/page-consentement';
 import { repondreMcp } from './connecteur/serveur-mcp';
 import { ErreurDomaine } from './domaine/erreur-domaine';
@@ -163,6 +164,52 @@ function fournisseur(origine: string): OAuthProvider<Env> {
   return f;
 }
 
+/**
+ * Note dans le journal du connecteur un appel aux adresses OAuth (voir connecteur/journal-oauth.ts) :
+ * jamais de jeton, de code ni d'identifiant, seulement la réponse et l'erreur. Ne retarde pas la réponse.
+ */
+async function journaliser(requete: Request, typeDemande: string | undefined, reponse: Response, env: Env): Promise<void> {
+  const chemin = new URL(requete.url).pathname;
+  let erreur: string | undefined;
+  if (reponse.status >= 400) {
+    const corps = await reponse.clone().text().catch(() => '');
+    erreur = erreurOAuth(corps) ?? (corps.slice(0, 300) || undefined);
+  } else if (reponse.status >= 300) {
+    // Une redirection d'erreur porte ?error=… ; une redirection réussie porte le code : on ne garde que l'erreur.
+    const lieu = reponse.headers.get('location');
+    const parametres = lieu ? new URL(lieu, env.ORIGINE).searchParams : null;
+    const code = parametres?.get('error');
+    if (code) erreur = `${code}${parametres?.get('error_description') ? ` : ${parametres.get('error_description')}` : ''}`;
+  }
+  const quand = new Date().toISOString();
+  const appelant = appelantDe(requete.headers.get('user-agent'));
+  const entree: EntreeJournal = {
+    quand, methode: requete.method, chemin, statut: reponse.status,
+    ...(typeDemande ? { typeDemande } : {}), ...(erreur ? { erreur } : {}),
+    ...(appelant ? { appelant } : {}),
+  };
+  const hasard = crypto.randomUUID().slice(0, 8);
+  await env.OAUTH_KV.put(cleJournal(quand, hasard), JSON.stringify(entree), { expirationTtl: DUREE_JOURNAL_SECONDES });
+}
+
+/** Pour /token : la sorte de demande (authorization_code, refresh_token), lue sur une copie du corps. */
+async function typeDeDemande(requete: Request): Promise<string | undefined> {
+  if (requete.method !== 'POST' || new URL(requete.url).pathname !== '/token') return undefined;
+  try {
+    const valeur = (await requete.clone().formData()).get('grant_type');
+    return typeof valeur === 'string' ? valeur.slice(0, 40) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export default {
-  fetch: (requete, env, ctx) => fournisseur(env.ORIGINE).fetch(requete, env, ctx),
+  fetch: async (requete, env, ctx) => {
+    const typeDemande = await typeDeDemande(requete);
+    const reponse = await fournisseur(env.ORIGINE).fetch(requete, env, ctx);
+    if (aJournaliser(new URL(requete.url).pathname, reponse.status)) {
+      ctx.waitUntil(journaliser(requete, typeDemande, reponse, env).catch((e: unknown) => console.error('journal du connecteur', e)));
+    }
+    return reponse;
+  },
 } satisfies ExportedHandler<Env>;
