@@ -115,7 +115,7 @@ Champs d'un élément :
 | `statut`, `priorite` | Le statut fait les colonnes du kanban. |
 | `echeance` | La date limite. |
 | `jour_planifie` | Le jour où Adrien prévoit de le faire ; une heure facultative pour le mode journée. |
-| `recurrence` | La règle de récurrence. Proposition : le format RRULE d'iCalendar (« chaque lundi », « le 1er du mois »). |
+| `recurrence` | La règle de récurrence. Proposition : le format RRULE d'iCalendar (« chaque lundi », « le 1er du mois ») pour la date fixe, et un délai après achèvement (« 3 mois après l'avoir faite »), que RRULE ne sait pas dire. |
 | `estimation` | Le temps prévu. |
 | `poids` | Le poids d'un objectif parmi ses frères, pour la vue Goalscape. |
 | `rang` | L'ordre choisi à la main dans une colonne ou une liste. |

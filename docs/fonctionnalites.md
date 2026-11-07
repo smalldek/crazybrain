@@ -30,7 +30,7 @@ La liste complète voulue par Adrien (03/11/2026), et pour chacune un statut :
 | Release | première version | 3 | Un tag `release:<nom>` : il groupe des tâches à livrer ensemble. Une étape, pas un sprint. |
 | Sprint | **abandonné** | — | Les horizons à la Timestripe le remplacent. |
 | Backlog | première version | 3 | Une vue : ce qui n'est ni fait ni planifié, trié par priorité. |
-| Tâches récurrentes | première version | 5 | Une règle de récurrence sur l'élément ; cocher la tâche crée l'occurrence suivante. |
+| Tâches récurrentes | première version | 5 | Une règle de récurrence sur l'élément ; cocher la tâche crée l'occurrence suivante. Deux modes : à date fixe, ou après achèvement (la suivante revient un délai après le jour où la tâche est faite). |
 
 ## Vues
 
