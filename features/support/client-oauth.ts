@@ -92,12 +92,15 @@ export async function appelMcp(
   jeton: string | undefined,
   methode: string,
   parametres: Record<string, unknown> = {},
+  versionProtocole?: string,
 ): Promise<Response> {
   const entetes: Record<string, string> = {
     'content-type': 'application/json',
     accept: 'application/json, text/event-stream',
   };
   if (jeton) entetes.authorization = `Bearer ${jeton}`;
+  // L'en-tête que claude.ai envoie après l'initialisation : la version du protocole MCP qu'il parle.
+  if (versionProtocole) entetes['mcp-protocol-version'] = versionProtocole;
   return fetch(`${adresse}/mcp`, {
     method: 'POST',
     headers: entetes,

@@ -28,6 +28,8 @@ export class Monde extends World {
   /** Le client OAuth que « Claude » a enregistré dans ce scénario, et ce qu'il a obtenu. */
   clientOAuth: ClientOAuth | undefined;
   jetonOAuth: string | undefined;
+  /** La version du protocole MCP que Claude annonce dans ses appels (en-tête mcp-protocol-version), si on la fixe. */
+  versionMcp: string | undefined;
   /** Le navigateur des scénarios @navigateur (voir navigateur.ts). */
   contexte: BrowserContext | undefined;
   page: Page | undefined;
