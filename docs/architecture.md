@@ -35,6 +35,10 @@ Un seul Worker porte tout : les pages, l'API, le connecteur, la réception des m
   code ni d'identifiant (`src/connecteur/journal-oauth.ts`). Le flux « Lire le journal du connecteur »
   (à lancer à la main dans Actions) l'affiche. Ajouté le 06/11 : claude.ai perdait la connexion et
   les journaux de Cloudflare ne sont pas lisibles depuis une session.
+  Ce qu'il a montré le 07/11 : la connexion OAuth réussit (enregistrement, autorisation, jeton), puis
+  claude.ai annonce la version 2026-07-28 du protocole MCP, que la bibliothèque ne connaît pas, et
+  chaque appel était refusé. Le serveur répond désormais dans la plus récente qu'il connaît
+  (`versionConnue`, `src/connecteur/serveur-mcp.ts`).
 - **Langage et cadriciel** : TypeScript strict, domaine séparé de l'infrastructure, routage par
   Hono ([décision 002](decisions/002-langage-et-modele.md)) ; l'interface en React, construite par
   Vite de `ui/` vers `dist/` ([décision 004](decisions/004-outil-interface.md)).

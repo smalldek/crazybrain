@@ -7,6 +7,7 @@
 // est oublié. Un Worker ne garde rien entre deux requêtes ; pas besoin de Durable Object ici.
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
+import { LATEST_PROTOCOL_VERSION, SUPPORTED_PROTOCOL_VERSIONS } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import { aujourdhuiAParis } from '../application/aujourdhui';
 import { ErreurConflit, ErreurIntrouvable } from '../application/erreurs';
@@ -84,6 +85,20 @@ function complet(lu: ElementComplet): Record<string, unknown> {
     liens: lu.liens,
     commentaires: lu.commentaires,
   };
+}
+
+/**
+ * Une version du protocole MCP plus récente que la bibliothèque (claude.ai annonçait 2026-07-28 le
+ * 07/11, la bibliothèque 1.32.2 s'arrête à 2025-11-25) : on répond dans la plus récente qu'on connaît
+ * au lieu de refuser chaque appel (400). Les appels dont se sert Crazybrain (lister et appeler les
+ * outils) n'ont pas changé de forme entre ces versions. À retirer quand la bibliothèque la connaîtra.
+ */
+export function versionConnue(requete: Request): Request {
+  const version = requete.headers.get('mcp-protocol-version');
+  if (version === null || SUPPORTED_PROTOCOL_VERSIONS.includes(version)) return requete;
+  const entetes = new Headers(requete.headers);
+  entetes.set('mcp-protocol-version', LATEST_PROTOCOL_VERSION);
+  return new Request(requete, { headers: entetes });
 }
 
 export async function repondreMcp(requete: Request, sources: SourcesMcp, horloge: () => Date = () => new Date()): Promise<Response> {
@@ -245,5 +260,5 @@ bloque (la source empêche la cible d'avancer), duplique (la source est un doubl
   // progression). Sans sessionIdGenerator, le transport est sans session.
   const transport = new WebStandardStreamableHTTPServerTransport({ enableJsonResponse: true });
   await serveur.connect(transport);
-  return transport.handleRequest(requete);
+  return transport.handleRequest(versionConnue(requete));
 }

@@ -101,6 +101,10 @@ Given('Claude est branché sur Crazybrain par le connecteur', async function (th
   this.jetonOAuth = await client(this).echangerCode();
 });
 
+Given('Claude parle la version {string} du protocole MCP', function (this: Monde, version: string) {
+  this.versionMcp = version;
+});
+
 When('Claude échange le code contre un jeton', async function (this: Monde) {
   this.jetonOAuth = await client(this).echangerCode();
 });
@@ -117,7 +121,7 @@ interface ReponseJsonRpc {
 }
 
 async function mcp(monde: Monde, methode: string, parametres: Record<string, unknown> = {}): Promise<ReponseJsonRpc> {
-  const reponse = await appelMcp(monde.worker.adresse, monde.jetonOAuth, methode, parametres);
+  const reponse = await appelMcp(monde.worker.adresse, monde.jetonOAuth, methode, parametres, monde.versionMcp);
   const corps = await reponse.text();
   assert.equal(reponse.status, 200, corps);
   const lu = JSON.parse(corps) as ReponseJsonRpc;

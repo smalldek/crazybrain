@@ -9,6 +9,14 @@ Fonctionnalité: Les outils du connecteur (étape 2)
   Scénario: Le connecteur propose tous ses outils
     Alors le connecteur propose les outils "bonjour, chercher_elements, lire_element, creer_elements, modifier_element, supprimer_element, restaurer_element, commenter_element, lier_elements, retirer_lien, tagger_element, retirer_tag, lister_types"
 
+  Scénario: Un Claude qui parle une version plus récente du protocole MCP est servi quand même
+    # Constaté le 07/11 dans le journal du connecteur : claude.ai annonçait la version 2026-07-28,
+    # que la bibliothèque MCP ne connaît pas encore, et chaque appel était refusé (400).
+    Étant donné que Claude parle la version "2026-07-28" du protocole MCP
+    Alors le connecteur propose les outils "bonjour, chercher_elements, lire_element, creer_elements, modifier_element, supprimer_element, restaurer_element, commenter_element, lier_elements, retirer_lien, tagger_element, retirer_tag, lister_types"
+    Quand Claude appelle "bonjour"
+    Alors l'outil répond sans erreur
+
   Scénario: « Crée trois tâches pour le projet Jardin »
     Quand Claude appelle "creer_elements" avec {"elements": [{"titre": "Jardin", "type": "projet"}]}
     Et Claude appelle "creer_elements" avec {"elements": [{"titre": "Tailler la haie", "projets": ["Jardin"]}, {"titre": "Semer le gazon", "projets": ["jardin"], "echeance": "2027-04-15"}, {"titre": "Réparer la tondeuse", "projets": ["{id:Jardin}"], "tags": ["outil:tondeuse"]}]}
