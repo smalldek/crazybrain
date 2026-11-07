@@ -320,12 +320,17 @@ au titre sur un téléphone.
   - 5.5 Les rappels : abonnement Web Push, tâche planifiée (Cron Trigger) qui envoie les rappels,
     mesure du retard sur plusieurs jours.
   - 5.6 Les tâches récurrentes : la règle de récurrence ; cocher crée l'occurrence suivante.
+    Deux modes : à date fixe (« chaque lundi », « le 1er du mois ») et **après achèvement** (« 3 mois
+    après l'avoir faite ») : la suivante se réveille ce délai après la date où la tâche est cochée,
+    sans échéance, à faire au plus tôt (Adrien, 07/11/2026 : l'entretien des chaussures de
+    randonnée). Les tâches posées avant avec les tags `recurrence:apres-fait` et `intervalle:<délai>`
+    passent à la vraie règle.
   - 5.7 La décision de fin d'étape : si les rappels arrivent trop en retard, on envisage l'appli
     native.
 - **Fait quand** : l'icône est sur l'écran d'accueil ; un message WhatsApp partagé vers
   Crazybrain devient une tâche ; un rappel fixé à cinq minutes arrive téléphone en veille, et son
   retard est mesuré sur plusieurs jours ; cocher une tâche récurrente crée la suivante à la bonne
-  date ; après expiration de la session, l'appli se reconnecte au lieu de rester vide.
+  date, à date fixe comme après achèvement ; après expiration de la session, l'appli se reconnecte au lieu de rester vide.
 
 ## Étape 6 — Calendrier et mode journée
 
