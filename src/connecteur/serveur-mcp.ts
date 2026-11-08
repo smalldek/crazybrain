@@ -30,6 +30,7 @@ Tout est un « élément » : projet, initiative, objectif, epic, feature, tâch
 - Une tâche se rattache à un ou plusieurs projets par un lien « appartient_a » : à la création, donner « projets » (id ou titre exact du projet).
 - Les tags sont « cle:valeur » ou « cle » (composant:pxe, release:v1, urgent). « projet » n'est pas un tag.
 - Statuts : a_faire, en_cours, fait. Priorités : basse, normale, haute, urgente. Dates AAAA-MM-JJ, heures HH:MM, estimation en minutes.
+- Vue en cercles : « poids » dit ce que pèse un élément parmi ses frères (sa part dans son parent = son poids sur la somme des poids des frères ; sans poids, il compte pour 1). « avancement » (0 à 100) se saisit sur un élément sans enfant ; celui d'un parent se calcule de ses enfants, pondéré par leurs parts, et un élément « fait » vaut 100.
 - Supprimer archive l'élément : il sort des listes et peut se restaurer.
 Avant de créer un projet, chercher s'il existe déjà. Les dates relatives (« demain », « vendredi ») se comptent au jour de Paris.
 Tout ce que Claude fait ici est noté dans le journal avec Claude pour auteur.`;
@@ -48,6 +49,8 @@ const champsElement = {
   jourPlanifie: jour.nullable().optional().describe("Le jour où Adrien prévoit de le faire, AAAA-MM-JJ"),
   heurePlanifiee: z.string().nullable().optional().describe('HH:MM, seulement avec un jour planifié'),
   estimation: z.number().int().nullable().optional().describe('Temps prévu, en minutes'),
+  poids: z.number().positive().nullable().optional().describe('Ce que pèse l\'élément parmi ses frères (vue en cercles) ; null : compte pour 1'),
+  avancement: z.number().int().min(0).max(100).nullable().optional().describe('Avancement saisi, 0 à 100, pour un élément sans enfant'),
 };
 
 /** Le texte rendu à Claude : du JSON lisible. */
@@ -71,7 +74,7 @@ async function proteger(action: () => Promise<{ content: { type: 'text'; text: s
 /** Un élément en bref, pour les listes : seulement les champs remplis. */
 function enBref(element: InstantaneElement, tags?: string[]): Record<string, unknown> {
   const bref: Record<string, unknown> = { id: element.id, type: element.type, titre: element.titre, statut: element.statut };
-  for (const cle of ['priorite', 'echeance', 'jourPlanifie', 'heurePlanifiee', 'estimation', 'parent'] as const) {
+  for (const cle of ['priorite', 'echeance', 'jourPlanifie', 'heurePlanifiee', 'estimation', 'parent', 'poids', 'avancement'] as const) {
     if (element[cle] !== null) bref[cle] = element[cle];
   }
   if (tags?.length) bref.tags = tags;

@@ -48,3 +48,26 @@ Fonctionnalité: Le modèle complet d'un élément (tâche 1.3)
     Quand je range le premier élément dans le dernier
     Alors la modification est refusée comme invalide
     Et le premier élément, relu, n'a pas de parent
+
+  Scénario: Le poids et l'avancement (vue en cercles, tâche 3b.1)
+    Étant donné que je suis connecté par Cloudflare Access
+    Et que j'ai créé l'élément {"titre": "Courir un marathon", "type": "objectif", "poids": 2}
+    Alors cette tâche, relue, a les valeurs {"poids": 2, "avancement": null}
+    Quand j'envoie à cette tâche la modification {"poids": 0.5, "avancement": 40}
+    Alors la modification est acceptée
+    Et cette tâche, relue, a les valeurs {"poids": 0.5, "avancement": 40}
+    Et le journal de cette tâche contient "element_cree" puis "element_modifie"
+    Quand j'envoie à cette tâche la modification {"poids": null, "avancement": null}
+    Alors cette tâche, relue, a les valeurs {"poids": null, "avancement": null}
+
+  Scénario: Un poids nul ou un avancement hors de 0 à 100 est refusé
+    Étant donné que je suis connecté par Cloudflare Access
+    Et que j'ai créé la tâche "Mesurée"
+    Quand j'envoie à cette tâche la modification {"poids": 0}
+    Alors la modification est refusée comme invalide
+    Quand j'envoie à cette tâche la modification {"avancement": 101}
+    Alors la modification est refusée comme invalide
+    Quand j'envoie à cette tâche la modification {"avancement": 12.5}
+    Alors la modification est refusée comme invalide
+    Quand j'envoie à cette tâche la modification {"poids": "lourd"}
+    Alors la modification est refusée comme invalide

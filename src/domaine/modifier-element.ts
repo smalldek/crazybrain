@@ -1,3 +1,4 @@
+import { Avancement } from './avancement';
 import { CodeType } from './code-type';
 import { Description } from './description';
 import { Element, lireStatut } from './element';
@@ -6,6 +7,7 @@ import { Estimation } from './estimation';
 import { VERSION_FORME, type Auteur, type Evenement } from './evenement';
 import { Heure } from './heure';
 import { Jour } from './jour';
+import { Poids } from './poids';
 import { lirePriorite } from './priorite';
 import { Titre } from './titre';
 
@@ -25,12 +27,16 @@ export interface ChangementsElement {
   readonly heurePlanifiee?: string | null;
   readonly estimation?: number | null;
   readonly rang?: number | null;
+  /** Le poids parmi ses frères (vue en cercles), plus de 0 ; null : compte pour 1. */
+  readonly poids?: number | null;
+  /** L'avancement saisi, entier de 0 à 100 ; null l'efface. */
+  readonly avancement?: number | null;
 }
 
 /** Les noms des champs modifiables, pour vérifier un corps de requête. */
 export const CHAMPS_MODIFIABLES = [
   'titre', 'statut', 'type', 'parent', 'description', 'priorite', 'echeance',
-  'jourPlanifie', 'heurePlanifiee', 'estimation', 'rang',
+  'jourPlanifie', 'heurePlanifiee', 'estimation', 'rang', 'poids', 'avancement',
 ] as const satisfies readonly (keyof ChangementsElement)[];
 
 /**
@@ -105,6 +111,8 @@ export function appliquerChangements(
   const jourPlanifie = c.jourPlanifie === undefined ? undefined : c.jourPlanifie === null ? null : Jour.creer(c.jourPlanifie);
   const heurePlanifiee = c.heurePlanifiee === undefined ? undefined : c.heurePlanifiee === null ? null : Heure.creer(c.heurePlanifiee);
   const estimation = c.estimation === undefined ? undefined : c.estimation === null ? null : Estimation.creer(c.estimation);
+  const poids = c.poids === undefined ? undefined : c.poids === null ? null : Poids.creer(c.poids);
+  const avancement = c.avancement === undefined ? undefined : c.avancement === null ? null : Avancement.creer(c.avancement);
   if (c.rang !== undefined && c.rang !== null && !Number.isFinite(c.rang)) {
     throw new ErreurDomaine('Le rang doit être un nombre.');
   }
@@ -135,6 +143,8 @@ export function appliquerChangements(
     ...(priorite !== undefined && priorite !== e.priorite ? { priorite } : {}),
     ...(estimation !== undefined && estimation?.minutes !== e.estimation?.minutes ? { estimation } : {}),
     ...(c.rang !== undefined && c.rang !== e.rang ? { rang: c.rang } : {}),
+    ...(poids !== undefined && poids?.valeur !== e.poids?.valeur ? { poids } : {}),
+    ...(avancement !== undefined && avancement?.pourcent !== e.avancement?.pourcent ? { avancement } : {}),
   };
   if (Object.keys(simples).length > 0) e = e.changer(simples, maintenant);
   return e;
