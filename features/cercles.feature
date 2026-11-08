@@ -96,3 +96,39 @@ Fonctionnalité: Les objectifs en cercles (étape 3b)
     Et je ferme le détail
     Alors la part "Cercles : un roman" en est à 60 %
     Et le centre en est à "60 %"
+
+  Scénario: Le plan : replier une branche, réordonner, ranger ailleurs en glissant (3b.4)
+    Étant donné que l'objectif "Plan : année" existe
+    Et que "Plan : année" contient l'objectif "Plan : sport" sans poids
+    Et que "Plan : année" contient l'objectif "Plan : lecture" sans poids
+    Et que "Plan : sport" contient la tâche "Plan : nager"
+    Et que "Plan : sport" contient la tâche "Plan : courir"
+    Quand j'ouvre les cercles centrés sur "Plan : année"
+    Alors le plan montre "Plan : sport, Plan : nager, Plan : courir, Plan : lecture"
+    Quand je replie "Plan : sport" dans le plan
+    Alors le plan montre "Plan : sport, Plan : lecture"
+    Quand je déplie "Plan : sport" dans le plan
+    Et je glisse dans le plan "Plan : lecture" au-dessus de "Plan : sport"
+    Alors le plan montre "Plan : lecture, Plan : sport, Plan : nager, Plan : courir"
+    Quand je glisse dans le plan "Plan : courir" dans "Plan : lecture"
+    Alors le plan montre "Plan : lecture, Plan : courir, Plan : sport, Plan : nager"
+    Et la part "Plan : courir" couvre 180°
+    Quand je recharge la page des cercles
+    Alors le plan montre "Plan : lecture, Plan : courir, Plan : sport, Plan : nager"
+    Quand je glisse dans le plan "Plan : sport" dans "Plan : nager"
+    Alors la page dit "Impossible : un élément ne peut pas être rangé dans lui-même ni dans ce qu’il contient."
+
+  Scénario: Les repères : filtres qui éclairent, retards, image enregistrée (3b.5)
+    Étant donné que l'objectif "Repères : maison" existe
+    Et que "Repères : maison" contient la tâche "Repères : réseau"
+    Et que "Repères : maison" contient la tâche "Repères : jardin"
+    Et que "Repères : maison" contient la tâche "Repères : toit" à rendre le "2020-01-01"
+    Et que "Repères : réseau" porte le tag "composant:pxe"
+    Quand j'ouvre les cercles centrés sur "Repères : maison" avec "tag=composant:pxe"
+    Alors la part "Repères : réseau" est éclairée
+    Et la part "Repères : jardin" est grisée
+    Et la part "Repères : toit" est grisée
+    Et la part "Repères : toit" est marquée en retard
+    Et la part "Repères : jardin" n'est pas marquée en retard
+    Quand j'enregistre l'image des cercles
+    Alors le fichier enregistré est un SVG qui contient "Repères : réseau"

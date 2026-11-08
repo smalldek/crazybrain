@@ -27,7 +27,7 @@ tâche en a besoin, elle le dit (« Il faut du projet Cloudflare »), et Adrien 
 | 1. Socle | Le site, la connexion Google, la base, l'API, le connecteur testé, modifier une tâche, le modèle complet | Fait le 05/11 |
 | 2. Connecteur Claude | Claude lit, crée et modifie les tâches depuis une conversation | Fait le 05/11 |
 | 3. Kanban, détail, tags, filtres | Le premier vrai écran de travail | Construite le 05/11 |
-| 3b. Objectifs en cercles | Le découpage pondéré en cercles, avancement qui remonte (avancé depuis l'étape 7 le 08/11) | En cours |
+| 3b. Objectifs en cercles | Le découpage pondéré en cercles, avancement qui remonte (avancé depuis l'étape 7 le 08/11) | Construite le 08/11, essai d'Adrien à faire |
 | 4. Requêtes enregistrées, tableaux de bord | Claude écrit des requêtes, l'outil les rejoue | — |
 | 5. L'appli sur le téléphone | Icône, partage, rappels, tâches récurrentes | — |
 | 6. Calendrier et mode journée | Planifier sa journée à la Sunsama | — |
@@ -336,11 +336,11 @@ responsables (une personne par part), qui n'ont de sens qu'à plusieurs.
 
 | Tâche | Ce qu'elle livre | Il faut d'Adrien |
 |---|---|---|
-| 3b.1 | Le poids et l'avancement : en base, dans l'API, le connecteur et le panneau de détail ; les calculs (parts, avancement qui remonte) dans le domaine | Rien |
-| 3b.2 | La vue Cercles : centre, anneaux, couleurs par branche, remplissage, zoom, fil d'Ariane | Rien |
-| 3b.3 | Travailler dans les cercles : la fiche de la part, son importance et son avancement au curseur, ajouter, renommer, supprimer | Rien |
-| 3b.4 | Le plan : la même arborescence en liste, à replier, à réordonner et réorganiser en glissant | Rien |
-| 3b.5 | Les repères : les filtres éclairent les parts qui correspondent, les retards se voient, l'image s'enregistre | Rien |
+| 3b.1 | Le poids et l'avancement : en base, dans l'API, le connecteur et le panneau de détail ; les calculs (parts, avancement qui remonte) dans le domaine | **Fait le 08/11** |
+| 3b.2 | La vue Cercles : centre, anneaux, couleurs par branche, remplissage, zoom, fil d'Ariane | **Fait le 08/11** |
+| 3b.3 | Travailler dans les cercles : la fiche de la part, son importance et son avancement au curseur, ajouter, renommer, supprimer | **Fait le 08/11** |
+| 3b.4 | Le plan : la même arborescence en liste, à replier, à réordonner et réorganiser en glissant | **Fait le 08/11** |
+| 3b.5 | Les repères : les filtres éclairent les parts qui correspondent, les retards se voient, l'image s'enregistre | **Fait le 08/11** |
 | 3b.6 | L'essai d'Adrien sur son téléphone | Le test, gestes donnés à la fin |
 
 ### 3b.1 Poids et avancement
@@ -426,6 +426,13 @@ responsables (une personne par part), qui n'ont de sens qu'à plusieurs.
 
 Comme pour l'étape 3 : ce qu'aucun test ne dit, c'est si la vue sert. Les gestes pas à pas sont
 donnés à Adrien quand 3b.1 à 3b.5 sont en ligne.
+
+**Construit le 08/11** (3b.1 à 3b.5), tel que détaillé ci-dessus, vérifié par 153 tests unitaires
+(dont `cercles.test.ts` et `interface-plan.test.ts`) et 7 scénarios joués dans le navigateur à la
+taille d'un téléphone (`features/cercles.feature`), avec les 82 scénarios d'avant toujours verts.
+Écarts au détail : le plan se glisse par sa poignée ⠿ (toucher le titre choisit la part) ; sur un
+grand écran, la fiche et le plan passent à droite des cercles ; les filtres éclairent les parts,
+pas encore les lignes du plan.
 
 **Fait quand (étape 3b)** : sur le téléphone, la vue Cercles montre les objectifs autour de « Tout »
 avec des parts à leur poids ; régler une part à 50 % redessine ses sœurs, et la somme reste 100 % ;

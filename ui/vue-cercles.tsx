@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 
 import { poidsPourPart } from '../src/domaine/cercles';
 import { naviguer } from './adresse';
 import type { Changements, Element } from './api';
+import { PlanCercles } from './plan-cercles';
 import {
   ANNEAUX_MAX, chemin, disposer, enfantsDe, enfantsParParent, etiquette, filAriane, point, pourcent, RAYON_CENTRE,
   rayons, type Part,
@@ -22,6 +23,13 @@ interface Proprietes {
   readonly modifier: (id: string, changements: Changements) => Promise<void>;
   readonly creer: (champs: Changements & { titre: string }) => Promise<void>;
   readonly supprimer: (element: Element) => Promise<void>;
+  /** Range un élément dans un parent (null : à la racine) et ordonne sa nouvelle fratrie. */
+  readonly ranger: (id: string, parent: string | null, ordre: readonly string[]) => Promise<void>;
+  readonly signaler: (message: string) => void;
+  /** Avec des filtres : les éléments qui y répondent, éclairés ; les autres sont grisés. Null : pas de filtre. */
+  readonly eclaires: ReadonlySet<string> | null;
+  /** Le jour AAAA-MM-JJ, pour marquer ce qui est en retard. */
+  readonly jour: string;
 }
 
 /** L'adresse de la vue avec ce centre et ce nombre d'anneaux (les autres paramètres restent). */
@@ -35,8 +43,9 @@ function adresseCercles(centre: string | null, anneaux?: number): string {
 
 const TAILLE_TEXTE = 4.2;
 
-export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier, creer, supprimer }: Proprietes) {
+export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier, creer, supprimer, ranger, signaler, eclaires, jour }: Proprietes) {
   const [choisi, setChoisi] = useState<string | null>(null);
+  const dessinRef = useRef<SVGSVGElement>(null);
   // Le curseur d'importance : le poids essayé, montré avant d'être enregistré.
   const [apercu, setApercu] = useState<ReadonlyMap<string, number>>(new Map());
   // Le curseur d'avancement : la valeur essayée.
@@ -97,6 +106,9 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
             </span>
           ))}
         </nav>
+        <button type="button" className="enregistrer-image" onClick={() => enregistrerImage(dessinRef.current, titreCentre)}>
+          Enregistrer l’image
+        </button>
         <label className="anneaux">
           Anneaux
           <select value={anneaux} onChange={(e) => naviguer(adresseCercles(centre, Number(e.target.value)), { remplacer: true })}>
@@ -105,9 +117,11 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
         </label>
       </div>
 
-      <svg viewBox="-100 -100 200 200" className="dessin-cercles" role="group" aria-label={`Cercles de « ${titreCentre} »`}>
+      <svg ref={dessinRef} viewBox="-100 -100 200 200" className="dessin-cercles" role="group" aria-label={`Cercles de « ${titreCentre} »`}>
         {dessin.parts.map((p) => (
           <PartDessinee key={p.element.id} part={p} anneaux={anneaux} choisie={p.element.id === choisi}
+            eteinte={eclaires !== null && !eclaires.has(p.element.id)}
+            enRetard={p.element.echeance !== null && p.element.echeance < jour && p.element.statut !== 'fait'}
             toucher={() => toucher(p)} zoomer={() => zoomer(p.element.id)} />
         ))}
         <g className="centre" role="button" tabIndex={0}
@@ -128,6 +142,7 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
         </p>
       )}
 
+      <div className="cote">
       {partChoisie ? (
         <FichePart key={partChoisie.element.id} part={partChoisie} elements={elements} ouvert={ouvert === partChoisie.element.id}
           zoomer={() => zoomer(partChoisie.element.id)} ouvrir={() => ouvrir(partChoisie.element.id)}
@@ -138,13 +153,16 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
       ) : (
         <AjoutAuCentre centre={dessin.centre} elements={elements} creer={creer} />
       )}
+
+      <PlanCercles elements={elements} centre={centre} choisi={choisi} choisir={setChoisi} ranger={ranger} signaler={signaler} />
+      </div>
     </div>
   );
 }
 
 /** Une part : sa couleur claire, sa portion faite en foncé (du bord intérieur vers l'extérieur), son titre s'il tient. */
-function PartDessinee({ part, anneaux, choisie, toucher, zoomer }:
-  { part: Part; anneaux: number; choisie: boolean; toucher: () => void; zoomer: () => void }) {
+function PartDessinee({ part, anneaux, choisie, eteinte, enRetard, toucher, zoomer }:
+  { part: Part; anneaux: number; choisie: boolean; eteinte: boolean; enRetard: boolean; toucher: () => void; zoomer: () => void }) {
   const { interieur, exterieur } = rayons(part.anneau, anneaux);
   const fait = interieur + ((exterieur - interieur) * part.avancement) / 100;
   const milieu = (interieur + exterieur) / 2;
@@ -155,9 +173,11 @@ function PartDessinee({ part, anneaux, choisie, toucher, zoomer }:
   // Le texte suit l'arc ; en bas du cercle, on le retourne pour qu'il se lise à l'endroit.
   let rotation = (a * 180) / Math.PI;
   if (rotation > 90 && rotation < 270) rotation -= 180;
-  const description = `${part.element.titre}, ${pourcent(part.part)} de son parent, avancement ${Math.round(part.avancement)} %`;
+  const description = `${part.element.titre}, ${pourcent(part.part)} de son parent, avancement ${Math.round(part.avancement)} %`
+    + (enRetard ? `, en retard (échéance ${part.element.echeance ?? ''})` : '');
   return (
-    <g className={[`part branche-${part.couleur}`, choisie && 'choisie', part.element.statut === 'fait' && 'faite'].filter(Boolean).join(' ')}
+    <g className={[`part branche-${part.couleur}`, choisie && 'choisie', part.element.statut === 'fait' && 'faite',
+      eteinte && 'eteinte', enRetard && 'en-retard'].filter(Boolean).join(' ')}
       role="button" tabIndex={0} aria-label={description} aria-pressed={choisie} data-titre={part.element.titre}
       data-x={Math.round(x * 100) / 100} data-y={Math.round(y * 100) / 100}
       data-angle={Math.round((angle * 180) / Math.PI)} data-avancement={Math.round(part.avancement)}
@@ -314,4 +334,36 @@ function Ajout({ parent, soeursDuNouveau, libelle, creer }: { parent: Element | 
       <button type="submit" disabled={titre.trim() === ''}>Ajouter</button>
     </form>
   );
+}
+
+/**
+ * Enregistre le dessin dans un fichier SVG. Les couleurs viennent de la feuille de style (clair ou
+ * sombre) : on les recopie sur chaque forme, pour que le fichier s'affiche pareil hors de l'appli.
+ */
+function enregistrerImage(svg: SVGSVGElement | null, titre: string): void {
+  if (!svg) return;
+  const copie = svg.cloneNode(true) as SVGSVGElement;
+  const originaux = svg.querySelectorAll<SVGElement>('path, text, circle');
+  const copies = copie.querySelectorAll<SVGElement>('path, text, circle');
+  originaux.forEach((o, i) => {
+    const style = getComputedStyle(o);
+    const c = copies[i];
+    if (!c) return;
+    for (const prop of ['fill', 'stroke', 'stroke-width', 'opacity', 'font-size', 'font-weight', 'text-anchor', 'dominant-baseline']) {
+      c.setAttribute(prop, style.getPropertyValue(prop));
+    }
+  });
+  copie.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  copie.setAttribute('width', '800');
+  copie.setAttribute('height', '800');
+  copie.setAttribute('font-family', getComputedStyle(svg).fontFamily);
+  const fond = getComputedStyle(document.body).backgroundColor;
+  copie.insertAdjacentHTML('afterbegin', `<rect x="-100" y="-100" width="200" height="200" fill="${fond}"/>`);
+  const lien = document.createElement('a');
+  lien.href = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(copie)], { type: 'image/svg+xml' }));
+  lien.download = `cercles-${titre.normalize('NFD').replace(/[^\w-]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'tout'}.svg`;
+  document.body.append(lien);
+  lien.click();
+  lien.remove();
+  setTimeout(() => URL.revokeObjectURL(lien.href), 1000);
 }

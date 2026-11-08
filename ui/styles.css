@@ -235,3 +235,31 @@ li .ouvrir:hover, li .ouvrir:focus-visible { background: var(--fond); color: var
   .entete-appli nav { max-width: 100%; overflow-x: auto; }
   .entete-appli nav a { padding: 6px 8px; font-size: .9rem; white-space: nowrap; }
 }
+
+/* Le plan, sous les cercles : l'arborescence en liste, une ligne par élément, en retrait selon son niveau. */
+.plan h2 { font-size: 1.1rem; margin: 8px 0; }
+.plan ul { list-style: none; margin: 0; padding: 0; }
+.plan .ligne-plan { display: flex; align-items: center; gap: 6px; padding-top: 2px; padding-bottom: 2px; padding-right: 8px;
+                    margin-bottom: 4px; border-radius: 8px; }
+.plan .ligne-plan.choisie { border-color: var(--accent); }
+.plan .ligne-plan.survolee { border-color: var(--accent); border-style: dashed; }
+.plan .ligne-plan.glissee { opacity: .4; }
+.plan .ligne-plan.fait .titre { text-decoration: line-through; opacity: .7; }
+.plan .poignee { flex: none; width: 28px; height: 36px; border: 0; background: none; color: var(--doux); cursor: grab;
+                 font-size: 1.1rem; touch-action: none; border-radius: 6px; }
+.plan .replier { flex: none; width: 24px; height: 32px; border: 0; background: none; color: var(--doux); cursor: pointer; padding: 0; }
+.plan .titre { cursor: pointer; }
+.plan .part-plan { flex: none; color: var(--doux); font-size: .8rem; min-width: 2.8rem; text-align: right; }
+.plan meter { flex: none; width: 3.5rem; height: 8px; }
+@media (min-width: 900px) {
+  .vue-cercles main { max-width: 72rem; }
+  #cercles { display: grid; grid-template-columns: minmax(0, 3fr) minmax(18rem, 2fr); column-gap: 24px; align-items: start; }
+  #cercles > .reglages, #cercles > .dessin-cercles, #cercles > p.etat { grid-column: 1; }
+  #cercles > .cote { grid-column: 2; grid-row: 1 / span 3; }
+}
+
+/* Les repères : avec des filtres, ce qui n'y répond pas s'efface ; un retard porte un liseré rouge. */
+.part.eteinte { opacity: .25; }
+.part.en-retard .contour { stroke: var(--erreur); stroke-width: 1.6; }
+.enregistrer-image { font: inherit; font-size: .85rem; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--bord);
+                     background: var(--carte); color: var(--texte); cursor: pointer; }

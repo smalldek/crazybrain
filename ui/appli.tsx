@@ -8,7 +8,7 @@ import { adresseElement, adresseVue, elementDeLAdresse, naviguer, parametresIci,
 import { api, type Changements, type Element, type Tag } from './api';
 import { BarreFiltres } from './barre-filtres';
 import { aujourdhui } from './dates';
-import { backlog, filtrer, lireFiltres } from './filtres';
+import { backlog, filtrer, lireFiltres, nombreDeFiltres } from './filtres';
 import { PanneauDetail } from './panneau-detail';
 import { LigneTache } from './ligne-tache';
 import { ecrireCritere, lireCritere, rangsAPoser, type Critere, type StatutColonne } from './kanban';
@@ -150,6 +150,28 @@ export function Appli() {
     await charger();
   }
 
+  // Glisser une ligne du plan des cercles : son parent s'il change, puis les rangs de sa nouvelle
+  // fratrie (seulement ceux qui changent).
+  async function ranger(id: string, parent: string | null, ordre: readonly string[]): Promise<void> {
+    const liste = elements ?? [];
+    const element = liste.find((e) => e.id === id);
+    const parId = new Map<string, Changements>();
+    if (element && element.parent !== parent) parId.set(id, { parent });
+    for (const { id: autre, rang } of rangsAPoser(ordre, liste)) parId.set(autre, { ...parId.get(autre), rang });
+    const envois = [...parId];
+    setElements((l) => l && l.map((e) => {
+      const changement = envois.find(([i]) => i === e.id);
+      return changement ? appliquer(e, changement[1]) : e;
+    }));
+    try {
+      for (const [i, changements] of envois) await api.modifier(i, changements);
+      setMessage({ texte: '' });
+    } catch (e) {
+      erreur(e);
+    }
+    await charger();
+  }
+
   // Supprimer ne demande pas de confirmation : la tâche est archivée, et « Annuler » la restaure
   // tout de suite (plus rapide qu'une question à chaque fois, et rien n'est perdu).
   async function supprimer(element: Element): Promise<void> {
@@ -199,13 +221,15 @@ export function Appli() {
           {message.annuler && <button type="button" onClick={message.annuler}>Annuler</button>}
         </p>
         {/* Les filtres valent pour les vues d'éléments ; la vue des projets montre tout. */}
-        {elements && elements.length > 0 && vue !== 'projets' && vue !== 'cercles' && (
+        {elements && elements.length > 0 && vue !== 'projets' && (
           <BarreFiltres filtres={filtres} elements={elements} tags={tags} changer={changerFiltres} />
         )}
         {rienAMontrer && <p className="etat" id="aucun-resultat">Rien ne correspond{vue === 'backlog' ? ' dans le backlog' : ''}.</p>}
         {vue === 'cercles' ? (
           elements && <VueCercles elements={elements} centre={parametres.get('centre')} anneaux={lireAnneaux(parametres.get('anneaux'))}
-            ouvert={ouvert} ouvrir={ouvrir} modifier={modifier} creer={creerElement} supprimer={supprimer} />
+            ouvert={ouvert} ouvrir={ouvrir} modifier={modifier} creer={creerElement} supprimer={supprimer}
+            ranger={ranger} signaler={(texte) => setMessage({ texte, erreur: true })} jour={aujourdhui()}
+            eclaires={visibles && (nombreDeFiltres(filtres) > 0 || filtres.texte) ? new Set(visibles.map((e) => e.id)) : null} />
         ) : vue === 'projets' ? (
           elements && <VueProjets elements={elements} tags={tags} ouvert={ouvert} ouvrir={ouvrir} creerProjet={creerProjet} />
         ) : vue !== 'kanban' ? (

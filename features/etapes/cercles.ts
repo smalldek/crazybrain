@@ -151,3 +151,99 @@ When("j'ouvre le détail depuis la fiche", async function (this: Monde) {
   await fiche(this).getByRole('button', { name: 'Détail' }).click();
   await expect(page(this).getByRole('complementary', { name: "Détail de l'élément" })).toBeVisible();
 });
+
+// --- Le plan (3b.4) ---
+
+const plan = (monde: Monde): Locator => cercles(monde).getByRole('region', { name: 'Plan' });
+const lignePlan = (monde: Monde, titre: string): Locator => plan(monde).locator(`li[data-titre="${titre}"]`);
+
+Then('le plan montre {string}', async function (this: Monde, attendu: string) {
+  await expect.poll(async () => (await plan(this).locator('li').evaluateAll((lis) =>
+    lis.map((li) => li.getAttribute('data-titre')))).join(', ')).toBe(attendu);
+});
+
+When(/^je (?:replie|déplie) "([^"]*)" dans le plan$/, async function (this: Monde, titre: string) {
+  await lignePlan(this, titre).locator('button.replier').click();
+});
+
+/** Glisse la poignée d'une ligne vers une autre ligne : en son haut (au-dessus) ou en son milieu (dedans). */
+async function glisserLigne(monde: Monde, titre: string, cible: string, hauteur: number): Promise<void> {
+  const poignee = lignePlan(monde, titre).locator('button.poignee');
+  await poignee.scrollIntoViewIfNeeded();
+  const de = await poignee.boundingBox();
+  const vers = await lignePlan(monde, cible).boundingBox();
+  if (!de || !vers) throw new Error('Ligne invisible.');
+  const souris = page(monde).mouse;
+  const x = de.x + de.width / 2;
+  const y = de.y + de.height / 2;
+  await souris.move(x, y);
+  await souris.down();
+  await souris.move(x, y + 10, { steps: 3 });
+  await souris.move(x, vers.y + vers.height * hauteur, { steps: 15 });
+  await souris.move(x, vers.y + vers.height * hauteur + 1, { steps: 2 });
+  await souris.up();
+  await page(monde).waitForLoadState('networkidle');
+}
+
+When('je glisse dans le plan {string} au-dessus de {string}', async function (this: Monde, titre: string, cible: string) {
+  await glisserLigne(this, titre, cible, 0.12);
+});
+
+When('je glisse dans le plan {string} dans {string}', async function (this: Monde, titre: string, cible: string) {
+  await glisserLigne(this, titre, cible, 0.5);
+});
+
+Then('la page dit {string}', async function (this: Monde, texte: string) {
+  await expect(page(this).locator('#message')).toHaveText(texte);
+});
+
+// --- Les repères (3b.5) ---
+
+Given('{string} contient la tâche {string} à rendre le {string}', async function (this: Monde, parent: string, titre: string, jour: string) {
+  await creerNomme(this, { titre, parent: id(this, parent), echeance: jour });
+});
+
+Given('{string} porte le tag {string}', async function (this: Monde, titre: string, tag: string) {
+  const reponse = await page(this).request.post(`${this.worker.adresse}/api/elements/${id(this, titre)}/tags`, { data: { tag } });
+  expect(reponse.status()).toBe(201);
+});
+
+When("j'ouvre les cercles centrés sur {string} avec {string}", async function (this: Monde, titre: string, filtre: string) {
+  await page(this).goto(`${this.worker.adresse}/cercles?centre=${encodeURIComponent(id(this, titre))}&${filtre}`);
+  await expect(cercles(this).locator('svg')).toBeVisible();
+});
+
+Then('la part {string} est éclairée', async function (this: Monde, titre: string) {
+  await expect(part(this, titre)).not.toHaveClass(/eteinte/);
+});
+
+Then('la part {string} est grisée', async function (this: Monde, titre: string) {
+  await expect(part(this, titre)).toHaveClass(/eteinte/);
+});
+
+Then('la part {string} est marquée en retard', async function (this: Monde, titre: string) {
+  await expect(part(this, titre)).toHaveClass(/en-retard/);
+});
+
+Then("la part {string} n'est pas marquée en retard", async function (this: Monde, titre: string) {
+  await expect(part(this, titre)).not.toHaveClass(/en-retard/);
+});
+
+const fichiers = new WeakMap<Monde, string>();
+
+When("j'enregistre l'image des cercles", async function (this: Monde) {
+  const [telechargement] = await Promise.all([
+    page(this).waitForEvent('download'),
+    cercles(this).getByRole('button', { name: 'Enregistrer l’image' }).click(),
+  ]);
+  const chemin = await telechargement.path();
+  const { readFile } = await import('node:fs/promises');
+  fichiers.set(this, await readFile(chemin, 'utf8'));
+  expect(telechargement.suggestedFilename()).toMatch(/^cercles-.*\.svg$/);
+});
+
+Then('le fichier enregistré est un SVG qui contient {string}', function (this: Monde, texte: string) {
+  const contenu = fichiers.get(this) ?? '';
+  expect(contenu.startsWith('<svg')).toBe(true);
+  expect(contenu).toContain(texte);
+});
