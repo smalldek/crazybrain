@@ -21,7 +21,7 @@ La liste complète voulue par Adrien (03/11/2026), et pour chacune un statut :
 | Fonctionnalité | Statut | Étape | Motif, précision |
 |---|---|---|---|
 | Projets et sous-projets | première version | 1 (données), 3 (écrans) | Un projet est un élément ; un sous-projet a un projet pour parent. |
-| Initiatives, objectifs | première version | 1 (données), 7 (vues) | Ce sont des types d'éléments. Les vues dédiées (horizons, Goalscape) viennent à l'étape 7. |
+| Initiatives, objectifs | première version | 1 (données), 3b et 7 (vues) | Ce sont des types d'éléments. La vue en cercles vient à l'étape 3b, les horizons à l'étape 7. |
 | Types d'éléments (epic, feature, tâche…) | première version | 1 | Configurables, dans une table. |
 | Liens entre éléments | première version | 1 (données), 3 (écrans) | Liens typés, par exemple : bloque, en double de, lié à. |
 | Commentaires | première version | 1 (données), 3 (écrans) | |
@@ -44,7 +44,7 @@ La liste complète voulue par Adrien (03/11/2026), et pour chacune un statut :
 | Calendrier | première version | 6 | Les éléments placés par leur échéance ou leur jour planifié. |
 | Mode journée à la Sunsama | première version | 6 | Choisir ses tâches du jour, puis les caser dans le temps. |
 | Horizons à la Timestripe (jour, semaine, mois, année…) | première version | 7 | Remplacent le sprint. |
-| Découpage d'objectifs à la Goalscape | première version | 7 | Vue circulaire hiérarchique, chaque part pesée. |
+| Découpage d'objectifs en cercles (à la Goalscape) | première version | 3b | Vue circulaire hiérarchique : chaque part pesée dans son parent (les sœurs font 100 %), remplie selon son avancement, qui remonte jusqu'au centre ; zoom, plan en liste, réorganisation en glissant. Sans le partage ni les responsables. Avancée de l'étape 7 à la demande d'Adrien (08/11). |
 | Timeline | plus tard | — | Hors première version : elle exige des dates sur chaque tâche, et Adrien pense ne jamais s'en servir. |
 
 ## Saisie
