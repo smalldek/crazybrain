@@ -16,6 +16,8 @@ import { appliquer, ordonner } from './liste';
 import { tagsParElement } from './tags';
 import { VueKanban } from './vue-kanban';
 import { VueProjets } from './vue-projets';
+import { lireAnneaux } from './cercles';
+import { VueCercles } from './vue-cercles';
 
 /** Le message sous la saisie : un état, une erreur, ou « supprimée » avec un bouton Annuler. */
 interface Message {
@@ -24,7 +26,7 @@ interface Message {
   readonly annuler?: () => void;
 }
 
-const NOMS_VUES: Record<Vue, string> = { liste: 'Liste', kanban: 'Kanban', backlog: 'Backlog', projets: 'Projets' };
+const NOMS_VUES: Record<Vue, string> = { liste: 'Liste', kanban: 'Kanban', backlog: 'Backlog', projets: 'Projets', cercles: 'Cercles' };
 
 export function Appli() {
   const [elements, setElements] = useState<Element[] | null>(null);
@@ -56,7 +58,7 @@ export function Appli() {
     naviguer(window.location.pathname + (recherche ? `?${recherche}` : ''), { remplacer: seulLeTexte });
   };
   const visibles = elements && filtrer(elements, filtres, tagsParElement(tags), aujourdhui());
-  const rienAMontrer = vue !== 'projets' && elements !== null && elements.length > 0 && visibles !== null
+  const rienAMontrer = vue !== 'projets' && vue !== 'cercles' && elements !== null && elements.length > 0 && visibles !== null
     && (vue === 'backlog' ? backlog(visibles) : visibles).length === 0;
 
   const erreur = (e: unknown): void => setMessage({ texte: e instanceof Error ? e.message : String(e), erreur: true });
@@ -88,6 +90,16 @@ export function Appli() {
       erreur(e);
     } finally {
       setEnvoi(false);
+    }
+  }
+
+  async function creerElement(champs: Changements & { titre: string }): Promise<void> {
+    try {
+      await api.creer(champs);
+      setMessage({ texte: '' });
+      await charger();
+    } catch (e) {
+      erreur(e);
     }
   }
 
@@ -170,7 +182,7 @@ export function Appli() {
         <header className="entete-appli">
           <h1>Crazybrain</h1>
           <nav aria-label="Vues">
-            {(['liste', 'kanban', 'backlog', 'projets'] as const).map((v) => (
+            {(['liste', 'kanban', 'backlog', 'projets', 'cercles'] as const).map((v) => (
               <a key={v} href={adresseVue(v) + window.location.search} aria-current={v === vue ? 'page' : undefined}
                 onClick={(e) => { e.preventDefault(); naviguer(adresseVue(v) + parametresIci()); }}>{NOMS_VUES[v]}</a>
             ))}
@@ -187,11 +199,14 @@ export function Appli() {
           {message.annuler && <button type="button" onClick={message.annuler}>Annuler</button>}
         </p>
         {/* Les filtres valent pour les vues d'éléments ; la vue des projets montre tout. */}
-        {elements && elements.length > 0 && vue !== 'projets' && (
+        {elements && elements.length > 0 && vue !== 'projets' && vue !== 'cercles' && (
           <BarreFiltres filtres={filtres} elements={elements} tags={tags} changer={changerFiltres} />
         )}
         {rienAMontrer && <p className="etat" id="aucun-resultat">Rien ne correspond{vue === 'backlog' ? ' dans le backlog' : ''}.</p>}
-        {vue === 'projets' ? (
+        {vue === 'cercles' ? (
+          elements && <VueCercles elements={elements} centre={parametres.get('centre')} anneaux={lireAnneaux(parametres.get('anneaux'))}
+            ouvert={ouvert} ouvrir={ouvrir} modifier={modifier} creer={creerElement} supprimer={supprimer} />
+        ) : vue === 'projets' ? (
           elements && <VueProjets elements={elements} tags={tags} ouvert={ouvert} ouvrir={ouvrir} creerProjet={creerProjet} />
         ) : vue !== 'kanban' ? (
           // Le backlog est une liste : ce qui n'est ni fait ni planifié, le plus important en haut.

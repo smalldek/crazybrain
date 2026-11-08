@@ -1,0 +1,317 @@
+// La vue en cercles (/cercles) : un élément au centre (« Tout » sans `?centre=`), un anneau par
+// niveau de sous-éléments, chaque part à son poids dans son parent, remplie selon son avancement.
+// Toucher une part la choisit et montre sa fiche ; la retoucher la met au centre ; toucher le centre
+// remonte d'un niveau. La fiche règle l'importance et l'avancement au curseur, ajoute, renomme,
+// supprime. Les calculs sont dans cercles.ts (sans React).
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { poidsPourPart } from '../src/domaine/cercles';
+import { naviguer } from './adresse';
+import type { Changements, Element } from './api';
+import {
+  ANNEAUX_MAX, chemin, disposer, enfantsDe, enfantsParParent, etiquette, filAriane, point, pourcent, RAYON_CENTRE,
+  rayons, type Part,
+} from './cercles';
+
+interface Proprietes {
+  readonly elements: readonly Element[];
+  readonly centre: string | null;
+  readonly anneaux: number;
+  /** L'élément dont le détail est ouvert. */
+  readonly ouvert: string | null;
+  readonly ouvrir: (id: string) => void;
+  readonly modifier: (id: string, changements: Changements) => Promise<void>;
+  readonly creer: (champs: Changements & { titre: string }) => Promise<void>;
+  readonly supprimer: (element: Element) => Promise<void>;
+}
+
+/** L'adresse de la vue avec ce centre et ce nombre d'anneaux (les autres paramètres restent). */
+function adresseCercles(centre: string | null, anneaux?: number): string {
+  const p = new URLSearchParams(window.location.search);
+  if (centre) p.set('centre', centre); else p.delete('centre');
+  if (anneaux !== undefined) p.set('anneaux', String(anneaux));
+  const recherche = p.toString();
+  return `/cercles${recherche ? `?${recherche}` : ''}`;
+}
+
+const TAILLE_TEXTE = 4.2;
+
+export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier, creer, supprimer }: Proprietes) {
+  const [choisi, setChoisi] = useState<string | null>(null);
+  // Le curseur d'importance : le poids essayé, montré avant d'être enregistré.
+  const [apercu, setApercu] = useState<ReadonlyMap<string, number>>(new Map());
+  // Le curseur d'avancement : la valeur essayée.
+  const [avancementEssaye, setAvancementEssaye] = useState<{ id: string; valeur: number } | null>(null);
+
+  const apercuAvancement = avancementEssaye
+    ? elements.map((e) => (e.id === avancementEssaye.id ? { ...e, avancement: avancementEssaye.valeur } : e))
+    : elements;
+  const dessin = disposer(apercuAvancement, centre, anneaux, apercu);
+  const fil = filAriane(elements, centre);
+  const centreInconnu = centre !== null && dessin.centre === null;
+  const partChoisie = dessin.parts.find((p) => p.element.id === choisi) ?? null;
+
+  // Changer de centre oublie le choix et les essais.
+  useEffect(() => { setChoisi(null); setApercu(new Map()); setAvancementEssaye(null); }, [centre]);
+
+  const zoomer = (id: string): void => naviguer(adresseCercles(id));
+  const remonter = (): void => {
+    if (centre === null) return;
+    naviguer(adresseCercles(dessin.centre?.parent ?? null));
+  };
+  const toucher = (part: Part): void => {
+    if (choisi === part.element.id) zoomer(part.element.id);
+    else setChoisi(part.element.id);
+  };
+
+  // Échap remonte d'un niveau, quand le panneau de détail n'est pas ouvert (il prend Échap pour lui).
+  useEffect(() => {
+    if (ouvert) return undefined;
+    const touche = (e: globalThis.KeyboardEvent): void => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      if (choisi) setChoisi(null); else if (centre !== null) naviguer(adresseCercles(dessin.centre?.parent ?? null));
+    };
+    window.addEventListener('keydown', touche);
+    return () => window.removeEventListener('keydown', touche);
+  }, [ouvert, choisi, centre, dessin.centre?.parent]);
+
+  if (centreInconnu) {
+    return (
+      <div id="cercles">
+        <p className="etat">Cet élément n’existe plus. <a href="/cercles" onClick={(e) => { e.preventDefault(); naviguer(adresseCercles(null)); }}>Revenir à Tout</a></p>
+      </div>
+    );
+  }
+
+  const titreCentre = dessin.centre?.titre ?? 'Tout';
+  return (
+    <div id="cercles">
+      <div className="reglages">
+        <nav aria-label="Fil d'Ariane" className="fil">
+          <a href="/cercles" aria-current={centre === null ? 'page' : undefined}
+            onClick={(e) => { e.preventDefault(); naviguer(adresseCercles(null)); }}>Tout</a>
+          {fil.map((e) => (
+            <span key={e.id}>
+              <span aria-hidden="true"> › </span>
+              <a href={adresseCercles(e.id)} aria-current={e.id === centre ? 'page' : undefined}
+                onClick={(ev) => { ev.preventDefault(); naviguer(adresseCercles(e.id)); }}>{e.titre}</a>
+            </span>
+          ))}
+        </nav>
+        <label className="anneaux">
+          Anneaux
+          <select value={anneaux} onChange={(e) => naviguer(adresseCercles(centre, Number(e.target.value)), { remplacer: true })}>
+            {Array.from({ length: ANNEAUX_MAX }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </label>
+      </div>
+
+      <svg viewBox="-100 -100 200 200" className="dessin-cercles" role="group" aria-label={`Cercles de « ${titreCentre} »`}>
+        {dessin.parts.map((p) => (
+          <PartDessinee key={p.element.id} part={p} anneaux={anneaux} choisie={p.element.id === choisi}
+            toucher={() => toucher(p)} zoomer={() => zoomer(p.element.id)} />
+        ))}
+        <g className="centre" role="button" tabIndex={0}
+          aria-label={centre === null ? `Tout, avancement ${Math.round(dessin.avancementCentre)} %` : `Remonter depuis « ${titreCentre} »`}
+          onClick={remonter}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); remonter(); } }}>
+          <circle r={RAYON_CENTRE - 1} />
+          <text y={-3} className="titre-centre">{etiquette(titreCentre, 14, 2, 4.4) ?? titreCentre.slice(0, 8)}</text>
+          <text y={6} className="avancement-centre">{Math.round(dessin.avancementCentre)} %</text>
+        </g>
+      </svg>
+
+      {dessin.parts.length === 0 && (
+        <p className="etat">
+          {centre === null
+            ? 'Rien à montrer : créer un objectif ou un projet, ou ranger des éléments les uns dans les autres.'
+            : 'Aucun sous-élément ici pour l’instant.'}
+        </p>
+      )}
+
+      {partChoisie ? (
+        <FichePart key={partChoisie.element.id} part={partChoisie} elements={elements} ouvert={ouvert === partChoisie.element.id}
+          zoomer={() => zoomer(partChoisie.element.id)} ouvrir={() => ouvrir(partChoisie.element.id)}
+          essayerPoids={(poids) => setApercu(poids === null ? new Map() : new Map([[partChoisie.element.id, poids]]))}
+          essayerAvancement={(valeur) => setAvancementEssaye(valeur === null ? null : { id: partChoisie.element.id, valeur })}
+          modifier={async (c) => { await modifier(partChoisie.element.id, c); setApercu(new Map()); setAvancementEssaye(null); }}
+          creer={creer} supprimer={async () => { setChoisi(null); await supprimer(partChoisie.element); }} />
+      ) : (
+        <AjoutAuCentre centre={dessin.centre} elements={elements} creer={creer} />
+      )}
+    </div>
+  );
+}
+
+/** Une part : sa couleur claire, sa portion faite en foncé (du bord intérieur vers l'extérieur), son titre s'il tient. */
+function PartDessinee({ part, anneaux, choisie, toucher, zoomer }:
+  { part: Part; anneaux: number; choisie: boolean; toucher: () => void; zoomer: () => void }) {
+  const { interieur, exterieur } = rayons(part.anneau, anneaux);
+  const fait = interieur + ((exterieur - interieur) * part.avancement) / 100;
+  const milieu = (interieur + exterieur) / 2;
+  const angle = part.fin - part.debut;
+  const texte = etiquette(part.element.titre, milieu, angle, TAILLE_TEXTE);
+  const a = (part.debut + part.fin) / 2;
+  const { x, y } = point(milieu, a);
+  // Le texte suit l'arc ; en bas du cercle, on le retourne pour qu'il se lise à l'endroit.
+  let rotation = (a * 180) / Math.PI;
+  if (rotation > 90 && rotation < 270) rotation -= 180;
+  const description = `${part.element.titre}, ${pourcent(part.part)} de son parent, avancement ${Math.round(part.avancement)} %`;
+  return (
+    <g className={[`part branche-${part.couleur}`, choisie && 'choisie', part.element.statut === 'fait' && 'faite'].filter(Boolean).join(' ')}
+      role="button" tabIndex={0} aria-label={description} aria-pressed={choisie} data-titre={part.element.titre}
+      data-x={Math.round(x * 100) / 100} data-y={Math.round(y * 100) / 100}
+      data-angle={Math.round((angle * 180) / Math.PI)} data-avancement={Math.round(part.avancement)}
+      onClick={toucher}
+      onKeyDown={(e: KeyboardEvent) => {
+        if (e.key === 'Enter') { e.preventDefault(); zoomer(); } else if (e.key === ' ') { e.preventDefault(); toucher(); }
+      }}>
+      <title>{description}</title>
+      <path className="fond" d={chemin(interieur, exterieur, part.debut, part.fin)} />
+      {part.avancement > 0 && <path className="rempli" d={chemin(interieur, fait, part.debut, part.fin)} />}
+      <path className="contour" d={chemin(interieur, exterieur, part.debut, part.fin)} />
+      {texte && (
+        <text x={x} y={y} transform={`rotate(${rotation} ${x} ${y})`} fontSize={Math.min(TAILLE_TEXTE, (exterieur - interieur) * 0.4)}>{texte}</text>
+      )}
+    </g>
+  );
+}
+
+interface ProprietesFiche {
+  readonly part: Part;
+  readonly elements: readonly Element[];
+  readonly ouvert: boolean;
+  readonly zoomer: () => void;
+  readonly ouvrir: () => void;
+  readonly essayerPoids: (poids: number | null) => void;
+  readonly essayerAvancement: (valeur: number | null) => void;
+  readonly modifier: (changements: Changements) => Promise<void>;
+  readonly creer: (champs: Changements & { titre: string }) => Promise<void>;
+  readonly supprimer: () => Promise<void>;
+}
+
+/** La fiche de la part choisie : ce qu'elle pèse, où elle en est, et de quoi la changer. */
+function FichePart({ part, elements, zoomer, ouvrir, essayerPoids, essayerAvancement, modifier, creer, supprimer }: ProprietesFiche) {
+  const e = part.element;
+  const enfants = enfantsParParent(elements);
+  const soeurs = enfantsDe(e.parent, elements, enfants).filter((s) => s.id !== e.id);
+  const [importance, setImportance] = useState(Math.round(part.part * 100));
+  const [avancement, setAvancement] = useState(e.avancement ?? 0);
+  const [titre, setTitre] = useState(e.titre);
+  const curseurImportance = useRef<HTMLInputElement>(null);
+  const curseurAvancement = useRef<HTMLInputElement>(null);
+
+  // Le curseur se suit sous le doigt (événement « input ») ; on n'enregistre qu'au lâcher (« change »).
+  // React appelle « onChange » l'événement « input » : le vrai « change » s'écoute à la main.
+  useEffect(() => {
+    const champ = curseurImportance.current;
+    if (!champ) return undefined;
+    const lacher = (): void => {
+      const p = Number(champ.value) / 100;
+      void modifier({ poids: poidsPourPart(p, soeurs.map((s) => s.poids)) });
+    };
+    champ.addEventListener('change', lacher);
+    return () => champ.removeEventListener('change', lacher);
+  });
+  useEffect(() => {
+    const champ = curseurAvancement.current;
+    if (!champ) return undefined;
+    const lacher = (): void => { void modifier({ avancement: Number(champ.value) }); };
+    champ.addEventListener('change', lacher);
+    return () => champ.removeEventListener('change', lacher);
+  });
+
+  async function renommer(): Promise<void> {
+    if (titre.trim() === '' || titre.trim() === e.titre) return;
+    await modifier({ titre: titre.trim() });
+  }
+
+  return (
+    <section className="fiche-part" aria-label={`Fiche de « ${e.titre} »`}>
+      <form onSubmit={(ev) => { ev.preventDefault(); void renommer(); }} className="titre-fiche">
+        <input aria-label="Titre de la part" value={titre} maxLength={200} onChange={(ev) => setTitre(ev.target.value)}
+          onBlur={() => void renommer()} />
+      </form>
+      <p className="doux">
+        {e.type} · <span className="part-du-parent">{pourcent(part.part)}</span> de son parent ·
+        avancement <span className="avancement-part">{Math.round(part.avancement)} %</span>{part.calcule ? ' (calculé)' : ''}
+        {e.echeance && <> · échéance {e.echeance}</>}
+      </p>
+
+      {soeurs.length > 0 ? (
+        <label className="curseur">
+          <span>Importance : <output>{importance} %</output></span>
+          <input ref={curseurImportance} type="range" min={1} max={99} step={1} value={importance} aria-label="Importance"
+            onChange={(ev) => {
+              const v = Number(ev.target.value);
+              setImportance(v);
+              essayerPoids(poidsPourPart(v / 100, soeurs.map((s) => s.poids)));
+            }} />
+        </label>
+      ) : <p className="doux">Seule dans son parent : elle en fait 100 %.</p>}
+
+      {part.calcule ? (
+        <p className="doux">L’avancement se calcule à partir de ses sous-éléments.</p>
+      ) : (
+        <div className="rangee-avancement">
+          <label className="curseur">
+            <span>Avancement : <output>{e.statut === 'fait' ? 100 : avancement} %</output></span>
+            <input ref={curseurAvancement} type="range" min={0} max={100} step={5} value={e.statut === 'fait' ? 100 : avancement}
+              aria-label="Avancement" disabled={e.statut === 'fait'}
+              onChange={(ev) => { const v = Number(ev.target.value); setAvancement(v); essayerAvancement(v); }} />
+          </label>
+          <label className="case-fait">
+            <input type="checkbox" checked={e.statut === 'fait'} onChange={(ev) => void modifier({ statut: ev.target.checked ? 'fait' : 'a_faire' })} />
+            Fait
+          </label>
+        </div>
+      )}
+
+      <div className="actions-fiche">
+        <button type="button" onClick={zoomer}>Zoomer</button>
+        <button type="button" onClick={ouvrir}>Détail</button>
+        <button type="button" className="danger" onClick={() => void supprimer()}>Supprimer</button>
+      </div>
+      <Ajout parent={e} soeursDuNouveau={enfants.get(e.id) ?? []} libelle="Sous-élément" creer={creer} />
+      <Ajout parent={e.parent === null ? null : elements.find((x) => x.id === e.parent) ?? null}
+        soeursDuNouveau={[e, ...soeurs]} libelle="À côté" creer={creer} />
+    </section>
+  );
+}
+
+/** Sans part choisie : ajouter un élément au centre. */
+function AjoutAuCentre({ centre, elements, creer }: { centre: Element | null; elements: readonly Element[];
+  creer: (champs: Changements & { titre: string }) => Promise<void> }) {
+  return (
+    <section className="fiche-part" aria-label="Ajouter au centre">
+      <p className="doux">Toucher une part pour la choisir ; la retoucher pour zoomer ; le centre pour remonter.</p>
+      <Ajout parent={centre} soeursDuNouveau={enfantsDe(centre?.id ?? null, elements)} libelle={centre ? `Dans « ${centre.titre} »` : 'Dans Tout'} creer={creer} />
+    </section>
+  );
+}
+
+/**
+ * Un champ pour ajouter un élément dans `parent` (null : à la racine). Son type : celui d'une sœur,
+ * sinon « objectif » à la racine et « tâche » ailleurs. Il prend le rang après la dernière sœur.
+ */
+function Ajout({ parent, soeursDuNouveau, libelle, creer }: { parent: Element | null; soeursDuNouveau: readonly Element[];
+  libelle: string; creer: (champs: Changements & { titre: string }) => Promise<void> }) {
+  const [titre, setTitre] = useState('');
+  async function ajouter(ev: FormEvent): Promise<void> {
+    ev.preventDefault();
+    if (titre.trim() === '') return;
+    const type = soeursDuNouveau[0]?.type ?? (parent === null ? 'objectif' : 'tache');
+    const rangs = soeursDuNouveau.map((s) => s.rang).filter((r): r is number => r !== null);
+    await creer({
+      titre: titre.trim(), type, parent: parent?.id ?? null,
+      ...(rangs.length === soeursDuNouveau.length && rangs.length > 0 ? { rang: Math.max(...rangs) + 1000 } : {}),
+    });
+    setTitre('');
+  }
+  return (
+    <form className="ajout" onSubmit={(ev) => void ajouter(ev)} autoComplete="off">
+      <input aria-label={`Ajouter : ${libelle}`} placeholder={`+ ${libelle}…`} maxLength={200} enterKeyHint="done"
+        value={titre} onChange={(ev) => setTitre(ev.target.value)} />
+      <button type="submit" disabled={titre.trim() === ''}>Ajouter</button>
+    </form>
+  );
+}
