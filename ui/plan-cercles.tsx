@@ -19,6 +19,8 @@ interface Proprietes {
   /** Range l'élément dans `parent` (null : « Tout »), et donne à sa fratrie cet ordre. */
   readonly ranger: (id: string, parent: string | null, ordre: readonly string[]) => Promise<void>;
   readonly signaler: (message: string) => void;
+  /** Avec des filtres : les éléments qui y répondent ; les autres lignes sont grisées. */
+  readonly eclaires: ReadonlySet<string> | null;
 }
 
 // Au doigt et à la souris, la ligne sous le pointeur ; au clavier (pas de pointeur), celle que la poignée recouvre.
@@ -27,7 +29,7 @@ const collision: CollisionDetection = (args) => {
   return sous.length > 0 ? sous : rectIntersection(args);
 };
 
-export function PlanCercles({ elements, centre, choisi, choisir, ranger, signaler }: Proprietes) {
+export function PlanCercles({ elements, centre, choisi, choisir, ranger, signaler, eclaires }: Proprietes) {
   const [replies, setReplies] = useState<ReadonlySet<string>>(new Set());
   const lignes = lignesDuPlan(elements, centre, replies);
   const capteurs = useSensors(
@@ -64,7 +66,7 @@ export function PlanCercles({ elements, centre, choisi, choisir, ranger, signale
       <DndContext sensors={capteurs} collisionDetection={collision} onDragEnd={poser}>
         <ul>
           {lignes.map((l) => (
-            <Ligne key={l.element.id} ligne={l} choisie={l.element.id === choisi} choisir={() => choisir(l.element.id)}
+            <Ligne key={l.element.id} ligne={l} choisie={l.element.id === choisi} eteinte={eclaires !== null && !eclaires.has(l.element.id)} choisir={() => choisir(l.element.id)}
               basculer={() => basculer(l.element.id)} />
           ))}
         </ul>
@@ -73,14 +75,15 @@ export function PlanCercles({ elements, centre, choisi, choisir, ranger, signale
   );
 }
 
-function Ligne({ ligne, choisie, choisir, basculer }: { ligne: LignePlan; choisie: boolean; choisir: () => void; basculer: () => void }) {
+function Ligne({ ligne, choisie, eteinte, choisir, basculer }:
+  { ligne: LignePlan; choisie: boolean; eteinte: boolean; choisir: () => void; basculer: () => void }) {
   const { element: e, niveau, part, avancement, aDesEnfants, replie } = ligne;
   const glisse = useDraggable({ id: e.id });
   const cible = useDroppable({ id: e.id });
   const survolee = cible.isOver && !glisse.isDragging;
   return (
     <li ref={cible.setNodeRef} data-id={e.id} data-titre={e.titre} data-niveau={niveau}
-      className={['ligne-plan', choisie && 'choisie', survolee && 'survolee', glisse.isDragging && 'glissee', e.statut === 'fait' && 'fait']
+      className={['ligne-plan', choisie && 'choisie', survolee && 'survolee', glisse.isDragging && 'glissee', e.statut === 'fait' && 'fait', eteinte && 'eteinte']
         .filter(Boolean).join(' ')}
       style={{ paddingLeft: `${0.4 + (niveau - 1) * 1.6}rem` }}>
       <button type="button" className="poignee" ref={glisse.setNodeRef} {...glisse.listeners} {...glisse.attributes}

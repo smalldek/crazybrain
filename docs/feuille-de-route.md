@@ -342,6 +342,7 @@ responsables (une personne par part), qui n'ont de sens qu'à plusieurs.
 | 3b.4 | Le plan : la même arborescence en liste, à replier, à réordonner et réorganiser en glissant | **Fait le 08/11** |
 | 3b.5 | Les repères : les filtres éclairent les parts qui correspondent, les retards se voient, l'image s'enregistre | **Fait le 08/11** |
 | 3b.6 | L'essai d'Adrien sur son téléphone | Le test, gestes donnés à la fin |
+| 3b.7 | Ce que le site de Goalscape montre en plus : égaliser, importance absolue, couleur choisie, indicateur de notes, coller une liste indentée, export CSV, plan grisé par les filtres, estomper pendant un réglage | **Fait le 08/11** |
 
 ### 3b.1 Poids et avancement
 
@@ -421,6 +422,43 @@ responsables (une personne par part), qui n'ont de sens qu'à plusieurs.
 - **Vérifié par** : scénarios dans le navigateur : le filtre `tag=composant:pxe` éclaire une part et
   en grise deux ; une échéance passée se voit ; le fichier enregistré est un SVG qui contient les
   titres.
+
+### 3b.7 Les compléments, d'après le site de Goalscape
+
+Le 08/11, les pages publiques de Goalscape (présentation, tutoriels, articles de blog qui les
+transcrivent) ont été lues depuis le PC d'Adrien, le cloud ne pouvant pas les ouvrir. Comparées à
+3b.1 à 3b.5, il manquait :
+
+- **Égaliser** : un bouton de la fiche remet tous les sous-éléments de la part à poids égal (leurs
+  poids sont vidés).
+- **Importance absolue** : la fiche dit aussi ce que pèse la part dans le centre (le produit des
+  parts, du centre jusqu'à elle), et non plus seulement dans son parent.
+- **Couleur choisie** : un choix « Couleur » dans la fiche (automatique, ou l'une des huit teintes),
+  rangé comme un tag `couleur:<teinte>` ; les sous-éléments en héritent sauf s'ils ont la leur.
+- **Indicateur de notes** : une part qui a une description porte un petit point.
+- **Coller une liste** : dans la fiche, un champ où l'on colle une liste indentée (espaces,
+  tabulations, puces `-` ou `*`, numéros `1.`) ; chaque ligne devient un sous-élément, la profondeur
+  suit l'indentation. Une ligne `**Titre** suite` donne le titre en gras et la suite en description.
+- **Export CSV** : le tableau de la branche au centre (tous niveaux) : niveau, titre, type, statut,
+  part dans le parent, part du centre, avancement, échéance, tags. Il s'ouvre dans un tableur.
+- **Le plan suit les filtres** : ses lignes qui n'y répondent pas sont grisées, comme les parts.
+- **Estomper pendant un réglage** : pendant qu'on glisse le curseur d'importance, tout s'estompe sauf
+  la part et ses sœurs ; pendant l'avancement, sauf ses sœurs et ses ancêtres.
+
+**Écarté ou remis, avec le motif** :
+
+- *Pièces jointes* : il faut un stockage de fichiers (R2), donc une décision et peut-être du projet
+  Cloudflare ; à proposer à Adrien comme tâche à part.
+- *Gantt, date de début, dépendances* : la timeline est « plus tard » depuis le 03/11 (Adrien pense
+  ne jamais s'en servir) ; le lien « bloque » existe déjà.
+- *Rapport Word, modèles, onglets de notes, thèmes de couleur par code* : de la présentation, pas de
+  la gestion ; la description Markdown et l'export CSV couvrent le besoin pour l'instant.
+- *Étiquettes Now et Next* : ce sont des tags (`now`, `next`), déjà filtrables.
+- *Coach IA, connecteur MCP* : Claude le fait déjà, par le connecteur de l'étape 2.
+- *Partage, commentaires prévenus par mail, intégration, Teams* : le partage, exclu par Adrien.
+
+**Vérifié par** : tests unitaires (lire une liste collée, le CSV, l'importance absolue, la couleur
+héritée) et scénarios dans le navigateur (égaliser, couleur, coller une liste, exporter, plan grisé).
 
 ### 3b.6 L'essai d'Adrien
 

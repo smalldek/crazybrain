@@ -6,10 +6,13 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { poidsPourPart } from '../src/domaine/cercles';
 import { naviguer } from './adresse';
-import type { Changements, Element } from './api';
+import { api, type Changements, type Element, type Tag } from './api';
+import { csvDeBranche } from './export-csv';
+import { lireListe } from './liste-collee';
+import { tagsParElement } from './tags';
 import { PlanCercles } from './plan-cercles';
 import {
-  ANNEAUX_MAX, chemin, disposer, enfantsDe, enfantsParParent, etiquette, filAriane, point, pourcent, RAYON_CENTRE,
+  ANNEAUX_MAX, chemin, couleursChoisies, disposer, TEINTES, enfantsDe, enfantsParParent, etiquette, filAriane, point, pourcent, RAYON_CENTRE,
   rayons, type Part,
 } from './cercles';
 
@@ -30,6 +33,10 @@ interface Proprietes {
   readonly eclaires: ReadonlySet<string> | null;
   /** Le jour AAAA-MM-JJ, pour marquer ce qui est en retard. */
   readonly jour: string;
+  /** Tous les tags posés : les couleurs choisies (`couleur:<teinte>`), l'export. */
+  readonly tags: readonly Tag[];
+  /** Relit les éléments et les tags, après des changements faits ici directement par l'API. */
+  readonly recharger: () => Promise<void>;
 }
 
 /** L'adresse de la vue avec ce centre et ce nombre d'anneaux (les autres paramètres restent). */
@@ -43,7 +50,7 @@ function adresseCercles(centre: string | null, anneaux?: number): string {
 
 const TAILLE_TEXTE = 4.2;
 
-export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier, creer, supprimer, ranger, signaler, eclaires, jour }: Proprietes) {
+export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier, creer, supprimer, ranger, signaler, eclaires, jour, tags, recharger }: Proprietes) {
   const [choisi, setChoisi] = useState<string | null>(null);
   const dessinRef = useRef<SVGSVGElement>(null);
   // Le curseur d'importance : le poids essayé, montré avant d'être enregistré.
@@ -54,10 +61,59 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
   const apercuAvancement = avancementEssaye
     ? elements.map((e) => (e.id === avancementEssaye.id ? { ...e, avancement: avancementEssaye.valeur } : e))
     : elements;
-  const dessin = disposer(apercuAvancement, centre, anneaux, apercu);
+  const parElement = tagsParElement(tags);
+  const dessin = disposer(apercuAvancement, centre, anneaux, apercu, couleursChoisies(parElement));
   const fil = filAriane(elements, centre);
   const centreInconnu = centre !== null && dessin.centre === null;
   const partChoisie = dessin.parts.find((p) => p.element.id === choisi) ?? null;
+  // Pendant un réglage au curseur, tout s'estompe sauf ce qu'il touche : la part et ses sœurs pour
+  // l'importance ; ses sœurs et ses ancêtres pour l'avancement (il remonte jusqu'au centre).
+  let gardees: ReadonlySet<string> | null = null;
+  if (partChoisie && (apercu.size > 0 || avancementEssaye)) {
+    const parent = partChoisie.element.parent;
+    const ids = new Set(elements.filter((e) => e.parent === parent).map((e) => e.id));
+    if (avancementEssaye) for (const a of filAriane(elements, parent)) ids.add(a.id);
+    gardees = ids;
+  }
+
+  /** Plusieurs changements d'un coup (égaliser), puis une seule relecture. */
+  async function modifierPlusieurs(envois: readonly [string, Changements][]): Promise<void> {
+    try {
+      for (const [id, c] of envois) await api.modifier(id, c);
+    } catch (e) {
+      signaler(e instanceof Error ? e.message : String(e));
+    }
+    await recharger();
+  }
+
+  /** Crée les lignes d'une liste collée sous `parent` (null : à la racine), dans l'ordre, chacune sous la sienne. */
+  async function creerListe(parent: string | null, texte: string, typeDefaut: string): Promise<number> {
+    const lignes = lireListe(texte);
+    const ids: string[] = [];
+    try {
+      for (const l of lignes) {
+        const sonParent = l.parent === null ? parent : ids[l.parent] ?? parent;
+        const cree = await api.creer({ titre: l.titre, type: l.parent === null ? typeDefaut : 'tache', parent: sonParent,
+          ...(l.description ? { description: l.description } : {}) });
+        ids.push(cree.id);
+      }
+    } catch (e) {
+      signaler(e instanceof Error ? e.message : String(e));
+    }
+    await recharger();
+    return ids.length;
+  }
+
+  /** Change la couleur choisie d'un élément (un tag `couleur:<teinte>`), ou la retire (null). */
+  async function colorer(id: string, teinte: string | null): Promise<void> {
+    try {
+      for (const t of parElement.get(id) ?? []) if (t.startsWith('couleur:')) await api.detagger(id, t);
+      if (teinte) await api.tagger(id, `couleur:${teinte}`);
+    } catch (e) {
+      signaler(e instanceof Error ? e.message : String(e));
+    }
+    await recharger();
+  }
 
   // Changer de centre oublie le choix et les essais.
   useEffect(() => { setChoisi(null); setApercu(new Map()); setAvancementEssaye(null); }, [centre]);
@@ -109,6 +165,9 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
         <button type="button" className="enregistrer-image" onClick={() => enregistrerImage(dessinRef.current, titreCentre)}>
           Enregistrer l’image
         </button>
+        <button type="button" className="enregistrer-image" onClick={() => exporterCsv(csvDeBranche(elements, centre, parElement), titreCentre)}>
+          Exporter en CSV
+        </button>
         <label className="anneaux">
           Anneaux
           <select value={anneaux} onChange={(e) => naviguer(adresseCercles(centre, Number(e.target.value)), { remplacer: true })}>
@@ -120,7 +179,7 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
       <svg ref={dessinRef} viewBox="-100 -100 200 200" className="dessin-cercles" role="group" aria-label={`Cercles de « ${titreCentre} »`}>
         {dessin.parts.map((p) => (
           <PartDessinee key={p.element.id} part={p} anneaux={anneaux} choisie={p.element.id === choisi}
-            eteinte={eclaires !== null && !eclaires.has(p.element.id)}
+            eteinte={(eclaires !== null && !eclaires.has(p.element.id)) || (gardees !== null && !gardees.has(p.element.id))}
             enRetard={p.element.echeance !== null && p.element.echeance < jour && p.element.statut !== 'fait'}
             toucher={() => toucher(p)} zoomer={() => zoomer(p.element.id)} />
         ))}
@@ -149,12 +208,21 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
           essayerPoids={(poids) => setApercu(poids === null ? new Map() : new Map([[partChoisie.element.id, poids]]))}
           essayerAvancement={(valeur) => setAvancementEssaye(valeur === null ? null : { id: partChoisie.element.id, valeur })}
           modifier={async (c) => { await modifier(partChoisie.element.id, c); setApercu(new Map()); setAvancementEssaye(null); }}
+          egaliser={() => modifierPlusieurs(elements.filter((x) => x.parent === partChoisie.element.id && x.poids !== null)
+            .map((x) => [x.id, { poids: null }] as [string, Changements]))}
+          creerListe={(texte) => creerListe(partChoisie.element.id, texte, 'tache')}
+          teinte={(parElement.get(partChoisie.element.id) ?? []).find((t) => t.startsWith('couleur:'))?.slice('couleur:'.length) ?? ''}
+          colorer={(t) => colorer(partChoisie.element.id, t)}
           creer={creer} supprimer={async () => { setChoisi(null); await supprimer(partChoisie.element); }} />
       ) : (
-        <AjoutAuCentre centre={dessin.centre} elements={elements} creer={creer} />
+        <AjoutAuCentre centre={dessin.centre} elements={elements} creer={creer}
+          creerListe={(texte) => creerListe(dessin.centre?.id ?? null, texte, dessin.centre ? 'tache' : 'objectif')}
+          egaliser={() => modifierPlusieurs(enfantsDe(centre, elements).filter((x) => x.poids !== null)
+            .map((x) => [x.id, { poids: null }] as [string, Changements]))} />
       )}
 
-      <PlanCercles elements={elements} centre={centre} choisi={choisi} choisir={setChoisi} ranger={ranger} signaler={signaler} />
+      <PlanCercles elements={elements} centre={centre} choisi={choisi} choisir={setChoisi} ranger={ranger} signaler={signaler}
+        eclaires={eclaires} />
       </div>
     </div>
   );
@@ -189,6 +257,10 @@ function PartDessinee({ part, anneaux, choisie, eteinte, enRetard, toucher, zoom
       <path className="fond" d={chemin(interieur, exterieur, part.debut, part.fin)} />
       {part.avancement > 0 && <path className="rempli" d={chemin(interieur, fait, part.debut, part.fin)} />}
       <path className="contour" d={chemin(interieur, exterieur, part.debut, part.fin)} />
+      {texte && part.element.description && (() => {
+        const q = point(exterieur - Math.min(2.4, (exterieur - interieur) * 0.15), a);
+        return <circle className="indicateur" cx={q.x} cy={q.y} r={1.1}><title>A une description</title></circle>;
+      })()}
       {texte && (
         <text x={x} y={y} transform={`rotate(${rotation} ${x} ${y})`} fontSize={Math.min(TAILLE_TEXTE, (exterieur - interieur) * 0.4)}>{texte}</text>
       )}
@@ -207,10 +279,15 @@ interface ProprietesFiche {
   readonly modifier: (changements: Changements) => Promise<void>;
   readonly creer: (champs: Changements & { titre: string }) => Promise<void>;
   readonly supprimer: () => Promise<void>;
+  readonly egaliser: () => Promise<void>;
+  readonly creerListe: (texte: string) => Promise<number>;
+  /** La teinte choisie, ou '' (automatique). */
+  readonly teinte: string;
+  readonly colorer: (teinte: string | null) => Promise<void>;
 }
 
 /** La fiche de la part choisie : ce qu'elle pèse, où elle en est, et de quoi la changer. */
-function FichePart({ part, elements, zoomer, ouvrir, essayerPoids, essayerAvancement, modifier, creer, supprimer }: ProprietesFiche) {
+function FichePart({ part, elements, zoomer, ouvrir, essayerPoids, essayerAvancement, modifier, creer, supprimer, egaliser, creerListe, teinte, colorer }: ProprietesFiche) {
   const e = part.element;
   const enfants = enfantsParParent(elements);
   const soeurs = enfantsDe(e.parent, elements, enfants).filter((s) => s.id !== e.id);
@@ -252,7 +329,8 @@ function FichePart({ part, elements, zoomer, ouvrir, essayerPoids, essayerAvance
           onBlur={() => void renommer()} />
       </form>
       <p className="doux">
-        {e.type} · <span className="part-du-parent">{pourcent(part.part)}</span> de son parent ·
+        {e.type} · <span className="part-du-parent">{pourcent(part.part)}</span> de son parent
+        (<span className="part-du-centre">{pourcent(part.absolue)}</span> du centre) ·
         avancement <span className="avancement-part">{Math.round(part.avancement)} %</span>{part.calcule ? ' (calculé)' : ''}
         {e.echeance && <> · échéance {e.echeance}</>}
       </p>
@@ -286,25 +364,42 @@ function FichePart({ part, elements, zoomer, ouvrir, essayerPoids, essayerAvance
         </div>
       )}
 
+      <label className="couleur">
+        Couleur
+        <select value={teinte} onChange={(ev) => void colorer(ev.target.value || null)}>
+          <option value="">Automatique</option>
+          {TEINTES.map((t) => <option key={t} value={t}>{t}</option>)}
+        </select>
+      </label>
       <div className="actions-fiche">
         <button type="button" onClick={zoomer}>Zoomer</button>
+        {(enfants.get(e.id) ?? []).length > 1 && <button type="button" onClick={() => void egaliser()}>Égaliser les sous-éléments</button>}
         <button type="button" onClick={ouvrir}>Détail</button>
         <button type="button" className="danger" onClick={() => void supprimer()}>Supprimer</button>
       </div>
       <Ajout parent={e} soeursDuNouveau={enfants.get(e.id) ?? []} libelle="Sous-élément" creer={creer} />
       <Ajout parent={e.parent === null ? null : elements.find((x) => x.id === e.parent) ?? null}
         soeursDuNouveau={[e, ...soeurs]} libelle="À côté" creer={creer} />
+      <CollerListe creerListe={creerListe} />
     </section>
   );
 }
 
 /** Sans part choisie : ajouter un élément au centre. */
-function AjoutAuCentre({ centre, elements, creer }: { centre: Element | null; elements: readonly Element[];
-  creer: (champs: Changements & { titre: string }) => Promise<void> }) {
+function AjoutAuCentre({ centre, elements, creer, creerListe, egaliser }: { centre: Element | null; elements: readonly Element[];
+  creer: (champs: Changements & { titre: string }) => Promise<void>; creerListe: (texte: string) => Promise<number>;
+  egaliser: () => Promise<void> }) {
+  const premiers = enfantsDe(centre?.id ?? null, elements);
   return (
     <section className="fiche-part" aria-label="Ajouter au centre">
       <p className="doux">Toucher une part pour la choisir ; la retoucher pour zoomer ; le centre pour remonter.</p>
-      <Ajout parent={centre} soeursDuNouveau={enfantsDe(centre?.id ?? null, elements)} libelle={centre ? `Dans « ${centre.titre} »` : 'Dans Tout'} creer={creer} />
+      {premiers.length > 1 && (
+        <div className="actions-fiche">
+          <button type="button" onClick={() => void egaliser()}>Égaliser les sous-éléments</button>
+        </div>
+      )}
+      <Ajout parent={centre} soeursDuNouveau={premiers} libelle={centre ? `Dans « ${centre.titre} »` : 'Dans Tout'} creer={creer} />
+      <CollerListe creerListe={creerListe} />
     </section>
   );
 }
@@ -362,6 +457,38 @@ function enregistrerImage(svg: SVGSVGElement | null, titre: string): void {
   const lien = document.createElement('a');
   lien.href = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(copie)], { type: 'image/svg+xml' }));
   lien.download = `cercles-${titre.normalize('NFD').replace(/[^\w-]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'tout'}.svg`;
+  document.body.append(lien);
+  lien.click();
+  lien.remove();
+  setTimeout(() => URL.revokeObjectURL(lien.href), 1000);
+}
+
+/**
+ * Coller une liste indentée (d'un éditeur, d'un tableur, de Claude) : chaque ligne devient un
+ * sous-élément, la profondeur suit le retrait. Replié par défaut, pour ne pas encombrer la fiche.
+ */
+function CollerListe({ creerListe }: { creerListe: (texte: string) => Promise<number> }) {
+  const [texte, setTexte] = useState('');
+  const [envoi, setEnvoi] = useState(false);
+  const n = lireListe(texte).length;
+  return (
+    <details className="coller-liste">
+      <summary>Coller une liste</summary>
+      <textarea aria-label="Liste à coller" rows={5} value={texte} onChange={(ev) => setTexte(ev.target.value)}
+        placeholder={'Une ligne par élément, en retrait pour un sous-élément :\nSanté\n  Courir\n  Dormir\nFamille'} />
+      <button type="button" disabled={n === 0 || envoi}
+        onClick={() => { setEnvoi(true); void creerListe(texte).then(() => { setTexte(''); setEnvoi(false); }); }}>
+        {n > 1 ? `Créer ${n} sous-éléments` : 'Créer le sous-élément'}
+      </button>
+    </details>
+  );
+}
+
+/** Enregistre le tableau CSV de la branche dans un fichier. */
+function exporterCsv(csv: string, titre: string): void {
+  const lien = document.createElement('a');
+  lien.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  lien.download = `cercles-${titre.normalize('NFD').replace(/[^\w-]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'tout'}.csv`;
   document.body.append(lien);
   lien.click();
   lien.remove();

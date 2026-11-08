@@ -229,6 +229,7 @@ export function Appli() {
           elements && <VueCercles elements={elements} centre={parametres.get('centre')} anneaux={lireAnneaux(parametres.get('anneaux'))}
             ouvert={ouvert} ouvrir={ouvrir} modifier={modifier} creer={creerElement} supprimer={supprimer}
             ranger={ranger} signaler={(texte) => setMessage({ texte, erreur: true })} jour={aujourdhui()}
+            tags={tags} recharger={charger}
             eclaires={visibles && (nombreDeFiltres(filtres) > 0 || filtres.texte) ? new Set(visibles.map((e) => e.id)) : null} />
         ) : vue === 'projets' ? (
           elements && <VueProjets elements={elements} tags={tags} ouvert={ouvert} ouvrir={ouvrir} creerProjet={creerProjet} />

@@ -132,3 +132,44 @@ Fonctionnalité: Les objectifs en cercles (étape 3b)
     Et la part "Repères : jardin" n'est pas marquée en retard
     Quand j'enregistre l'image des cercles
     Alors le fichier enregistré est un SVG qui contient "Repères : réseau"
+
+  Scénario: Égaliser, part du centre, couleur choisie, indicateur de notes (3b.7)
+    Étant donné que l'objectif "Compléments : vie" existe
+    Et que "Compléments : vie" contient l'objectif "Compléments : santé" de poids 3
+    Et que "Compléments : vie" contient l'objectif "Compléments : famille" sans poids
+    Et que "Compléments : santé" contient la tâche "Compléments : courir"
+    Et que "Compléments : santé" contient la tâche "Compléments : dormir" avec la description "Huit heures"
+    Quand j'ouvre les cercles centrés sur "Compléments : vie"
+    Alors la part "Compléments : santé" couvre 270°
+    Et la part "Compléments : dormir" porte l'indicateur de notes
+    Et la part "Compléments : courir" ne porte pas l'indicateur de notes
+    Quand je touche la part "Compléments : courir"
+    Alors la fiche dit que la part pèse "38 %" du centre
+    Quand je touche la part "Compléments : santé"
+    Et je choisis la couleur "rose"
+    Alors la part "Compléments : santé" est de la couleur "rose"
+    Et la part "Compléments : courir" est de la couleur "rose"
+    Quand je recharge la page des cercles
+    Alors la part "Compléments : courir" est de la couleur "rose"
+
+  Scénario: Égaliser les sous-éléments (3b.7)
+    Étant donné que l'objectif "Égaliser : semaine" existe
+    Et que "Égaliser : semaine" contient l'objectif "Égaliser : lundi" de poids 5
+    Et que "Égaliser : semaine" contient l'objectif "Égaliser : mardi" sans poids
+    Quand j'ouvre les cercles centrés sur "Égaliser : semaine"
+    Alors la part "Égaliser : lundi" couvre 300°
+    Quand j'égalise les sous-éléments
+    Alors la part "Égaliser : lundi" couvre 180°
+    Et la part "Égaliser : mardi" couvre 180°
+
+  Scénario: Coller une liste indentée, exporter en CSV, le plan suit les filtres (3b.7)
+    Étant donné que l'objectif "Liste : projet" existe
+    Quand j'ouvre les cercles centrés sur "Liste : projet"
+    Et je colle la liste "- Liste : cadrer\n  - Liste : écrire la vision\n  - Liste : relire\n- **Liste : construire** : le gros du travail"
+    Alors le plan montre "Liste : cadrer, Liste : écrire la vision, Liste : relire, Liste : construire"
+    Et la part "Liste : écrire la vision" couvre 90°
+    Quand j'exporte les cercles en CSV
+    Alors le fichier CSV contient la ligne "2;Liste : relire;tache;a_faire;50;25;0;;"
+    Quand j'ouvre les cercles centrés sur "Liste : projet" avec "texte=relire"
+    Alors la ligne "Liste : relire" du plan est éclairée
+    Et la ligne "Liste : cadrer" du plan est grisée

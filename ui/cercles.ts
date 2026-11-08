@@ -7,8 +7,25 @@ import type { Element } from './api';
 /** Le nombre d'anneaux montrés, par défaut et au plus. */
 export const ANNEAUX_PAR_DEFAUT = 3;
 export const ANNEAUX_MAX = 6;
-/** Le nombre de couleurs de branche (styles.css : .branche-0 à .branche-7). */
-export const COULEURS = 8;
+/** Les teintes des branches, dans l'ordre des classes de styles.css (.branche-0 à .branche-7). */
+export const TEINTES = ['bleu', 'orange', 'vert', 'violet', 'jaune', 'turquoise', 'rose', 'gris'] as const;
+export const COULEURS = TEINTES.length;
+
+/**
+ * Les couleurs choisies à la main, d'après les tags `couleur:<teinte>` (les tags de chaque élément, en
+ * texte) : l'id de l'élément et le numéro de sa teinte. Une teinte inconnue est ignorée.
+ */
+export function couleursChoisies(tags: ReadonlyMap<string, readonly string[]>): Map<string, number> {
+  const choisies = new Map<string, number>();
+  for (const [id, siens] of tags) {
+    for (const t of siens) {
+      if (!t.startsWith('couleur:')) continue;
+      const i = (TEINTES as readonly string[]).indexOf(t.slice('couleur:'.length));
+      if (i >= 0) choisies.set(id, i);
+    }
+  }
+  return choisies;
+}
 
 /** Une part dessinée : l'élément, son anneau (1 = le plus proche du centre), ses angles en radians. */
 export interface Part {
@@ -18,11 +35,16 @@ export interface Part {
   readonly fin: number;
   /** Sa part dans son parent, entre 0 et 1. */
   readonly part: number;
+  /** Sa part du centre (le produit des parts, du centre jusqu'à elle), entre 0 et 1. */
+  readonly absolue: number;
   /** De 0 à 100. */
   readonly avancement: number;
   /** L'avancement est-il calculé (l'élément a des enfants) ? */
   readonly calcule: boolean;
-  /** La couleur de sa branche (0 à COULEURS − 1), celle de son ancêtre du premier anneau. */
+  /**
+   * Sa couleur (0 à COULEURS − 1) : celle choisie pour elle, sinon celle de son parent, sinon (au
+   * premier anneau) une par branche, dans l'ordre.
+   */
   readonly couleur: number;
 }
 
@@ -72,6 +94,7 @@ export function enfantsDe(centre: string | null, elements: readonly Element[], e
  */
 export function disposer(
   tous: readonly Element[], centre: string | null, anneaux: number, apercu?: ReadonlyMap<string, number>,
+  choisies: ReadonlyMap<string, number> = new Map(),
 ): Disposition {
   const elements = apercu?.size ? tous.map((e) => (apercu.has(e.id) ? { ...e, poids: apercu.get(e.id) ?? e.poids } : e)) : tous;
   const enfants = enfantsParParent(elements);
@@ -92,17 +115,17 @@ export function disposer(
       vus.add(e.id);
       const part = p[i] ?? 0;
       const finPart = angle + (fin - debut) * part;
-      const sienne = couleur ?? i % COULEURS;
+      const sienne = choisies.get(e.id) ?? couleur ?? i % COULEURS;
       const siens = enfants.get(e.id) ?? [];
       lesParts.push({
-        element: e, anneau, debut: angle, fin: finPart, part,
+        element: e, anneau, debut: angle, fin: finPart, part, absolue: (finPart - angle) / (2 * Math.PI),
         avancement: avancements.get(e.id) ?? 0, calcule: siens.length > 0 && e.statut !== 'fait', couleur: sienne,
       });
       poser(siens, anneau + 1, angle, finPart, sienne);
       angle = finPart;
     });
   };
-  poser(premiers, 1, 0, 2 * Math.PI, null);
+  poser(premiers, 1, 0, 2 * Math.PI, elementCentre ? choisies.get(elementCentre.id) ?? null : null);
   return { centre: elementCentre, avancementCentre, parts: lesParts };
 }
 

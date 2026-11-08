@@ -263,3 +263,17 @@ li .ouvrir:hover, li .ouvrir:focus-visible { background: var(--fond); color: var
 .part.en-retard .contour { stroke: var(--erreur); stroke-width: 1.6; }
 .enregistrer-image { font: inherit; font-size: .85rem; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--bord);
                      background: var(--carte); color: var(--texte); cursor: pointer; }
+
+/* Les compléments (3b.7) : le point des notes, la couleur choisie, la liste à coller, le plan grisé. */
+.part .indicateur { fill: var(--texte); opacity: .55; pointer-events: none; }
+.part { transition: opacity .15s; }
+.fiche-part .couleur { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--texte); font-size: .95rem; }
+.fiche-part .couleur select { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--bord);
+                              background: var(--fond); color: var(--texte); }
+.coller-liste summary { cursor: pointer; color: var(--accent); font-size: .95rem; }
+.coller-liste textarea { width: 100%; margin: 8px 0; font: inherit; font-size: .95rem; padding: 8px; border-radius: 8px;
+                         border: 1px solid var(--bord); background: var(--fond); color: var(--texte); resize: vertical; }
+.coller-liste button { font: inherit; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--accent);
+                       background: none; color: var(--accent); cursor: pointer; }
+.coller-liste button:disabled { opacity: .5; cursor: default; }
+.plan .ligne-plan.eteinte { opacity: .35; }

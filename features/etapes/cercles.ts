@@ -247,3 +247,68 @@ Then('le fichier enregistré est un SVG qui contient {string}', function (this: 
   expect(contenu.startsWith('<svg')).toBe(true);
   expect(contenu).toContain(texte);
 });
+
+// --- Les compléments (3b.7) ---
+
+Given('{string} contient la tâche {string} avec la description {string}', async function (this: Monde, parent: string, titre: string, description: string) {
+  await creerNomme(this, { titre, parent: id(this, parent), description });
+});
+
+Then("la part {string} porte l'indicateur de notes", async function (this: Monde, titre: string) {
+  await expect(part(this, titre).locator('circle.indicateur')).toHaveCount(1);
+});
+
+Then("la part {string} ne porte pas l'indicateur de notes", async function (this: Monde, titre: string) {
+  await expect(part(this, titre).locator('circle.indicateur')).toHaveCount(0);
+});
+
+Then('la fiche dit que la part pèse {string} du centre', async function (this: Monde, pourcent: string) {
+  await expect(fiche(this).locator('.part-du-centre')).toHaveText(pourcent);
+});
+
+When('je choisis la couleur {string}', async function (this: Monde, teinte: string) {
+  await fiche(this).getByLabel('Couleur').selectOption(teinte);
+  await page(this).waitForLoadState('networkidle');
+});
+
+const TEINTES = ['bleu', 'orange', 'vert', 'violet', 'jaune', 'turquoise', 'rose', 'gris'];
+
+Then('la part {string} est de la couleur {string}', async function (this: Monde, titre: string, teinte: string) {
+  await expect(part(this, titre)).toHaveClass(new RegExp(`\\bbranche-${TEINTES.indexOf(teinte)}\\b`));
+});
+
+When("j'égalise les sous-éléments", async function (this: Monde) {
+  await cercles(this).getByRole('button', { name: 'Égaliser les sous-éléments' }).click();
+  await page(this).waitForLoadState('networkidle');
+});
+
+When('je colle la liste {string}', async function (this: Monde, texte: string) {
+  await cercles(this).locator('.coller-liste summary').click();
+  await cercles(this).getByLabel('Liste à coller').fill(texte.replace(/\\n/g, '\n'));
+  await cercles(this).locator('.coller-liste button').click();
+  await page(this).waitForLoadState('networkidle');
+});
+
+const csvs = new WeakMap<Monde, string>();
+
+When("j'exporte les cercles en CSV", async function (this: Monde) {
+  const [telechargement] = await Promise.all([
+    page(this).waitForEvent('download'),
+    cercles(this).getByRole('button', { name: 'Exporter en CSV' }).click(),
+  ]);
+  const { readFile } = await import('node:fs/promises');
+  csvs.set(this, await readFile(await telechargement.path(), 'utf8'));
+  expect(telechargement.suggestedFilename()).toMatch(/^cercles-.*\.csv$/);
+});
+
+Then('le fichier CSV contient la ligne {string}', function (this: Monde, ligne: string) {
+  expect((csvs.get(this) ?? '').split('\r\n')).toContain(ligne);
+});
+
+Then('la ligne {string} du plan est éclairée', async function (this: Monde, titre: string) {
+  await expect(plan(this).locator(`li[data-titre="${titre}"]`)).not.toHaveClass(/eteinte/);
+});
+
+Then('la ligne {string} du plan est grisée', async function (this: Monde, titre: string) {
+  await expect(plan(this).locator(`li[data-titre="${titre}"]`)).toHaveClass(/eteinte/);
+});
