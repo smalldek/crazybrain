@@ -27,7 +27,7 @@ tâche en a besoin, elle le dit (« Il faut du projet Cloudflare »), et Adrien 
 | 1. Socle | Le site, la connexion Google, la base, l'API, le connecteur testé, modifier une tâche, le modèle complet | Fait le 05/11 |
 | 2. Connecteur Claude | Claude lit, crée et modifie les tâches depuis une conversation | Fait le 05/11 |
 | 3. Kanban, détail, tags, filtres | Le premier vrai écran de travail | Construite le 05/11 |
-| 3b. Objectifs en cercles | Le découpage pondéré en cercles, avancement qui remonte (avancé depuis l'étape 7 le 08/11) | Construite le 08/11 ; le cercle comme outil principal (3b.8 à 3b.12) en cours |
+| 3b. Objectifs en cercles | Le découpage pondéré en cercles, avancement qui remonte (avancé depuis l'étape 7 le 08/11) | Construite le 08/11 ; le cercle comme outil principal (3b.8 à 3b.12) le 09/11 ; essai d'Adrien quand il voudra |
 | 4. Requêtes enregistrées, tableaux de bord | Claude écrit des requêtes, l'outil les rejoue | — |
 | 5. L'appli sur le téléphone | Icône, partage, rappels, tâches récurrentes | — |
 | 6. Calendrier et mode journée | Planifier sa journée à la Sunsama | — |
@@ -343,11 +343,11 @@ responsables (une personne par part), qui n'ont de sens qu'à plusieurs.
 | 3b.5 | Les repères : les filtres éclairent les parts qui correspondent, les retards se voient, l'image s'enregistre | **Fait le 08/11** |
 | 3b.6 | L'essai d'Adrien sur son téléphone | Le test, gestes donnés à la fin |
 | 3b.7 | Ce que le site de Goalscape montre en plus : égaliser, importance absolue, couleur choisie, indicateur de notes, coller une liste indentée, export CSV, plan grisé par les filtres, estomper pendant un réglage | **Fait le 08/11** |
-| 3b.8 | Les tâches rattachées à un projet (lien « appartient à ») sont des parts de ce projet | À faire |
-| 3b.9 | Le zoom et la remontée animés : la part grandit jusqu'au tour entier, on voit d'où l'on vient | À faire |
-| 3b.10 | Des libellés lisibles : le long de l'arc, ou dans le sens du rayon pour une part fine ; le survol | À faire |
-| 3b.11 | Les gestes directs sur le cercle : tirer le bord d'une part règle son importance, tirer son remplissage règle son avancement | À faire |
-| 3b.12 | Glisser une part sur le cercle pour la ranger dans une autre ou la réordonner ; les flèches du clavier | À faire |
+| 3b.8 | Les tâches rattachées à un projet (lien « appartient à ») sont des parts de ce projet | **Fait le 09/11** |
+| 3b.9 | Le zoom et la remontée animés : la part grandit jusqu'au tour entier, on voit d'où l'on vient | **Fait le 09/11** |
+| 3b.10 | Des libellés lisibles : le long de l'arc, ou dans le sens du rayon pour une part fine ; le survol | **Fait le 09/11** |
+| 3b.11 | Les gestes directs sur le cercle : tirer le bord d'une part règle son importance, tirer son remplissage règle son avancement | **Fait le 09/11** |
+| 3b.12 | Glisser une part sur le cercle pour la ranger dans une autre ou la réordonner ; les flèches du clavier | **Fait le 09/11** |
 
 ### 3b.1 Poids et avancement
 
@@ -498,6 +498,10 @@ on enchaîne, il essaiera plus tard.
   le rayon lus sous le doigt, où tombe une part lâchée) ; scénarios dans le navigateur (une tâche
   rattachée à un projet y apparaît ; tirer le bord d'une part la met à 50 % ; tirer le remplissage
   la met à 60 % ; glisser une part dans une autre ; les flèches).
+- **Construit le 09/11.** Un ajustement vu en regardant le rendu à la taille d'un téléphone : les
+  anneaux se partagent toute la place disponible (une branche à un seul niveau remplit le cercle au
+  lieu d'y faire un petit anneau). Non vérifié par un test : le glisser au doigt sur le cercle (appui
+  long) ; les scénarios le jouent à la souris.
 
 ### 3b.6 L'essai d'Adrien
 

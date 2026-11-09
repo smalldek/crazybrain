@@ -254,7 +254,7 @@ li .ouvrir:hover, li .ouvrir:focus-visible { background: var(--fond); color: var
 @media (min-width: 900px) {
   .vue-cercles main { max-width: 72rem; }
   #cercles { display: grid; grid-template-columns: minmax(0, 3fr) minmax(18rem, 2fr); column-gap: 24px; align-items: start; }
-  #cercles > .reglages, #cercles > .dessin-cercles, #cercles > p.etat { grid-column: 1; }
+  #cercles > .reglages, #cercles > .dessin-cercles, #cercles > p.etat, #cercles > .consigne-glisse { grid-column: 1; }
   #cercles > .cote { grid-column: 2; grid-row: 1 / span 3; }
 }
 
@@ -277,3 +277,28 @@ li .ouvrir:hover, li .ouvrir:focus-visible { background: var(--fond); color: var
                        background: none; color: var(--accent); cursor: pointer; }
 .coller-liste button:disabled { opacity: .5; cursor: default; }
 .plan .ligne-plan.eteinte { opacity: .35; }
+
+/* Le cercle comme outil (3b.9 à 3b.12) : le survol, les poignées, la part glissée et où elle tombera. */
+.part text { font-weight: 500; }
+@media (hover: hover) {
+  .part:hover .fond { fill: color-mix(in srgb, var(--clair) 82%, var(--fonce)); }
+}
+.part.fantome { pointer-events: none; }
+.bulle-part { position: fixed; z-index: 20; pointer-events: none; max-width: 16rem; display: flex; flex-direction: column; gap: 2px;
+              background: var(--carte); color: var(--texte); border: 1px solid var(--bord); border-radius: 8px; padding: 6px 10px;
+              font-size: .85rem; box-shadow: 0 4px 14px rgb(0 0 0 / .15); }
+.bulle-part span { color: var(--doux); }
+.poignee { cursor: grab; touch-action: none; }
+.poignee line { stroke: var(--texte); stroke-width: 1.4; stroke-linecap: round; }
+.poignee circle { fill: var(--carte); stroke: var(--texte); stroke-width: 1; }
+.poignee circle.zone { fill: transparent; stroke: none; }
+.poignee-avancement circle:not(.zone) { fill: var(--texte); stroke: var(--carte); }
+.geste-en-cours, .geste-en-cours .poignee { cursor: grabbing; }
+.glisse-en-cours { cursor: grabbing; }
+.part.glissee { opacity: .35; }
+.part.cible-dans .contour, .centre.cible-dans circle { stroke: var(--accent); stroke-width: 2; stroke-dasharray: 3 2; }
+.repere-depot { stroke: var(--accent); stroke-width: 2.4; stroke-linecap: round; }
+.etiquette-glisse { pointer-events: none; }
+.etiquette-glisse rect { fill: var(--texte); opacity: .85; }
+.etiquette-glisse text { fill: var(--fond); font-size: 4px; text-anchor: middle; dominant-baseline: central; }
+.consigne-glisse { margin: 0 0 8px; text-align: center; color: var(--accent); font-size: .95rem; }
