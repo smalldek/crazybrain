@@ -2,6 +2,7 @@
 // À droite de la liste sur un grand écran, en plein écran sur le téléphone. Son adresse est
 // /e/<id> : on peut la garder, la partager (derrière Access), y revenir.
 import { useEffect, useId, useState, type FormEvent, type ReactNode } from 'react';
+import { avancementsCalcules } from '../src/domaine/cercles';
 import { api, type Element, type ElementComplet, type Tag, type TypeElement } from './api';
 import { brouillonDe, changementsDepuis, parentsPossibles, type Brouillon } from './formulaire';
 import { dateLisible, RelationsDetail } from './relations-detail';
@@ -106,6 +107,9 @@ export function PanneauDetail({ id, elements, tousLesTags, fermer, modifie }: Pr
     const parents = parentsPossibles(element.id, elements);
     // Le parent actuel peut manquer de la liste (archivé, ou pas encore chargé) : on le garde choisi.
     const parentInconnu = element.parent !== null && !parents.some((p) => p.id === element.parent);
+    // Un élément qui a des enfants : son avancement se calcule (vue en cercles), il ne se saisit pas.
+    const aDesEnfants = elements.some((e) => e.parent === element.id);
+    const calcule = aDesEnfants ? Math.round(avancementsCalcules(elements).get(element.id) ?? 0) : null;
     contenu = (
       <>
       <form onSubmit={(e) => void enregistrer(e)} className="formulaire">
@@ -139,9 +143,23 @@ export function PanneauDetail({ id, elements, tousLesTags, fermer, modifie }: Pr
           <Champ libelle="Prévu le">{(id) => <input id={id} type="date" {...champ('jourPlanifie')} />}</Champ>
           <Champ libelle="À">{(id) => <input id={id} type="time" {...champ('heurePlanifiee')} />}</Champ>
         </div>
-        <Champ libelle="Estimation (minutes)">{(id) => (
-          <input id={id} type="number" inputMode="numeric" min={1} step={1} {...champ('estimation')} />
-        )}</Champ>
+        <div className="rangee">
+          <Champ libelle="Estimation (minutes)">{(id) => (
+            <input id={id} type="number" inputMode="numeric" min={1} step={1} {...champ('estimation')} />
+          )}</Champ>
+          <Champ libelle="Poids">{(id) => (
+            <input id={id} type="number" inputMode="decimal" min={0} step="any" placeholder="1" {...champ('poids')} />
+          )}</Champ>
+          {calcule === null ? (
+            <Champ libelle="Avancement (%)">{(id) => (
+              <input id={id} type="number" inputMode="numeric" min={0} max={100} step={1} placeholder="0" {...champ('avancement')} />
+            )}</Champ>
+          ) : (
+            <Champ libelle="Avancement (calculé)">{(id) => (
+              <output id={id} className="calcule" title="Calculé à partir de ses sous-éléments, pondérés par leur poids">{calcule} %</output>
+            )}</Champ>
+          )}
+        </div>
         <div className="actions">
           <button type="submit" className="principal" disabled={envoi}>Enregistrer</button>
           {message && <span className={message.erreur ? 'etat erreur' : 'etat'} role="status">{message.texte}</span>}

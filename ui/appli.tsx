@@ -8,7 +8,7 @@ import { adresseElement, adresseVue, elementDeLAdresse, naviguer, parametresIci,
 import { api, type Changements, type Element, type Tag } from './api';
 import { BarreFiltres } from './barre-filtres';
 import { aujourdhui } from './dates';
-import { backlog, filtrer, lireFiltres } from './filtres';
+import { backlog, filtrer, lireFiltres, nombreDeFiltres } from './filtres';
 import { PanneauDetail } from './panneau-detail';
 import { LigneTache } from './ligne-tache';
 import { ecrireCritere, lireCritere, rangsAPoser, type Critere, type StatutColonne } from './kanban';
@@ -16,6 +16,8 @@ import { appliquer, ordonner } from './liste';
 import { tagsParElement } from './tags';
 import { VueKanban } from './vue-kanban';
 import { VueProjets } from './vue-projets';
+import { lireAnneaux } from './cercles';
+import { VueCercles } from './vue-cercles';
 
 /** Le message sous la saisie : un état, une erreur, ou « supprimée » avec un bouton Annuler. */
 interface Message {
@@ -24,7 +26,7 @@ interface Message {
   readonly annuler?: () => void;
 }
 
-const NOMS_VUES: Record<Vue, string> = { liste: 'Liste', kanban: 'Kanban', backlog: 'Backlog', projets: 'Projets' };
+const NOMS_VUES: Record<Vue, string> = { liste: 'Liste', kanban: 'Kanban', backlog: 'Backlog', projets: 'Projets', cercles: 'Cercles' };
 
 export function Appli() {
   const [elements, setElements] = useState<Element[] | null>(null);
@@ -56,7 +58,7 @@ export function Appli() {
     naviguer(window.location.pathname + (recherche ? `?${recherche}` : ''), { remplacer: seulLeTexte });
   };
   const visibles = elements && filtrer(elements, filtres, tagsParElement(tags), aujourdhui());
-  const rienAMontrer = vue !== 'projets' && elements !== null && elements.length > 0 && visibles !== null
+  const rienAMontrer = vue !== 'projets' && vue !== 'cercles' && elements !== null && elements.length > 0 && visibles !== null
     && (vue === 'backlog' ? backlog(visibles) : visibles).length === 0;
 
   const erreur = (e: unknown): void => setMessage({ texte: e instanceof Error ? e.message : String(e), erreur: true });
@@ -88,6 +90,16 @@ export function Appli() {
       erreur(e);
     } finally {
       setEnvoi(false);
+    }
+  }
+
+  async function creerElement(champs: Changements & { titre: string }): Promise<void> {
+    try {
+      await api.creer(champs);
+      setMessage({ texte: '' });
+      await charger();
+    } catch (e) {
+      erreur(e);
     }
   }
 
@@ -138,6 +150,28 @@ export function Appli() {
     await charger();
   }
 
+  // Glisser une ligne du plan des cercles : son parent s'il change, puis les rangs de sa nouvelle
+  // fratrie (seulement ceux qui changent).
+  async function ranger(id: string, parent: string | null, ordre: readonly string[]): Promise<void> {
+    const liste = elements ?? [];
+    const element = liste.find((e) => e.id === id);
+    const parId = new Map<string, Changements>();
+    if (element && element.parent !== parent) parId.set(id, { parent });
+    for (const { id: autre, rang } of rangsAPoser(ordre, liste)) parId.set(autre, { ...parId.get(autre), rang });
+    const envois = [...parId];
+    setElements((l) => l && l.map((e) => {
+      const changement = envois.find(([i]) => i === e.id);
+      return changement ? appliquer(e, changement[1]) : e;
+    }));
+    try {
+      for (const [i, changements] of envois) await api.modifier(i, changements);
+      setMessage({ texte: '' });
+    } catch (e) {
+      erreur(e);
+    }
+    await charger();
+  }
+
   // Supprimer ne demande pas de confirmation : la tâche est archivée, et « Annuler » la restaure
   // tout de suite (plus rapide qu'une question à chaque fois, et rien n'est perdu).
   async function supprimer(element: Element): Promise<void> {
@@ -170,7 +204,7 @@ export function Appli() {
         <header className="entete-appli">
           <h1>Crazybrain</h1>
           <nav aria-label="Vues">
-            {(['liste', 'kanban', 'backlog', 'projets'] as const).map((v) => (
+            {(['liste', 'kanban', 'backlog', 'projets', 'cercles'] as const).map((v) => (
               <a key={v} href={adresseVue(v) + window.location.search} aria-current={v === vue ? 'page' : undefined}
                 onClick={(e) => { e.preventDefault(); naviguer(adresseVue(v) + parametresIci()); }}>{NOMS_VUES[v]}</a>
             ))}
@@ -191,7 +225,13 @@ export function Appli() {
           <BarreFiltres filtres={filtres} elements={elements} tags={tags} changer={changerFiltres} />
         )}
         {rienAMontrer && <p className="etat" id="aucun-resultat">Rien ne correspond{vue === 'backlog' ? ' dans le backlog' : ''}.</p>}
-        {vue === 'projets' ? (
+        {vue === 'cercles' ? (
+          elements && <VueCercles elements={elements} centre={parametres.get('centre')} anneaux={lireAnneaux(parametres.get('anneaux'))}
+            ouvert={ouvert} ouvrir={ouvrir} modifier={modifier} creer={creerElement} supprimer={supprimer}
+            ranger={ranger} signaler={(texte) => setMessage({ texte, erreur: true })} jour={aujourdhui()}
+            tags={tags} recharger={charger}
+            eclaires={visibles && (nombreDeFiltres(filtres) > 0 || filtres.texte) ? new Set(visibles.map((e) => e.id)) : null} />
+        ) : vue === 'projets' ? (
           elements && <VueProjets elements={elements} tags={tags} ouvert={ouvert} ouvrir={ouvrir} creerProjet={creerProjet} />
         ) : vue !== 'kanban' ? (
           // Le backlog est une liste : ce qui n'est ni fait ni planifié, le plus important en haut.

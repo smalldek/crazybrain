@@ -174,3 +174,106 @@ li .ouvrir:hover, li .ouvrir:focus-visible { background: var(--fond); color: var
 .avancement { flex: none; display: flex; align-items: center; gap: 6px; font-size: .8rem; color: var(--doux); }
 .avancement meter { width: 4.5rem; height: 8px; }
 .arbre .voir { flex: none; font-size: .85rem; color: var(--accent); padding: 6px 4px; }
+
+/* La vue en cercles : le dessin, aussi large que l'écran le permet, puis la fiche de la part choisie. */
+.vue-cercles main { max-width: 52rem; }
+#cercles .reglages { flex-wrap: wrap; justify-content: space-between; }
+#cercles .fil { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px; font-size: .95rem; }
+#cercles .fil a { color: var(--accent); text-decoration: none; }
+#cercles .fil a[aria-current=page] { color: var(--texte); font-weight: 600; }
+#cercles .anneaux { display: flex; align-items: center; gap: 6px; margin: 0; font-size: .9rem; }
+.dessin-cercles { display: block; width: 100%; max-width: 34rem; margin: 0 auto 12px; touch-action: manipulation;
+                  user-select: none; -webkit-user-select: none; }
+/* Une couleur par branche du premier anneau : une teinte claire pour la part, foncée pour ce qui est fait. */
+.branche-0 { --clair: #d7e3fb; --fonce: #3b67c9; }
+.branche-1 { --clair: #f9dccb; --fonce: #c1612a; }
+.branche-2 { --clair: #d5efdc; --fonce: #2f8a4c; }
+.branche-3 { --clair: #eedaf3; --fonce: #8b4aa3; }
+.branche-4 { --clair: #f6eac2; --fonce: #a7801a; }
+.branche-5 { --clair: #cdeef0; --fonce: #22858c; }
+.branche-6 { --clair: #f6d5dc; --fonce: #b23c58; }
+.branche-7 { --clair: #e2e2dc; --fonce: #66665f; }
+@media (prefers-color-scheme: dark) {
+  .branche-0 { --clair: #24304a; --fonce: #7fa2f0; }
+  .branche-1 { --clair: #45301f; --fonce: #f0a173; }
+  .branche-2 { --clair: #1f3a28; --fonce: #6fcb8c; }
+  .branche-3 { --clair: #3a2742; --fonce: #c995dc; }
+  .branche-4 { --clair: #3d3418; --fonce: #e2c060; }
+  .branche-5 { --clair: #19393b; --fonce: #63c7cd; }
+  .branche-6 { --clair: #43222a; --fonce: #ec8aa0; }
+  .branche-7 { --clair: #33332f; --fonce: #b0b0a8; }
+}
+.part { cursor: pointer; outline: none; }
+.part .fond { fill: var(--clair); }
+.part .rempli { fill: var(--fonce); }
+.part .contour { fill: none; stroke: var(--fond); stroke-width: .8; }
+.part text { fill: var(--texte); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.part.choisie .contour, .part:focus-visible .contour { stroke: var(--texte); stroke-width: 1.4; }
+.centre { cursor: pointer; outline: none; }
+.centre circle { fill: var(--carte); stroke: var(--bord); stroke-width: .8; }
+.centre:focus-visible circle { stroke: var(--accent); stroke-width: 1.5; }
+.centre text { fill: var(--texte); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.centre .titre-centre { font-size: 4.6px; font-weight: 600; }
+.centre .avancement-centre { font-size: 4.2px; fill: var(--doux); }
+.fiche-part { background: var(--carte); border: 1px solid var(--bord); border-radius: 12px; padding: 12px; margin-bottom: 16px;
+              display: flex; flex-direction: column; gap: 10px; }
+.fiche-part form { margin: 0; }
+.fiche-part p { margin: 0; }
+.titre-fiche input { font-weight: 600; padding: 8px 10px; }
+.curseur { display: flex; flex-direction: column; gap: 4px; margin: 0; color: var(--texte); font-size: .95rem; flex: 1; }
+.curseur input[type=range] { width: 100%; padding: 0; border: 0; background: none; accent-color: var(--accent); }
+.rangee-avancement { display: flex; align-items: flex-end; gap: 12px; }
+.case-fait { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--texte); }
+.case-fait input { width: 22px; height: 22px; padding: 0; accent-color: var(--accent); }
+.actions-fiche { display: flex; gap: 8px; flex-wrap: wrap; }
+.actions-fiche button { font: inherit; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--accent);
+                        background: none; color: var(--accent); cursor: pointer; }
+.actions-fiche .danger { border-color: var(--erreur); color: var(--erreur); }
+.champ output.calcule { padding: 8px 10px; color: var(--texte); }
+/* Cinq vues : sur un téléphone étroit, les onglets se resserrent et défilent plutôt que de déborder. */
+@media (max-width: 480px) {
+  .entete-appli nav { max-width: 100%; overflow-x: auto; }
+  .entete-appli nav a { padding: 6px 8px; font-size: .9rem; white-space: nowrap; }
+}
+
+/* Le plan, sous les cercles : l'arborescence en liste, une ligne par élément, en retrait selon son niveau. */
+.plan h2 { font-size: 1.1rem; margin: 8px 0; }
+.plan ul { list-style: none; margin: 0; padding: 0; }
+.plan .ligne-plan { display: flex; align-items: center; gap: 6px; padding-top: 2px; padding-bottom: 2px; padding-right: 8px;
+                    margin-bottom: 4px; border-radius: 8px; }
+.plan .ligne-plan.choisie { border-color: var(--accent); }
+.plan .ligne-plan.survolee { border-color: var(--accent); border-style: dashed; }
+.plan .ligne-plan.glissee { opacity: .4; }
+.plan .ligne-plan.fait .titre { text-decoration: line-through; opacity: .7; }
+.plan .poignee { flex: none; width: 28px; height: 36px; border: 0; background: none; color: var(--doux); cursor: grab;
+                 font-size: 1.1rem; touch-action: none; border-radius: 6px; }
+.plan .replier { flex: none; width: 24px; height: 32px; border: 0; background: none; color: var(--doux); cursor: pointer; padding: 0; }
+.plan .titre { cursor: pointer; }
+.plan .part-plan { flex: none; color: var(--doux); font-size: .8rem; min-width: 2.8rem; text-align: right; }
+.plan meter { flex: none; width: 3.5rem; height: 8px; }
+@media (min-width: 900px) {
+  .vue-cercles main { max-width: 72rem; }
+  #cercles { display: grid; grid-template-columns: minmax(0, 3fr) minmax(18rem, 2fr); column-gap: 24px; align-items: start; }
+  #cercles > .reglages, #cercles > .dessin-cercles, #cercles > p.etat { grid-column: 1; }
+  #cercles > .cote { grid-column: 2; grid-row: 1 / span 3; }
+}
+
+/* Les repères : avec des filtres, ce qui n'y répond pas s'efface ; un retard porte un liseré rouge. */
+.part.eteinte { opacity: .25; }
+.part.en-retard .contour { stroke: var(--erreur); stroke-width: 1.6; }
+.enregistrer-image { font: inherit; font-size: .85rem; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--bord);
+                     background: var(--carte); color: var(--texte); cursor: pointer; }
+
+/* Les compléments (3b.7) : le point des notes, la couleur choisie, la liste à coller, le plan grisé. */
+.part .indicateur { fill: var(--texte); opacity: .55; pointer-events: none; }
+.part { transition: opacity .15s; }
+.fiche-part .couleur { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--texte); font-size: .95rem; }
+.fiche-part .couleur select { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--bord);
+                              background: var(--fond); color: var(--texte); }
+.coller-liste summary { cursor: pointer; color: var(--accent); font-size: .95rem; }
+.coller-liste textarea { width: 100%; margin: 8px 0; font: inherit; font-size: .95rem; padding: 8px; border-radius: 8px;
+                         border: 1px solid var(--bord); background: var(--fond); color: var(--texte); resize: vertical; }
+.coller-liste button { font: inherit; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--accent);
+                       background: none; color: var(--accent); cursor: pointer; }
+.coller-liste button:disabled { opacity: .5; cursor: default; }
+.plan .ligne-plan.eteinte { opacity: .35; }

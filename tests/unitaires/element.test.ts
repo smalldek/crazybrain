@@ -40,6 +40,8 @@ describe('Element', () => {
       heurePlanifiee: null,
       estimation: null,
       rang: null,
+      poids: null,
+      avancement: null,
       faitLe: null,
       archiveLe: null,
       creeLe: '2026-11-03T08:30:00.000Z',

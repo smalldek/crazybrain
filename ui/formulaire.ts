@@ -16,6 +16,10 @@ export interface Brouillon {
   readonly heurePlanifiee: string;
   /** En minutes. */
   readonly estimation: string;
+  /** Ce qu'il pèse parmi ses frères (vue en cercles) ; vide : 1. */
+  readonly poids: string;
+  /** En pour cent, de 0 à 100. */
+  readonly avancement: string;
 }
 
 export function brouillonDe(e: Element): Brouillon {
@@ -30,6 +34,8 @@ export function brouillonDe(e: Element): Brouillon {
     jourPlanifie: e.jourPlanifie ?? '',
     heurePlanifiee: e.heurePlanifiee ?? '',
     estimation: e.estimation === null ? '' : String(e.estimation),
+    poids: e.poids === null ? '' : String(e.poids),
+    avancement: e.avancement === null ? '' : String(e.avancement),
   };
 }
 
@@ -48,6 +54,16 @@ export function changementsDepuis(e: Element, b: Brouillon): Changements | strin
     estimation = Number(b.estimation);
     if (!Number.isInteger(estimation) || estimation <= 0) return "L'estimation est un nombre entier de minutes.";
   }
+  let poids: number | null = null;
+  if (b.poids.trim() !== '') {
+    poids = Number(b.poids.replace(',', '.'));
+    if (!Number.isFinite(poids) || poids <= 0) return 'Le poids est un nombre plus grand que 0.';
+  }
+  let avancement: number | null = null;
+  if (b.avancement.trim() !== '') {
+    avancement = Number(b.avancement);
+    if (!Number.isInteger(avancement) || avancement < 0 || avancement > 100) return "L'avancement est un nombre entier de 0 à 100.";
+  }
   const description = b.description.trim() === '' ? null : b.description;
   const c: Record<string, unknown> = {};
   if (titre !== e.titre) c.titre = titre;
@@ -60,6 +76,8 @@ export function changementsDepuis(e: Element, b: Brouillon): Changements | strin
   if (ouNull(b.jourPlanifie) !== e.jourPlanifie) c.jourPlanifie = ouNull(b.jourPlanifie);
   if (ouNull(b.heurePlanifiee) !== e.heurePlanifiee) c.heurePlanifiee = ouNull(b.heurePlanifiee);
   if (estimation !== e.estimation) c.estimation = estimation;
+  if (poids !== e.poids) c.poids = poids;
+  if (avancement !== e.avancement) c.avancement = avancement;
   return c as Changements;
 }
 

@@ -94,8 +94,8 @@ api.post('/elements/:id/commentaires', async (c) => {
 });
 
 /** Les champs facultatifs, qu'on vide avec null ; les nombres ; les autres sont du texte. */
-const CHAMPS_NULLABLES = new Set<string>(['parent', 'description', 'priorite', 'echeance', 'jourPlanifie', 'heurePlanifiee', 'estimation', 'rang']);
-const CHAMPS_NOMBRES = new Set<string>(['estimation', 'rang']);
+const CHAMPS_NULLABLES = new Set<string>(['parent', 'description', 'priorite', 'echeance', 'jourPlanifie', 'heurePlanifiee', 'estimation', 'rang', 'poids', 'avancement']);
+const CHAMPS_NOMBRES = new Set<string>(['estimation', 'rang', 'poids', 'avancement']);
 
 /**
  * Vérifie la forme d'un corps de création ou de modification (le domaine vérifiera les valeurs) :

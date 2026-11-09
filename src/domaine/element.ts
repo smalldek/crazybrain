@@ -1,9 +1,11 @@
+import { Avancement } from './avancement';
 import { CodeType, TYPE_PAR_DEFAUT } from './code-type';
 import { Description } from './description';
 import { ErreurDomaine } from './erreur-domaine';
 import { Estimation } from './estimation';
 import { Heure } from './heure';
 import { Jour } from './jour';
+import { Poids } from './poids';
 import { lirePriorite, type Priorite } from './priorite';
 import { Titre } from './titre';
 
@@ -45,6 +47,10 @@ export interface InstantaneElement {
   readonly estimation: number | null;
   /** Ordre choisi à la main (plus petit = plus haut), ou null. */
   readonly rang: number | null;
+  /** Ce qu'il pèse parmi ses frères, pour la vue en cercles (plus de 0) ; null compte pour 1. */
+  readonly poids: number | null;
+  /** Avancement saisi, de 0 à 100, ou null. Celui d'un élément qui a des enfants se calcule. */
+  readonly avancement: number | null;
   /** Date ISO du passage à « fait », ou null. */
   readonly faitLe: string | null;
   /** Date ISO de l'archivage (une tâche « supprimée »), ou null. */
@@ -67,6 +73,8 @@ interface Valeurs {
   readonly heurePlanifiee: Heure | null;
   readonly estimation: Estimation | null;
   readonly rang: number | null;
+  readonly poids: Poids | null;
+  readonly avancement: Avancement | null;
   readonly faitLe: Date | null;
   readonly archiveLe: Date | null;
   readonly creeLe: Date;
@@ -93,6 +101,8 @@ export class Element {
   get heurePlanifiee(): Heure | null { return this.v.heurePlanifiee; }
   get estimation(): Estimation | null { return this.v.estimation; }
   get rang(): number | null { return this.v.rang; }
+  get poids(): Poids | null { return this.v.poids; }
+  get avancement(): Avancement | null { return this.v.avancement; }
   get faitLe(): Date | null { return this.v.faitLe; }
   get archiveLe(): Date | null { return this.v.archiveLe; }
   get creeLe(): Date { return this.v.creeLe; }
@@ -113,6 +123,8 @@ export class Element {
       heurePlanifiee: null,
       estimation: null,
       rang: null,
+      poids: null,
+      avancement: null,
       faitLe: null,
       archiveLe: null,
       creeLe: params.maintenant,
@@ -138,6 +150,8 @@ export class Element {
       heurePlanifiee: etat.heurePlanifiee == null ? null : Heure.creer(etat.heurePlanifiee),
       estimation: etat.estimation == null ? null : Estimation.creer(etat.estimation),
       rang: etat.rang ?? null,
+      poids: etat.poids == null ? null : Poids.creer(etat.poids),
+      avancement: etat.avancement == null ? null : Avancement.creer(etat.avancement),
       faitLe: etat.faitLe == null ? null : new Date(etat.faitLe),
       archiveLe: etat.archiveLe == null ? null : new Date(etat.archiveLe),
       creeLe: new Date(etat.creeLe),
@@ -175,9 +189,9 @@ export class Element {
     return this.avec({ jourPlanifie: jour, heurePlanifiee: heure }, maintenant);
   }
 
-  /** Les champs sans règle entre eux (type, description, priorité, estimation, rang). */
+  /** Les champs sans règle entre eux (type, description, priorité, estimation, rang, poids, avancement). */
   changer(
-    champs: Partial<Pick<Valeurs, 'type' | 'description' | 'priorite' | 'estimation' | 'rang'>>,
+    champs: Partial<Pick<Valeurs, 'type' | 'description' | 'priorite' | 'estimation' | 'rang' | 'poids' | 'avancement'>>,
     maintenant: Date,
   ): Element {
     if (champs.rang !== undefined && champs.rang !== null && !Number.isFinite(champs.rang)) {
@@ -218,6 +232,8 @@ export class Element {
       heurePlanifiee: this.heurePlanifiee?.valeur ?? null,
       estimation: this.estimation?.minutes ?? null,
       rang: this.rang,
+      poids: this.poids?.valeur ?? null,
+      avancement: this.avancement?.pourcent ?? null,
       faitLe: this.faitLe?.toISOString() ?? null,
       archiveLe: this.archiveLe?.toISOString() ?? null,
       creeLe: this.creeLe.toISOString(),

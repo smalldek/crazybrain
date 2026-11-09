@@ -26,11 +26,12 @@ tâche en a besoin, elle le dit (« Il faut du projet Cloudflare »), et Adrien 
 | 0. Cadrage | Vision, fonctionnalités, architecture, cette feuille de route | Fait le 03/11 |
 | 1. Socle | Le site, la connexion Google, la base, l'API, le connecteur testé, modifier une tâche, le modèle complet | Fait le 05/11 |
 | 2. Connecteur Claude | Claude lit, crée et modifie les tâches depuis une conversation | Fait le 05/11 |
-| 3. Kanban, détail, tags, filtres | Le premier vrai écran de travail | — |
+| 3. Kanban, détail, tags, filtres | Le premier vrai écran de travail | Construite le 05/11 |
+| 3b. Objectifs en cercles | Le découpage pondéré en cercles, avancement qui remonte (avancé depuis l'étape 7 le 08/11) | Construite le 08/11, essai d'Adrien à faire |
 | 4. Requêtes enregistrées, tableaux de bord | Claude écrit des requêtes, l'outil les rejoue | — |
 | 5. L'appli sur le téléphone | Icône, partage, rappels, tâches récurrentes | — |
 | 6. Calendrier et mode journée | Planifier sa journée à la Sunsama | — |
-| 7. Horizons et objectifs | Timestripe et Goalscape | — |
+| 7. Horizons | Timestripe | — |
 | 8. Mail → tâche | Un mail envoyé à une adresse devient une tâche | — |
 
 ## Étape 0 — Cadrage
@@ -298,6 +299,185 @@ au titre sur un téléphone.
   ✓ Tenu le 05/11 : chaque critère a son scénario joué dans le navigateur (`features/kanban.feature`,
   `detail.feature`, `filtres.feature`, `projets.feature`). Reste à l'usage d'Adrien sur la vraie base.
 
+## Étape 3b — Les objectifs en cercles
+
+Demandée par Adrien le 08/11 (« Fais comme Goalscape. Gestion des cercles etc. Fais toutes les
+fonctionnalités sauf le partage ») : la vue en cercles prévue en 7.3 passe ici, avant l'étape 4. On
+reprend la **mécanique** d'un découpage d'objectifs en cercles, dans le style de Crazybrain, sans le
+nom, l'aspect ni les visuels de l'outil qui l'a inspirée.
+
+**Le principe.** Un élément au centre ; autour, un anneau par niveau de sous-éléments. Chaque part a
+un **poids** dans son parent : les parts sœurs font toujours 100 % de leur parent, et l'angle d'une
+part est sa part de l'angle de son parent. Chaque part se **remplit** du centre vers l'extérieur
+selon son **avancement** ; l'avancement d'un parent se calcule à partir de ses enfants, pondéré par
+leurs poids, et remonte ainsi jusqu'au centre. On **zoome** en touchant une part (elle devient le
+centre) et on remonte en touchant le centre.
+
+**Ce qui est laissé de côté** : tout le partage (inviter, droits, commentaires à plusieurs) et les
+responsables (une personne par part), qui n'ont de sens qu'à plusieurs.
+
+**Les règles, une fois pour toutes** (dans le domaine, `src/domaine/`, testées seules) :
+
+- **Poids** : un nombre plus grand que zéro, facultatif ; sans poids, une part compte pour 1. La
+  part d'un élément = son poids divisé par la somme des poids de ses frères (non supprimés). On
+  garde des poids bruts, pas des pourcentages : changer la part d'un élément ne réécrit que lui
+  (pour qu'il pèse `p %`, son poids devient `p / (100 − p) ×` la somme des poids de ses frères), et
+  les frères gardent leurs proportions entre eux.
+- **Avancement** : un entier de 0 à 100, facultatif. Une **feuille** (sans enfant) vaut 100 si elle
+  est « fait », sinon son avancement saisi, sinon 0. Un élément **avec enfants** vaut la somme des
+  avancements de ses enfants pondérés par leurs parts, et 100 s'il est lui-même « fait ». Son
+  avancement saisi est alors ignoré (il revient s'il perd ses enfants).
+- **Ce qui est dans les cercles** : les sous-éléments par `parent`, à toute profondeur, sans les
+  supprimés. Au centre de la vue d'ensemble, « Tout » : les éléments sans parent qui ne sont pas
+  des tâches seules (projets, objectifs…, ou tout élément qui a des enfants). Une tâche seule, sans
+  parent, n'y apparaît pas. Le lien « appartient_a » ne compte pas : une part a un seul parent.
+
+**Tâches** :
+
+| Tâche | Ce qu'elle livre | Il faut d'Adrien |
+|---|---|---|
+| 3b.1 | Le poids et l'avancement : en base, dans l'API, le connecteur et le panneau de détail ; les calculs (parts, avancement qui remonte) dans le domaine | **Fait le 08/11** |
+| 3b.2 | La vue Cercles : centre, anneaux, couleurs par branche, remplissage, zoom, fil d'Ariane | **Fait le 08/11** |
+| 3b.3 | Travailler dans les cercles : la fiche de la part, son importance et son avancement au curseur, ajouter, renommer, supprimer | **Fait le 08/11** |
+| 3b.4 | Le plan : la même arborescence en liste, à replier, à réordonner et réorganiser en glissant | **Fait le 08/11** |
+| 3b.5 | Les repères : les filtres éclairent les parts qui correspondent, les retards se voient, l'image s'enregistre | **Fait le 08/11** |
+| 3b.6 | L'essai d'Adrien sur son téléphone | Le test, gestes donnés à la fin |
+| 3b.7 | Ce que le site de Goalscape montre en plus : égaliser, importance absolue, couleur choisie, indicateur de notes, coller une liste indentée, export CSV, plan grisé par les filtres, estomper pendant un réglage | **Fait le 08/11** |
+
+### 3b.1 Poids et avancement
+
+- **Base** : migration `0006`, deux colonnes sur `elements` : `poids` (nombre, plus de 0, au plus
+  1 000 000) et `avancement` (entier de 0 à 100), toutes deux facultatives.
+- **Domaine** : objets-valeurs `Poids` et `Avancement` (refusent zéro, un négatif, 101…) ; les deux
+  champs se modifient comme les autres (`modifierElement`, avec événement avant/après). Un module
+  `cercles.ts` : `parts(freres)` rend la part de chacun (somme 100 %), `avancementCalcule(arbre)`
+  l'avancement de chaque élément, `poidsPourPart(p, freres)` le poids à écrire pour qu'un élément
+  pèse `p %`.
+- **API et connecteur** : `poids` et `avancement` dans `POST` et `PATCH /api/elements`, et dans
+  `creer_elements` et `modifier_element` ; les consignes du connecteur expliquent les deux règles.
+- **Panneau de détail** : deux champs, « Poids » et « Avancement (%) » ; pour un élément qui a des
+  enfants, l'avancement affiché est le calculé, avec la mention « calculé ».
+- **Vérifié par** : tests unitaires des calculs (trois sœurs sans poids font 33,3 % chacune ; un
+  poids 2 contre deux poids 1 fait 50 % ; l'avancement d'un parent à deux enfants de poids 3 et 1,
+  faits à 100 % et 0 %, vaut 75 % ; un parent « fait » vaut 100 ; un arbre à trois niveaux remonte ;
+  `poidsPourPart(50, …)` rend bien 50 %) ; scénarios d'API (poser, vider, refuser 0 et 101, l'événement).
+
+### 3b.2 La vue Cercles
+
+- **Adresse** : un onglet « Cercles », `/cercles` ; `?centre=<id>` dit l'élément au centre (sans lui,
+  « Tout ») et `?anneaux=<n>` le nombre d'anneaux montrés (3 par défaut, de 1 à 6). Retour arrière
+  du téléphone = revenir au centre d'avant. Le détail d'un élément s'ouvre par `/cercles/e/<id>`,
+  comme dans les autres vues.
+- **Dessin** : un SVG (un dessin vectoriel que le navigateur trace, net à toute taille) calculé par
+  un module sans React (`ui/cercles.ts`, testé seul) : pour chaque part, son anneau, son angle de
+  départ et d'arrivée. Chaque branche du premier anneau a sa couleur, ses descendants des teintes
+  de la même couleur ; la part est claire, et sa portion « faite » (de son bord intérieur vers
+  l'extérieur, au prorata de l'avancement) est foncée. Le titre s'écrit dans la part quand il y
+  tient, sinon il apparaît en la touchant. Au centre : le titre et l'avancement du centre.
+  Un élément « fait » a sa part pleine ; une part trop fine pour être touchée reste dessinée.
+- **Navigation** : toucher une part la choisit (contour, et sa fiche en dessous) ; la toucher une
+  deuxième fois, ou « Zoomer », la met au centre ; toucher le centre remonte d'un niveau ; le fil
+  d'Ariane au-dessus (Tout › Maison › Travaux) ramène à n'importe quel niveau. Au clavier : Tab
+  passe de part en part, Entrée zoome, Échap remonte.
+- **Vérifié par** : tests unitaires des angles (les parts sœurs couvrent exactement l'angle du
+  parent, dans l'ordre du rang) ; scénarios dans le navigateur à la taille d'un téléphone : trois
+  objectifs de poids 2, 1, 1 donnent des parts de 180°, 90°, 90° ; zoomer, remonter, le fil
+  d'Ariane, et l'adresse qui rouvre le même centre.
+
+### 3b.3 Travailler dans les cercles
+
+- **La fiche de la part choisie**, sous les cercles : titre, type, part dans son parent (%),
+  avancement (et s'il est calculé), échéance ; boutons Zoomer, Détail (le panneau complet).
+- **L'importance** au curseur, de 1 à 99 % : pendant qu'on glisse, la part et ses sœurs se
+  redessinent (les sœurs se partagent le reste en gardant leurs proportions) ; au lâcher, un seul
+  envoi (le poids de la part). Pour une part seule, pas de curseur : elle fait 100 %.
+- **L'avancement** au curseur, de 0 à 100, pour une feuille ; la part se remplit et les parents se
+  recalculent sous le doigt. Une case « Fait » à côté.
+- **Ajouter** : « + Sous-élément » (dans la part choisie) et « + À côté » (dans le même parent),
+  avec un titre ; le type proposé est celui d'un frère, sinon « objectif » sous « Tout » et « tâche »
+  ailleurs. **Renommer** dans la fiche. **Supprimer** archive, avec « Annuler », comme ailleurs.
+- **Vérifié par** : scénarios dans le navigateur : régler une part à 50 % et voir ses deux sœurs à
+  25 % ; poser 40 % d'avancement sur une feuille et voir son parent changer ; ajouter un
+  sous-élément, recharger, le retrouver.
+
+### 3b.4 Le plan
+
+- Sous les cercles (à côté sur un grand écran), la même arborescence en liste : chaque ligne en
+  retrait selon son niveau, avec sa part (%) et une barre d'avancement ; un triangle replie ou
+  déplie une branche. Toucher une ligne choisit la part dans les cercles, et l'inverse.
+- **Glisser une ligne** (dnd-kit, déjà utilisé par le kanban : à la souris, au doigt après un appui
+  long, au clavier) : entre deux sœurs, elle change d'ordre (`rang`) ; sur une autre ligne, elle se
+  range dedans (`parent`). Une boucle (ranger un élément dans son propre descendant) est refusée.
+  Les cercles suivent : l'ordre des parts est celui du plan.
+- **Vérifié par** : scénarios dans le navigateur : replier une branche, réordonner deux sœurs,
+  ranger une tâche dans un autre objectif, et le retrouver après rechargement.
+
+### 3b.5 Les repères
+
+- La barre de filtres (texte, type, statut, priorité, tag, échéance) vaut aussi pour les cercles :
+  au lieu de cacher, elle **éclaire** les parts qui correspondent et grise les autres, pour garder
+  la forme de l'ensemble.
+- Une part en retard (échéance passée, pas faite) porte un liseré rouge ; la fiche dit l'échéance.
+- « Enregistrer l'image » : le dessin en fichier SVG, à garder ou imprimer.
+- **Vérifié par** : scénarios dans le navigateur : le filtre `tag=composant:pxe` éclaire une part et
+  en grise deux ; une échéance passée se voit ; le fichier enregistré est un SVG qui contient les
+  titres.
+
+### 3b.7 Les compléments, d'après le site de Goalscape
+
+Le 08/11, les pages publiques de Goalscape (présentation, tutoriels, articles de blog qui les
+transcrivent) ont été lues depuis le PC d'Adrien, le cloud ne pouvant pas les ouvrir. Comparées à
+3b.1 à 3b.5, il manquait :
+
+- **Égaliser** : un bouton de la fiche remet tous les sous-éléments de la part à poids égal (leurs
+  poids sont vidés).
+- **Importance absolue** : la fiche dit aussi ce que pèse la part dans le centre (le produit des
+  parts, du centre jusqu'à elle), et non plus seulement dans son parent.
+- **Couleur choisie** : un choix « Couleur » dans la fiche (automatique, ou l'une des huit teintes),
+  rangé comme un tag `couleur:<teinte>` ; les sous-éléments en héritent sauf s'ils ont la leur.
+- **Indicateur de notes** : une part qui a une description porte un petit point.
+- **Coller une liste** : dans la fiche, un champ où l'on colle une liste indentée (espaces,
+  tabulations, puces `-` ou `*`, numéros `1.`) ; chaque ligne devient un sous-élément, la profondeur
+  suit l'indentation. Une ligne `**Titre** suite` donne le titre en gras et la suite en description.
+- **Export CSV** : le tableau de la branche au centre (tous niveaux) : niveau, titre, type, statut,
+  part dans le parent, part du centre, avancement, échéance, tags. Il s'ouvre dans un tableur.
+- **Le plan suit les filtres** : ses lignes qui n'y répondent pas sont grisées, comme les parts.
+- **Estomper pendant un réglage** : pendant qu'on glisse le curseur d'importance, tout s'estompe sauf
+  la part et ses sœurs ; pendant l'avancement, sauf ses sœurs et ses ancêtres.
+
+**Écarté ou remis, avec le motif** :
+
+- *Pièces jointes* : il faut un stockage de fichiers (R2), donc une décision et peut-être du projet
+  Cloudflare ; à proposer à Adrien comme tâche à part.
+- *Gantt, date de début, dépendances* : la timeline est « plus tard » depuis le 03/11 (Adrien pense
+  ne jamais s'en servir) ; le lien « bloque » existe déjà.
+- *Rapport Word, modèles, onglets de notes, thèmes de couleur par code* : de la présentation, pas de
+  la gestion ; la description Markdown et l'export CSV couvrent le besoin pour l'instant.
+- *Étiquettes Now et Next* : ce sont des tags (`now`, `next`), déjà filtrables.
+- *Coach IA, connecteur MCP* : Claude le fait déjà, par le connecteur de l'étape 2.
+- *Partage, commentaires prévenus par mail, intégration, Teams* : le partage, exclu par Adrien.
+
+**Vérifié par** : tests unitaires (lire une liste collée, le CSV, l'importance absolue, la couleur
+héritée) et scénarios dans le navigateur (égaliser, couleur, coller une liste, exporter, plan grisé).
+
+### 3b.6 L'essai d'Adrien
+
+Comme pour l'étape 3 : ce qu'aucun test ne dit, c'est si la vue sert. Les gestes pas à pas sont
+donnés à Adrien quand 3b.1 à 3b.5 sont en ligne.
+
+**Construit le 08/11** (3b.1 à 3b.5), tel que détaillé ci-dessus, vérifié par 153 tests unitaires
+(dont `cercles.test.ts` et `interface-plan.test.ts`) et 7 scénarios joués dans le navigateur à la
+taille d'un téléphone (`features/cercles.feature`), avec les 82 scénarios d'avant toujours verts.
+Écarts au détail : le plan se glisse par sa poignée ⠿ (toucher le titre choisit la part) ; sur un
+grand écran, la fiche et le plan passent à droite des cercles ; les filtres éclairent les parts,
+pas encore les lignes du plan.
+
+**Fait quand (étape 3b)** : sur le téléphone, la vue Cercles montre les objectifs autour de « Tout »
+avec des parts à leur poids ; régler une part à 50 % redessine ses sœurs, et la somme reste 100 % ;
+cocher une tâche remplit sa part et fait monter l'avancement de chaque parent jusqu'au centre ;
+toucher une part zoome, toucher le centre remonte ; le plan réorganise l'arbre en glissant ; tout
+survit au rechargement. Chaque point a son scénario joué dans le navigateur.
+
 ## Étape 4 — Requêtes enregistrées, tableaux de bord
 
 - **Tâches** :
@@ -342,15 +522,14 @@ au titre sur un téléphone.
   Adrien choisit ses tâches du jour dans le backlog, les case dans des créneaux, et voit le temps
   prévu face au temps disponible.
 
-## Étape 7 — Horizons et objectifs
+## Étape 7 — Horizons
 
 - **Tâches** :
   - 7.1 Décider comment on note un horizon : un champ dédié ou un tag `horizon:2026-11`.
   - 7.2 La vue horizons à la Timestripe : jour, semaine, mois, année et au-delà.
-  - 7.3 Le poids des objectifs et la vue Goalscape en cercles.
+  - ~~7.3 Le poids des objectifs et la vue en cercles~~ : avancée en étape 3b le 08/11.
 - **Fait quand** : un objectif se place sur « 2027 », une tâche sur « semaine 45 », et chacun
-  apparaît dans son horizon ; la vue Goalscape montre les objectifs en cercles, et changer un poids
-  change la taille de la part.
+  apparaît dans son horizon.
 
 ## Étape 8 — Mail → tâche
 
