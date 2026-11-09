@@ -84,6 +84,13 @@ Then('la part {string} couvre {int}°', async function (this: Monde, titre: stri
   await expect(part(this, titre)).toHaveAttribute('data-angle', String(degres));
 });
 
+Then('la part {string} est un anneau sans couture', async function (this: Monde, titre: string) {
+  // Un tour entier se dessine sans trait du centre vers le bord (pas de « L » dans le chemin).
+  const d = await part(this, titre).locator('path.contour').getAttribute('d');
+  expect(d).not.toBeNull();
+  expect(d).not.toContain('L');
+});
+
 Then('la part {string} en est à {int} %', async function (this: Monde, titre: string, pourcent: number) {
   await expect(part(this, titre)).toHaveAttribute('data-avancement', String(pourcent));
 });

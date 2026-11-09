@@ -22,6 +22,7 @@ Fonctionnalité: Les objectifs en cercles (étape 3b)
     Alors le centre des cercles est "Cercles : santé"
     Et le fil d'Ariane dit "Tout › Cercles : vivre mieux › Cercles : santé"
     Et la part "Cercles : courir" couvre 360°
+    Et la part "Cercles : courir" est un anneau sans couture
     Quand je recharge la page des cercles
     Alors le centre des cercles est "Cercles : santé"
     Quand je touche le centre des cercles
