@@ -1,8 +1,8 @@
 // La vue en cercles, sans React : quel élément au centre, quelles parts autour, à quels angles.
 // Testé seul (tests/unitaires/interface-cercles.test.ts et interface-complements-cercles.test.ts). Les règles de poids et d'avancement
 // viennent du domaine (src/domaine/cercles.ts), les mêmes que côté serveur.
-import { avancementDeRacines, avancementsCalcules, parts } from '../src/domaine/cercles';
-import type { Element } from './api';
+import { avancementDeRacines, avancementsCalcules, parts, poidsEffectif } from '../src/domaine/cercles';
+import type { Appartenance, Element } from './api';
 
 /** Le nombre d'anneaux montrés, par défaut et au plus. */
 export const ANNEAUX_PAR_DEFAUT = 3;
@@ -25,6 +25,41 @@ export function couleursChoisies(tags: ReadonlyMap<string, readonly string[]>): 
     }
   }
   return choisies;
+}
+
+/**
+ * Les éléments tels que les cercles les rangent : une tâche rangée nulle part (pas de parent, ou un
+ * parent qui n'est pas chargé) mais rattachée à un projet par un lien « appartient à » y est
+ * rangée, comme si elle en était un sous-élément. Rattachée à plusieurs : sous le premier lien.
+ * Un rattachement qui ferait une boucle (le projet est lui-même dans la tâche) est ignoré.
+ */
+export function rattacher(elements: readonly Element[], appartenances: readonly Appartenance[]): Element[] {
+  const parId = new Map(elements.map((e) => [e.id, e]));
+  const premier = new Map<string, string>();
+  for (const a of appartenances) {
+    if (!premier.has(a.source) && parId.has(a.cible) && a.cible !== a.source) premier.set(a.source, a.cible);
+  }
+  if (premier.size === 0) return [...elements];
+  const parentDe = (id: string): string | null => {
+    const e = parId.get(id);
+    if (!e) return null;
+    if (e.parent && parId.has(e.parent)) return e.parent;
+    return premier.get(id) ?? null;
+  };
+  // Une boucle : en remontant depuis le projet, on retombe sur la tâche.
+  const boucle = (id: string, cible: string): boolean => {
+    const vus = new Set<string>();
+    for (let c: string | null = cible; c !== null && !vus.has(c); c = parentDe(c)) {
+      if (c === id) return true;
+      vus.add(c);
+    }
+    return false;
+  };
+  return elements.map((e) => {
+    if (e.parent && parId.has(e.parent)) return e;
+    const cible = premier.get(e.id);
+    return cible && !boucle(e.id, cible) ? { ...e, parent: cible } : e;
+  });
 }
 
 /** Une part dessinée : l'élément, son anneau (1 = le plus proche du centre), ses angles en radians. */
@@ -192,18 +227,202 @@ export function chemin(interieur: number, exterieur: number, debut: number, fin:
     + `A ${arrondi(interieur)} ${arrondi(interieur)} 0 ${grand} 0 ${p(d)} Z`;
 }
 
-/**
- * Le titre tel qu'il tient dans une part (coupé avec « … »), ou null s'il n'y tient pas : la place est
- * la longueur de l'arc au milieu de l'anneau, et un caractère prend environ 0,55 fois la taille du texte.
- */
-export function etiquette(titre: string, rayonMilieu: number, angle: number, taille: number): string | null {
-  const place = rayonMilieu * angle * 0.85;
-  const max = Math.floor(place / (taille * 0.55));
-  if (max < 3) return null;
-  return titre.length <= max ? titre : `${titre.slice(0, max - 1).trimEnd()}…`;
-}
-
 /** « 33 % », sans décimale. */
 export function pourcent(fraction0a1: number): string {
   return `${Math.round(fraction0a1 * 100)} %`;
+}
+
+// ——— Le mouvement (3b.9) ———
+
+/** Où se dessine une part : ses deux angles et ses deux rayons. */
+export interface Geometrie {
+  readonly debut: number;
+  readonly fin: number;
+  readonly interieur: number;
+  readonly exterieur: number;
+}
+
+/** La géométrie d'une part posée, sur `anneaux` anneaux. */
+export function geometrieDe(part: Part, anneaux: number): Geometrie {
+  return { debut: part.debut, fin: part.fin, ...rayons(part.anneau, anneaux) };
+}
+
+/** Une part pendant le mouvement : où elle en est, et son opacité (elle apparaît ou s'efface). */
+export interface Trame {
+  readonly geometrie: Geometrie;
+  readonly opacite: number;
+}
+
+/** Ralentit au début et à la fin : t de 0 à 1 donne un avancement de 0 à 1. */
+export function adoucir(t: number): number {
+  const u = Math.min(1, Math.max(0, t));
+  return u < 0.5 ? 4 * u * u * u : 1 - ((-2 * u + 2) ** 3) / 2;
+}
+
+const entre = (a: number, b: number, t: number): number => a + (b - a) * t;
+
+/**
+ * Le dessin au temps t (0 à 1) d'un passage d'un centre à un autre. Une part présente avant et
+ * après glisse de sa place d'avant à sa place d'après. Une part nouvelle sort de son bord intérieur
+ * en apparaissant ; une part qui disparaît (`depart` seul) s'efface sur place.
+ */
+export function trames(
+  depart: ReadonlyMap<string, Geometrie>, arrivee: ReadonlyMap<string, Geometrie>, t: number,
+): Map<string, Trame> {
+  const k = adoucir(t);
+  const resultat = new Map<string, Trame>();
+  for (const [id, b] of arrivee) {
+    const a = depart.get(id) ?? { ...b, exterieur: b.interieur };
+    resultat.set(id, {
+      geometrie: { debut: entre(a.debut, b.debut, k), fin: entre(a.fin, b.fin, k),
+        interieur: entre(a.interieur, b.interieur, k), exterieur: entre(a.exterieur, b.exterieur, k) },
+      opacite: depart.has(id) ? 1 : k,
+    });
+  }
+  for (const [id, a] of depart) if (!arrivee.has(id)) resultat.set(id, { geometrie: a, opacite: 1 - k });
+  return resultat;
+}
+
+// ——— Les libellés (3b.10) ———
+
+/** Une ligne de titre le long d'un arc : son texte et son rayon. */
+export interface LigneArc {
+  readonly texte: string;
+  readonly rayon: number;
+}
+
+/**
+ * Comment s'écrit le titre d'une part : le long de l'arc (sur une ou deux lignes ; `inverse` quand la
+ * part est en bas du cercle, pour se lire à l'endroit), dans le sens du rayon (part étroite mais
+ * épaisse), ou pas du tout (null : il apparaît en touchant la part).
+ */
+export type Libelle =
+  | { readonly mode: 'arc'; readonly lignes: readonly LigneArc[]; readonly inverse: boolean; readonly taille: number }
+  | { readonly mode: 'rayon'; readonly texte: string; readonly taille: number };
+
+/** Coupe un titre en lignes d'au plus `max` caractères, aux espaces si possible ; la dernière finit par « … » s'il en reste. */
+export function couper(titre: string, max: number, lignes: number): string[] {
+  const mots = titre.trim().split(/\s+/);
+  const resultat: string[] = [];
+  let courante = '';
+  let i = 0;
+  while (i < mots.length && resultat.length < lignes) {
+    const mot = mots[i] ?? '';
+    const essai = courante ? `${courante} ${mot}` : mot;
+    if (essai.length <= max) { courante = essai; i += 1; continue; }
+    if (!courante) { courante = mot.slice(0, max); mots[i] = mot.slice(max); if (!mots[i]) i += 1; }
+    resultat.push(courante);
+    courante = '';
+  }
+  if (courante && resultat.length < lignes) resultat.push(courante);
+  if (i < mots.length || resultat.length === 0) {
+    const derniere = resultat.pop() ?? '';
+    resultat.push(`${derniere.slice(0, Math.max(1, max - 1)).trimEnd()}…`);
+  }
+  return resultat;
+}
+
+/** Un caractère prend environ 0,55 fois la taille du texte. */
+const LARGEUR_CARACTERE = 0.55;
+
+export function libelle(titre: string, geometrie: Geometrie, tailleMax: number): Libelle | null {
+  const { interieur, exterieur } = geometrie;
+  const angle = Math.min(geometrie.fin - geometrie.debut, Math.PI);
+  const epaisseur = exterieur - interieur;
+  const taille = Math.min(tailleMax, epaisseur * 0.4);
+  if (taille < 1.6) return null;
+  const milieu = (interieur + exterieur) / 2;
+  const tient = (rayon: number): number => Math.floor((rayon * angle * 0.85) / (taille * LARGEUR_CARACTERE));
+  const surUne = tient(milieu);
+  // Dans le sens du rayon : la place est l'épaisseur, il faut que l'arc laisse passer une ligne.
+  const surRayon = milieu * angle >= taille * 1.3 ? Math.floor((epaisseur * 0.85) / (taille * LARGEUR_CARACTERE)) : 0;
+  const a = (geometrie.debut + geometrie.fin) / 2;
+  const inverse = Math.cos(a) < 0; // le milieu de la part est dans la moitié basse
+  if (surUne >= titre.length || (surUne >= 3 && surUne >= surRayon)) {
+    // Deux lignes si le titre ne tient pas sur une et que l'anneau est assez épais pour deux.
+    if (surUne < titre.length && epaisseur >= taille * 2.6) {
+      const ecart = taille * 0.6;
+      // La première ligne se lit en haut : à l'extérieur, sauf en bas du cercle où l'on lit retourné.
+      const [r1, r2] = inverse ? [milieu - ecart, milieu + ecart] : [milieu + ecart, milieu - ecart];
+      const max = Math.min(tient(r1), tient(r2));
+      const lignes = couper(titre, max, 2);
+      return { mode: 'arc', inverse, taille, lignes: lignes.map((texte, i) => ({ texte, rayon: i === 0 ? r1 : r2 })) };
+    }
+    return { mode: 'arc', inverse, taille, lignes: [{ texte: couper(titre, surUne, 1)[0] ?? '', rayon: milieu }] };
+  }
+  if (surRayon >= 3) return { mode: 'rayon', taille, texte: couper(titre, surRayon, 1)[0] ?? '' };
+  return null;
+}
+
+/** Le chemin d'un arc de texte, au rayon donné : dans le sens des aiguilles d'une montre, ou l'inverse. */
+export function arcDeTexte(rayon: number, debut: number, fin: number, inverse: boolean): string {
+  // Un tour entier : le texte se pose sur le demi-cercle du haut (ou du bas, retourné).
+  let [d, f] = fin - debut >= 2 * Math.PI - 1e-9 ? [-Math.PI / 2, Math.PI / 2] : [debut, fin];
+  if (inverse && fin - debut >= 2 * Math.PI - 1e-9) [d, f] = [Math.PI / 2, (3 * Math.PI) / 2];
+  const grand = f - d > Math.PI ? 1 : 0;
+  const [a, b] = inverse ? [point(rayon, f), point(rayon, d)] : [point(rayon, d), point(rayon, f)];
+  return `M ${arrondi(a.x)} ${arrondi(a.y)} A ${arrondi(rayon)} ${arrondi(rayon)} 0 ${grand} ${inverse ? 0 : 1} ${arrondi(b.x)} ${arrondi(b.y)}`;
+}
+
+// ——— Les gestes sur le cercle (3b.11, 3b.12) ———
+
+/** L'angle (0 en haut, sens des aiguilles d'une montre, de 0 à 2π) et le rayon d'un point du dessin. */
+export function polaire(x: number, y: number): { angle: number; rayon: number } {
+  let angle = Math.atan2(x, -y);
+  if (angle < 0) angle += 2 * Math.PI;
+  return { angle, rayon: Math.hypot(x, y) };
+}
+
+/** Ramène un angle dans [debut, debut + 2π). */
+function depuis(angle: number, debut: number): number {
+  let a = angle;
+  while (a < debut) a += 2 * Math.PI;
+  while (a >= debut + 2 * Math.PI) a -= 2 * Math.PI;
+  return a;
+}
+
+/** La plus petite part qu'on peut laisser à l'une des deux voisines en tirant leur frontière. */
+export const PART_MIN_FRONTIERE = 0.03;
+
+/**
+ * Tirer la frontière entre deux sœurs voisines (`gauche` puis `droite`) jusqu'à `angle` : elles se
+ * partagent autrement la somme de leurs poids, les autres sœurs ne bougent pas. Rend les deux poids.
+ */
+export function deplacerFrontiere(gauche: Part, droite: Part, angle: number): { gauche: number; droite: number } {
+  const total = poidsEffectif(gauche.element.poids) + poidsEffectif(droite.element.poids);
+  const etendue = droite.fin - gauche.debut;
+  const a = depuis(angle, gauche.debut);
+  // Au-delà de la paire, le doigt est plus près d'un bout ou de l'autre : on bute contre lui.
+  const dedans = a <= droite.fin ? a : (a - droite.fin < gauche.debut + 2 * Math.PI - a ? droite.fin : gauche.debut);
+  const fraction = Math.min(1 - PART_MIN_FRONTIERE, Math.max(PART_MIN_FRONTIERE, (dedans - gauche.debut) / etendue));
+  const g = Math.round(total * fraction * 1000) / 1000;
+  return { gauche: g, droite: Math.round((total - g) * 1000) / 1000 };
+}
+
+/** L'avancement lu sous le doigt, du bord intérieur (0) au bord extérieur (100), par pas de 5. */
+export function avancementSous(rayon: number, interieur: number, exterieur: number): number {
+  const brut = ((rayon - interieur) / (exterieur - interieur)) * 100;
+  return Math.min(100, Math.max(0, Math.round(brut / 5) * 5));
+}
+
+/** Où tombe une part lâchée : dans le centre, ou sur une part (avant elle, dedans, après elle). */
+export type Cible =
+  | { readonly sorte: 'centre' }
+  | { readonly sorte: 'part'; readonly part: Part; readonly ou: 'avant' | 'dans' | 'apres' };
+
+/** La cible sous le point (x, y) du dessin, ou null (hors du cercle). */
+export function cibleSous(lesParts: readonly Part[], anneaux: number, x: number, y: number): Cible | null {
+  const { angle, rayon } = polaire(x, y);
+  if (rayon < RAYON_CENTRE) return { sorte: 'centre' };
+  for (const p of lesParts) {
+    const { interieur, exterieur } = rayons(p.anneau, anneaux);
+    if (rayon < interieur || rayon >= exterieur) continue;
+    const a = depuis(angle, p.debut);
+    if (a >= p.fin) continue;
+    const fraction = (a - p.debut) / (p.fin - p.debut);
+    // Un tour entier n'a pas de bord : on ne peut que s'y ranger.
+    const ou = p.fin - p.debut >= 2 * Math.PI - 1e-9 ? 'dans' : fraction < 0.25 ? 'avant' : fraction > 0.75 ? 'apres' : 'dans';
+    return { sorte: 'part', part: p, ou };
+  }
+  return null;
 }

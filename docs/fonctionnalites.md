@@ -44,7 +44,7 @@ La liste complète voulue par Adrien (03/11/2026), et pour chacune un statut :
 | Calendrier | première version | 6 | Les éléments placés par leur échéance ou leur jour planifié. |
 | Mode journée à la Sunsama | première version | 6 | Choisir ses tâches du jour, puis les caser dans le temps. |
 | Horizons à la Timestripe (jour, semaine, mois, année…) | première version | 7 | Remplacent le sprint. |
-| Découpage d'objectifs en cercles (à la Goalscape) | première version | 3b | Vue circulaire hiérarchique : chaque part pesée dans son parent (les sœurs font 100 %), remplie selon son avancement, qui remonte jusqu'au centre ; zoom, plan en liste, réorganisation en glissant. Sans le partage ni les responsables. Avancée de l'étape 7 à la demande d'Adrien (08/11). |
+| Découpage d'objectifs en cercles (à la Goalscape) | première version | 3b | Vue circulaire hiérarchique : chaque part pesée dans son parent (les sœurs font 100 %), remplie selon son avancement, qui remonte jusqu'au centre ; zoom animé, plan en liste ; sur le cercle même : tirer le bord d'une part (importance) ou son remplissage (avancement), glisser une part pour la ranger, flèches du clavier ; les tâches rattachées à un projet en sont des parts. Sans le partage ni les responsables. Avancée de l'étape 7 à la demande d'Adrien (08/11). |
 | Timeline | plus tard | — | Hors première version : elle exige des dates sur chaque tâche, et Adrien pense ne jamais s'en servir. |
 
 ## Saisie

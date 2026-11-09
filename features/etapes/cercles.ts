@@ -45,6 +45,17 @@ Given('{string} contient la tâche faite {string}', async function (this: Monde,
   await creerNomme(this, { titre, parent: id(this, parent), statut: 'fait' });
 });
 
+Given('le projet de cercles {string} existe', async function (this: Monde, titre: string) {
+  await creerNomme(this, { titre, type: 'projet' });
+});
+
+Given('la tâche {string} est rattachée à {string}, sans y être rangée', async function (this: Monde, titre: string, projet: string) {
+  await creerNomme(this, { titre });
+  const reponse = await page(this).request.post(`${this.worker.adresse}/api/elements/${id(this, titre)}/liens`,
+    { data: { cible: id(this, projet), type: 'appartient_a' } });
+  expect(reponse.status()).toBe(201);
+});
+
 When("j'ouvre les cercles centrés sur {string}", async function (this: Monde, titre: string) {
   await page(this).goto(`${this.worker.adresse}/cercles?centre=${encodeURIComponent(id(this, titre))}`);
   await expect(cercles(this).locator('svg')).toBeVisible();
@@ -59,21 +70,108 @@ When('je reviens en arrière dans les cercles', async function (this: Monde) {
   await page(this).goBack();
 });
 
-/** Touche une part en son milieu (le point où s'écrit son titre), comme le ferait un doigt. */
-When('je touche la part {string}', async function (this: Monde, titre: string) {
-  const g = part(this, titre);
-  await expect(g).toHaveCount(1);
-  const ecran = await g.evaluate((el) => {
+/** Le point de l'écran d'un point du dessin (de -100 à 100). */
+async function ecranDe(monde: Monde, x: number, y: number): Promise<{ x: number; y: number }> {
+  return cercles(monde).locator('g.centre').evaluate((el, [px, py]) => {
     const svg = el.ownerSVGElement;
     const matrice = svg?.getScreenCTM();
-    if (!svg || !matrice) throw new Error('Pas de dessin.');
+    if (!svg) throw new Error('Pas de dessin.');
+    if (!matrice) throw new Error('Pas de dessin.');
     const p = svg.createSVGPoint();
-    p.x = Number(el.getAttribute('data-x'));
-    p.y = Number(el.getAttribute('data-y'));
+    p.x = px ?? 0;
+    p.y = py ?? 0;
     const q = p.matrixTransform(matrice);
     return { x: q.x, y: q.y };
-  });
+  }, [x, y]);
+}
+
+/** Le point de l'écran du repère `data-x`, `data-y` d'un élément du dessin (le milieu d'une part, une poignée). */
+async function repere(monde: Monde, cible: Locator): Promise<{ x: number; y: number }> {
+  // Pendant le mouvement d'un zoom, les parts glissent : on attend qu'elles soient en place.
+  await expect(cercles(monde).locator('svg[data-anime]')).toHaveCount(0);
+  await expect(cible).toHaveCount(1);
+  const x = Number(await cible.getAttribute('data-x'));
+  const y = Number(await cible.getAttribute('data-y'));
+  return ecranDe(monde, x, y);
+}
+
+/** Un point du dessin à l'angle donné (en degrés, 0 en haut, sens des aiguilles d'une montre) et au rayon donné. */
+const auPoint = (degres: number, rayon: number): { x: number; y: number } => {
+  const a = (degres * Math.PI) / 180;
+  return { x: rayon * Math.sin(a), y: -rayon * Math.cos(a) };
+};
+
+/** Touche une part en son milieu (le point où s'écrit son titre), comme le ferait un doigt. */
+When('je touche la part {string}', async function (this: Monde, titre: string) {
+  const ecran = await repere(this, part(this, titre));
   await page(this).mouse.click(ecran.x, ecran.y);
+});
+
+/** Tire une poignée de la part choisie jusqu'à un point du dessin, à la souris, en plusieurs pas. */
+async function tirer(monde: Monde, poignee: string, x: number, y: number): Promise<void> {
+  const depart = await repere(monde, cercles(monde).locator(`g.${poignee}`));
+  const arrivee = await ecranDe(monde, x, y);
+  const souris = page(monde).mouse;
+  await souris.move(depart.x, depart.y);
+  await souris.down();
+  await souris.move(arrivee.x, arrivee.y, { steps: 10 });
+  await souris.up();
+}
+
+/** Les rayons de l'anneau d'une part, lus sur le dessin. */
+async function rayonsDe(monde: Monde, cible: Locator): Promise<{ interieur: number; exterieur: number }> {
+  await expect(cercles(monde).locator('svg[data-anime]')).toHaveCount(0);
+  return { interieur: Number(await cible.getAttribute('data-interieur')), exterieur: Number(await cible.getAttribute('data-exterieur')) };
+}
+
+When("je tire la frontière de la part choisie jusqu'à {int}°", async function (this: Monde, degres: number) {
+  const { interieur, exterieur } = await rayonsDe(this, cercles(this).locator('g.part[aria-pressed="true"]'));
+  const q = auPoint(degres, (interieur + exterieur) / 2);
+  await tirer(this, 'poignee-frontiere', q.x, q.y);
+});
+
+When('je tire le remplissage de la part choisie à {int} %', async function (this: Monde, pourcent: number) {
+  const { interieur, exterieur } = await rayonsDe(this, cercles(this).locator('g.part[aria-pressed="true"]'));
+  const poignee = cercles(this).locator('g.poignee-avancement');
+  // Sur le rayon qui passe par la poignée : la même direction, à la distance voulue du centre.
+  const x = Number(await poignee.getAttribute('data-x'));
+  const y = Number(await poignee.getAttribute('data-y'));
+  const longueur = Math.hypot(x, y);
+  const rayon = interieur + ((exterieur - interieur) * pourcent) / 100;
+  await tirer(this, 'poignee-avancement', (x / longueur) * rayon, (y / longueur) * rayon);
+});
+
+When('je glisse la part {string} au milieu de la part {string}', async function (this: Monde, titre: string, cible: string) {
+  const depart = await repere(this, part(this, titre));
+  const arrivee = await repere(this, part(this, cible));
+  const souris = page(this).mouse;
+  await souris.move(depart.x, depart.y);
+  await souris.down();
+  await souris.move(arrivee.x, arrivee.y, { steps: 12 });
+  await expect(cercles(this).locator('.consigne-glisse')).toHaveText(`Ranger dans « ${cible} »`);
+  await souris.up();
+});
+
+Then('{string} est rangé dans {string}', async function (this: Monde, titre: string, parent: string) {
+  await expect.poll(async () => {
+    const reponse = await page(this).request.get(`${this.worker.adresse}/api/elements/${id(this, titre)}`);
+    return ((await reponse.json()) as { element: { parent: string | null } }).element.parent;
+  }).toBe(id(this, parent));
+});
+
+When("j'appuie sur {string} dans les cercles", async function (this: Monde, touche: string) {
+  await page(this).keyboard.press(touche);
+});
+
+Then('la part choisie est {string}', async function (this: Monde, titre: string) {
+  await expect(cercles(this).locator('g.part[aria-pressed="true"]')).toHaveAttribute('data-titre', titre);
+  await expect(part(this, titre)).toBeFocused();
+});
+
+Then('le passage au nouveau centre est animé', async function (this: Monde) {
+  // Le mouvement dure un tiers de seconde : on le voit commencer, puis finir.
+  await expect(cercles(this).locator('svg[data-anime="oui"]')).toHaveCount(1, { timeout: 2000 });
+  await expect(cercles(this).locator('svg[data-anime]')).toHaveCount(0);
 });
 
 When('je touche le centre des cercles', async function (this: Monde) {
@@ -86,6 +184,7 @@ Then('la part {string} couvre {int}°', async function (this: Monde, titre: stri
 
 Then('la part {string} est un anneau sans couture', async function (this: Monde, titre: string) {
   // Un tour entier se dessine sans trait du centre vers le bord (pas de « L » dans le chemin).
+  await expect(cercles(this).locator('svg[data-anime]')).toHaveCount(0);
   const d = await part(this, titre).locator('path.contour').getAttribute('d');
   expect(d).not.toBeNull();
   expect(d).not.toContain('L');

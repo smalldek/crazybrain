@@ -140,6 +140,11 @@ export class ServiceElements {
   }
 
   /** Pose un tag ; le reposer ne change rien. Rend le tag et s'il a été ajouté. */
+  /** Tous les liens « appartient à » (éléments non supprimés) : la tâche (source) et son projet (cible). */
+  appartenances(): Promise<{ source: string; cible: string }[]> {
+    return this.relations.appartenances();
+  }
+
   /** Tous les tags posés (éléments non supprimés). */
   tousLesTags(): Promise<InstantaneTag[]> {
     return this.relations.tousLesTags();

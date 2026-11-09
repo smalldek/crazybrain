@@ -174,3 +174,60 @@ Fonctionnalité: Les objectifs en cercles (étape 3b)
     Quand j'ouvre les cercles centrés sur "Liste : projet" avec "texte=relire"
     Alors la ligne "Liste : relire" du plan est éclairée
     Et la ligne "Liste : cadrer" du plan est grisée
+
+  Scénario: Une tâche rattachée à un projet en est une part (3b.8)
+    Étant donné que le projet de cercles "Cercles : sport" existe
+    Et que la tâche "Cercles : vélo" est rattachée à "Cercles : sport", sans y être rangée
+    Et que la tâche "Cercles : natation" est rattachée à "Cercles : sport", sans y être rangée
+    Quand j'ouvre les cercles centrés sur "Cercles : sport"
+    Alors la part "Cercles : vélo" couvre 180°
+    Et la part "Cercles : natation" couvre 180°
+
+  Scénario: Le zoom est animé, les flèches passent d'une part à l'autre (3b.9, 3b.12)
+    Étant donné que l'objectif "Gestes : maison" existe
+    Et que "Gestes : maison" contient l'objectif "Gestes : cuisine" sans poids
+    Et que "Gestes : maison" contient l'objectif "Gestes : jardin" sans poids
+    Et que "Gestes : cuisine" contient la tâche "Gestes : peindre"
+    Quand j'ouvre les cercles centrés sur "Gestes : maison"
+    Et je touche la part "Gestes : cuisine"
+    Et j'appuie sur "ArrowRight" dans les cercles
+    Alors la part choisie est "Gestes : jardin"
+    Quand j'appuie sur "ArrowLeft" dans les cercles
+    Et j'appuie sur "ArrowDown" dans les cercles
+    Alors la part choisie est "Gestes : peindre"
+    Quand j'appuie sur "ArrowUp" dans les cercles
+    Alors la part choisie est "Gestes : cuisine"
+    Quand je touche la part "Gestes : cuisine"
+    Alors le passage au nouveau centre est animé
+    Et le centre des cercles est "Gestes : cuisine"
+
+  Scénario: Tirer le bord d'une part règle son importance, tirer son remplissage règle l'avancement (3b.11)
+    Étant donné que l'objectif "Tirer : semaine" existe
+    Et que "Tirer : semaine" contient l'objectif "Tirer : sport" sans poids
+    Et que "Tirer : semaine" contient l'objectif "Tirer : lecture" sans poids
+    Et que "Tirer : semaine" contient l'objectif "Tirer : amis" sans poids
+    Quand j'ouvre les cercles centrés sur "Tirer : semaine"
+    Et je touche la part "Tirer : sport"
+    Et je tire la frontière de la part choisie jusqu'à 180°
+    Alors la part "Tirer : sport" couvre 180°
+    Et la part "Tirer : lecture" couvre 60°
+    Et la part "Tirer : amis" couvre 120°
+    Quand je recharge la page des cercles
+    Alors la part "Tirer : sport" couvre 180°
+    Quand je touche la part "Tirer : amis"
+    Et je tire le remplissage de la part choisie à 60 %
+    Alors la part "Tirer : amis" en est à 60 %
+    Et le centre en est à "20 %"
+    Quand je recharge la page des cercles
+    Alors la part "Tirer : amis" en est à 60 %
+
+  Scénario: Glisser une part sur le cercle la range dans une autre (3b.12)
+    Étant donné que l'objectif "Glisser : année" existe
+    Et que "Glisser : année" contient l'objectif "Glisser : santé" sans poids
+    Et que "Glisser : année" contient l'objectif "Glisser : travail" sans poids
+    Et que "Glisser : année" contient l'objectif "Glisser : courir" sans poids
+    Quand j'ouvre les cercles centrés sur "Glisser : année"
+    Et je glisse la part "Glisser : courir" au milieu de la part "Glisser : santé"
+    Alors "Glisser : courir" est rangé dans "Glisser : santé"
+    Et la part "Glisser : santé" couvre 180°
+    Et la part "Glisser : courir" couvre 180°

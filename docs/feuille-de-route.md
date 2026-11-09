@@ -27,7 +27,7 @@ tâche en a besoin, elle le dit (« Il faut du projet Cloudflare »), et Adrien 
 | 1. Socle | Le site, la connexion Google, la base, l'API, le connecteur testé, modifier une tâche, le modèle complet | Fait le 05/11 |
 | 2. Connecteur Claude | Claude lit, crée et modifie les tâches depuis une conversation | Fait le 05/11 |
 | 3. Kanban, détail, tags, filtres | Le premier vrai écran de travail | Construite le 05/11 |
-| 3b. Objectifs en cercles | Le découpage pondéré en cercles, avancement qui remonte (avancé depuis l'étape 7 le 08/11) | Construite le 08/11, essai d'Adrien à faire |
+| 3b. Objectifs en cercles | Le découpage pondéré en cercles, avancement qui remonte (avancé depuis l'étape 7 le 08/11) | Construite le 08/11 ; le cercle comme outil principal (3b.8 à 3b.12) le 09/11 ; essai d'Adrien quand il voudra |
 | 4. Requêtes enregistrées, tableaux de bord | Claude écrit des requêtes, l'outil les rejoue | — |
 | 5. L'appli sur le téléphone | Icône, partage, rappels, tâches récurrentes | — |
 | 6. Calendrier et mode journée | Planifier sa journée à la Sunsama | — |
@@ -343,6 +343,11 @@ responsables (une personne par part), qui n'ont de sens qu'à plusieurs.
 | 3b.5 | Les repères : les filtres éclairent les parts qui correspondent, les retards se voient, l'image s'enregistre | **Fait le 08/11** |
 | 3b.6 | L'essai d'Adrien sur son téléphone | Le test, gestes donnés à la fin |
 | 3b.7 | Ce que le site de Goalscape montre en plus : égaliser, importance absolue, couleur choisie, indicateur de notes, coller une liste indentée, export CSV, plan grisé par les filtres, estomper pendant un réglage | **Fait le 08/11** |
+| 3b.8 | Les tâches rattachées à un projet (lien « appartient à ») sont des parts de ce projet | **Fait le 09/11** |
+| 3b.9 | Le zoom et la remontée animés : la part grandit jusqu'au tour entier, on voit d'où l'on vient | **Fait le 09/11** |
+| 3b.10 | Des libellés lisibles : le long de l'arc, ou dans le sens du rayon pour une part fine ; le survol | **Fait le 09/11** |
+| 3b.11 | Les gestes directs sur le cercle : tirer le bord d'une part règle son importance, tirer son remplissage règle son avancement | **Fait le 09/11** |
+| 3b.12 | Glisser une part sur le cercle pour la ranger dans une autre ou la réordonner ; les flèches du clavier | **Fait le 09/11** |
 
 ### 3b.1 Poids et avancement
 
@@ -459,6 +464,44 @@ transcrivent) ont été lues depuis le PC d'Adrien, le cloud ne pouvant pas les 
 
 **Vérifié par** : tests unitaires (lire une liste collée, le CSV, l'importance absolue, la couleur
 héritée) et scénarios dans le navigateur (égaliser, couleur, coller une liste, exporter, plan grisé).
+
+### 3b.8 à 3b.12 Le cercle comme outil principal
+
+Le 09/11, Adrien : « tu as implémenté les fonctionnalités de goalscape mais pas trop la manière
+d'afficher. Je parle des interactions. […] j'ai l'impression que l'affichage du cercle et les
+interactions sont simplistes. » La fiche sous le cercle reste ; ce qui suit fait du cercle lui-même
+l'endroit où l'on travaille, comme dans Goalscape, où l'on règle l'importance en tirant le bord d'un
+segment et où l'on réorganise en glissant les segments. Et il n'attend plus d'essai pour avancer :
+on enchaîne, il essaiera plus tard.
+
+- **3b.8 Les tâches d'un projet.** Une tâche rattachée à un projet par le lien « appartient à » (ce
+  que fait le connecteur quand on lui donne « projets ») et qui n'est rangée nulle part devient une
+  part de ce projet, comme si elle y était rangée. Rattachée à plusieurs projets : sous le premier.
+  L'écran lit tous ces liens d'un coup (`GET /api/appartenances`). Avant : l'anneau d'un projet
+  restait vide tant qu'on n'y avait pas rangé ses tâches à la main.
+- **3b.9 Le mouvement.** Zoomer sur une part l'agrandit jusqu'au tour entier en un tiers de seconde,
+  ses sœurs s'effacent, ses sous-éléments sortent du bord ; remonter fait l'inverse. Sans animation
+  si le téléphone demande de réduire les mouvements.
+- **3b.10 Les libellés.** Le titre suit l'arc de la part (tourné pour se lire à l'endroit en bas du
+  cercle), sur deux lignes s'il le faut ; une part étroite mais épaisse l'écrit dans le sens du rayon.
+  Au survol de la souris, la part s'éclaire et une bulle donne titre, part et avancement.
+- **3b.11 Les gestes directs.** La part choisie porte deux poignées : sur son bord de fin, on la
+  tire autour du cercle pour régler son importance (ses sœurs gardent leurs proportions, comme avec
+  le curseur) ; sur son remplissage (pour une part sans sous-éléments), on le tire vers l'extérieur
+  ou l'intérieur pour régler l'avancement, par pas de 5 %. Rien ne part avant le lâcher.
+- **3b.12 Glisser sur le cercle.** On attrape une part (à la souris, ou au doigt après un appui long)
+  et on la lâche : au milieu d'une autre part, elle s'y range ; près du bord d'une sœur, elle se place
+  avant ou après elle ; sur le centre, elle se range dans le centre. Une boucle est refusée. Au
+  clavier : flèches gauche et droite d'une sœur à l'autre, haut vers le parent, bas vers le premier
+  sous-élément.
+- **Vérifié par** : tests unitaires (le rattachement par lien, l'interpolation des angles, l'angle et
+  le rayon lus sous le doigt, où tombe une part lâchée) ; scénarios dans le navigateur (une tâche
+  rattachée à un projet y apparaît ; tirer le bord d'une part la met à 50 % ; tirer le remplissage
+  la met à 60 % ; glisser une part dans une autre ; les flèches).
+- **Construit le 09/11.** Un ajustement vu en regardant le rendu à la taille d'un téléphone : les
+  anneaux se partagent toute la place disponible (une branche à un seul niveau remplit le cercle au
+  lieu d'y faire un petit anneau). Non vérifié par un test : le glisser au doigt sur le cercle (appui
+  long) ; les scénarios le jouent à la souris.
 
 ### 3b.6 L'essai d'Adrien
 

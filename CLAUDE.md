@@ -32,6 +32,8 @@ Adrien veut apprendre à travailler avec l'IA.
   et tu vérifies toi même ») : tests unitaires du domaine, scénarios d'acceptation sur l'API, et la
   page jouée dans un vrai navigateur à la taille d'un téléphone (`features/page.feature`,
   Playwright). On ne demande à Adrien que ce qu'aucun test ne peut faire à sa place.
+- **Un essai d'Adrien ne bloque rien** (Adrien, 09/11 : « le fait que je teste n'est pas une excuse
+  pour s'arrêter ») : on enchaîne les tâches suivantes, il essaie quand il veut.
 - Une fonctionnalité qui repose sur une hypothèse non vérifiée (`docs/architecture.md`,
   « Hypothèses à vérifier ») commence par la vérifier.
 

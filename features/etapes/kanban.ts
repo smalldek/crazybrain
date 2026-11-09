@@ -30,8 +30,13 @@ async function glisser(monde: Monde, de: { x: number; y: number }, vers: { x: nu
   await souris.move(de.x + 10, de.y + 10, { steps: 3 });
   await souris.move(vers.x, vers.y, { steps: 15 });
   await souris.move(vers.x, vers.y + 2, { steps: 2 });
+  // Le lâcher envoie les changements un par un (une colonne longue en compte beaucoup), puis relit la
+  // liste. On attend cette relecture : un rechargement de la page avant couperait les envois.
+  // (« networkidle » ne suffit pas : déjà atteint au chargement, il ne fait plus attendre.)
+  const relu = page(monde).waitForResponse((r) => r.request().method() === 'GET' && new URL(r.url()).pathname === '/api/elements',
+    { timeout: 15_000 }).catch(() => null);
   await souris.up();
-  await page(monde).waitForLoadState('networkidle');
+  await relu;
 }
 
 When("j'ouvre le kanban", async function (this: Monde) {
@@ -68,7 +73,9 @@ When('je glisse la carte {string} dans la colonne {string}', async function (thi
 });
 
 When('je glisse la carte {string} sur la carte {string}', async function (this: Monde, titre: string, autre: string) {
-  await carte(this, autre).scrollIntoViewIfNeeded();
+  // La carte visée au milieu de l'écran : une carte prise près du bas (le dernier sixième) fait
+  // défiler la page dès le premier mouvement, et la cible bouge sous la souris.
+  await carte(this, autre).evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }));
   await carte(this, titre).scrollIntoViewIfNeeded();
   const b = await carte(this, autre).boundingBox();
   if (!b) throw new Error(`Carte « ${autre} » invisible.`);

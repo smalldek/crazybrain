@@ -23,6 +23,20 @@ export class DepotRelations {
     return results.map(versLien);
   }
 
+  /**
+   * Tous les liens « appartient à » entre éléments non supprimés, du plus ancien au plus récent :
+   * pour la vue en cercles, où une tâche rattachée à un projet devient une part de ce projet.
+   */
+  async appartenances(): Promise<{ source: string; cible: string }[]> {
+    const { results } = await this.db
+      .prepare(`SELECT l.source, l.cible FROM liens l
+                JOIN elements s ON s.id = l.source JOIN elements c ON c.id = l.cible
+                WHERE l.type = 'appartient_a' AND s.archive_le IS NULL AND c.archive_le IS NULL
+                ORDER BY l.cree_le, l.id`)
+      .all<{ source: string; cible: string }>();
+    return results;
+  }
+
   async lien(id: string): Promise<InstantaneLien | null> {
     const ligne = await this.db.prepare('SELECT id, source, cible, type, cree_le FROM liens WHERE id = ?').bind(id).first<LigneLien>();
     return ligne ? versLien(ligne) : null;
