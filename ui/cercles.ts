@@ -1,5 +1,5 @@
 // La vue en cercles, sans React : quel élément au centre, quelles parts autour, à quels angles.
-// Testé seul (tests/unitaires/interface-cercles.test.ts). Les règles de poids et d'avancement
+// Testé seul (tests/unitaires/interface-cercles.test.ts et interface-complements-cercles.test.ts). Les règles de poids et d'avancement
 // viennent du domaine (src/domaine/cercles.ts), les mêmes que côté serveur.
 import { avancementDeRacines, avancementsCalcules, parts } from '../src/domaine/cercles';
 import type { Element } from './api';
@@ -168,12 +168,18 @@ const arrondi = (n: number): string => String(Math.round(n * 1000) / 1000);
 
 /**
  * Le chemin SVG d'un morceau d'anneau, entre deux rayons et deux angles. Un tour complet se dessine
- * en deux moitiés (un arc SVG ne sait pas aller d'un point à lui-même).
+ * en deux cercles entiers, sans trait du centre vers le bord : sinon son contour montre deux coutures,
+ * en haut et en bas, et l'anneau a l'air coupé en deux moitiés.
  */
 export function chemin(interieur: number, exterieur: number, debut: number, fin: number): string {
   if (fin - debut >= 2 * Math.PI - 1e-9) {
-    const milieu = debut + Math.PI;
-    return `${chemin(interieur, exterieur, debut, milieu)} ${chemin(interieur, exterieur, milieu, debut + 2 * Math.PI)}`;
+    // Le cercle extérieur dans le sens des aiguilles d'une montre, l'intérieur dans l'autre sens :
+    // la règle de remplissage par défaut (nonzero) laisse alors le trou du milieu vide.
+    const R = arrondi(exterieur);
+    const tourExterieur = `M 0 -${R} A ${R} ${R} 0 1 1 0 ${R} A ${R} ${R} 0 1 1 0 -${R} Z`;
+    if (interieur <= 0) return tourExterieur;
+    const r = arrondi(interieur);
+    return `${tourExterieur} M 0 -${r} A ${r} ${r} 0 1 0 0 ${r} A ${r} ${r} 0 1 0 0 -${r} Z`;
   }
   const grand = fin - debut > Math.PI ? 1 : 0;
   const a = point(exterieur, debut);
