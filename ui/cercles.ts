@@ -2,7 +2,7 @@
 // Testé seul (tests/unitaires/interface-cercles.test.ts et interface-complements-cercles.test.ts). Les règles de poids et d'avancement
 // viennent du domaine (src/domaine/cercles.ts), les mêmes que côté serveur.
 import { avancementDeRacines, avancementsCalcules, parts } from '../src/domaine/cercles';
-import type { Element } from './api';
+import type { Appartenance, Element } from './api';
 
 /** Le nombre d'anneaux montrés, par défaut et au plus. */
 export const ANNEAUX_PAR_DEFAUT = 3;
@@ -25,6 +25,41 @@ export function couleursChoisies(tags: ReadonlyMap<string, readonly string[]>): 
     }
   }
   return choisies;
+}
+
+/**
+ * Les éléments tels que les cercles les rangent : une tâche rangée nulle part (pas de parent, ou un
+ * parent qui n'est pas chargé) mais rattachée à un projet par un lien « appartient à » y est
+ * rangée, comme si elle en était un sous-élément. Rattachée à plusieurs : sous le premier lien.
+ * Un rattachement qui ferait une boucle (le projet est lui-même dans la tâche) est ignoré.
+ */
+export function rattacher(elements: readonly Element[], appartenances: readonly Appartenance[]): Element[] {
+  const parId = new Map(elements.map((e) => [e.id, e]));
+  const premier = new Map<string, string>();
+  for (const a of appartenances) {
+    if (!premier.has(a.source) && parId.has(a.cible) && a.cible !== a.source) premier.set(a.source, a.cible);
+  }
+  if (premier.size === 0) return [...elements];
+  const parentDe = (id: string): string | null => {
+    const e = parId.get(id);
+    if (!e) return null;
+    if (e.parent && parId.has(e.parent)) return e.parent;
+    return premier.get(id) ?? null;
+  };
+  // Une boucle : en remontant depuis le projet, on retombe sur la tâche.
+  const boucle = (id: string, cible: string): boolean => {
+    const vus = new Set<string>();
+    for (let c: string | null = cible; c !== null && !vus.has(c); c = parentDe(c)) {
+      if (c === id) return true;
+      vus.add(c);
+    }
+    return false;
+  };
+  return elements.map((e) => {
+    if (e.parent && parId.has(e.parent)) return e;
+    const cible = premier.get(e.id);
+    return cible && !boucle(e.id, cible) ? { ...e, parent: cible } : e;
+  });
 }
 
 /** Une part dessinée : l'élément, son anneau (1 = le plus proche du centre), ses angles en radians. */

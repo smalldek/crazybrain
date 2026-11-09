@@ -174,3 +174,11 @@ Fonctionnalité: Les objectifs en cercles (étape 3b)
     Quand j'ouvre les cercles centrés sur "Liste : projet" avec "texte=relire"
     Alors la ligne "Liste : relire" du plan est éclairée
     Et la ligne "Liste : cadrer" du plan est grisée
+
+  Scénario: Une tâche rattachée à un projet en est une part (3b.8)
+    Étant donné que le projet de cercles "Cercles : sport" existe
+    Et que la tâche "Cercles : vélo" est rattachée à "Cercles : sport", sans y être rangée
+    Et que la tâche "Cercles : natation" est rattachée à "Cercles : sport", sans y être rangée
+    Quand j'ouvre les cercles centrés sur "Cercles : sport"
+    Alors la part "Cercles : vélo" couvre 180°
+    Et la part "Cercles : natation" couvre 180°

@@ -5,7 +5,7 @@
 // quand l'état change (useState), React refait l'affichage tout seul.
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { adresseElement, adresseVue, elementDeLAdresse, naviguer, parametresIci, useAdresse, vueDe, type Vue } from './adresse';
-import { api, type Changements, type Element, type Tag } from './api';
+import { api, type Appartenance, type Changements, type Element, type Tag } from './api';
 import { BarreFiltres } from './barre-filtres';
 import { aujourdhui } from './dates';
 import { backlog, filtrer, lireFiltres, nombreDeFiltres } from './filtres';
@@ -16,7 +16,7 @@ import { appliquer, ordonner } from './liste';
 import { tagsParElement } from './tags';
 import { VueKanban } from './vue-kanban';
 import { VueProjets } from './vue-projets';
-import { lireAnneaux } from './cercles';
+import { lireAnneaux, rattacher } from './cercles';
 import { VueCercles } from './vue-cercles';
 
 /** Le message sous la saisie : un état, une erreur, ou « supprimée » avec un bouton Annuler. */
@@ -31,6 +31,7 @@ const NOMS_VUES: Record<Vue, string> = { liste: 'Liste', kanban: 'Kanban', backl
 export function Appli() {
   const [elements, setElements] = useState<Element[] | null>(null);
   const [tags, setTags] = useState<Tag[]>([]);
+  const [appartenances, setAppartenances] = useState<Appartenance[]>([]);
   const [message, setMessage] = useState<Message>({ texte: 'Chargement…' });
   const [titre, setTitre] = useState('');
   const [envoi, setEnvoi] = useState(false);
@@ -66,9 +67,10 @@ export function Appli() {
   /** Relit la liste ; garde le message en cours sauf « Chargement… » et « Aucune tâche ». */
   const charger = useCallback(async (): Promise<void> => {
     try {
-      const [lus, tousLesTags] = await Promise.all([api.lister(), api.tags()]);
+      const [lus, tousLesTags, liens] = await Promise.all([api.lister(), api.tags(), api.appartenances()]);
       setElements(lus);
       setTags(tousLesTags);
+      setAppartenances(liens);
       setMessage((m) => (m.erreur || m.annuler ? m : { texte: lus.length === 0 ? 'Aucune tâche pour l’instant.' : '' }));
     } catch (e) {
       erreur(e);
@@ -226,7 +228,7 @@ export function Appli() {
         )}
         {rienAMontrer && <p className="etat" id="aucun-resultat">Rien ne correspond{vue === 'backlog' ? ' dans le backlog' : ''}.</p>}
         {vue === 'cercles' ? (
-          elements && <VueCercles elements={elements} centre={parametres.get('centre')} anneaux={lireAnneaux(parametres.get('anneaux'))}
+          elements && <VueCercles elements={rattacher(elements, appartenances)} centre={parametres.get('centre')} anneaux={lireAnneaux(parametres.get('anneaux'))}
             ouvert={ouvert} ouvrir={ouvrir} modifier={modifier} creer={creerElement} supprimer={supprimer}
             ranger={ranger} signaler={(texte) => setMessage({ texte, erreur: true })} jour={aujourdhui()}
             tags={tags} recharger={charger}

@@ -9,6 +9,11 @@ export type Element = InstantaneElement;
 export type Lien = InstantaneLien;
 export type Tag = InstantaneTag;
 export type Commentaire = InstantaneCommentaire;
+/** Un lien « appartient à » : la tâche (source) fait partie du projet (cible). */
+export interface Appartenance {
+  readonly source: string;
+  readonly cible: string;
+}
 
 /** Un élément avec tout ce qui s'y rattache, tel que GET /api/elements/:id le rend. */
 export interface ElementComplet {
@@ -68,6 +73,8 @@ export const api = {
     (await appeler<{ element: Element }>(adresse(id), json('PATCH', changements))).element,
   supprimer: (id: string): Promise<void> => appeler<void>(adresse(id), { method: 'DELETE' }),
   tags: async (): Promise<Tag[]> => (await appeler<{ tags: Tag[] }>('/api/tags')).tags,
+  appartenances: async (): Promise<Appartenance[]> =>
+    (await appeler<{ appartenances: Appartenance[] }>('/api/appartenances')).appartenances,
   tagger: (id: string, texte: string): Promise<unknown> => appeler(`${adresse(id)}/tags`, json('POST', { tag: texte })),
   detagger: (id: string, texte: string): Promise<void> =>
     appeler<void>(`${adresse(id)}/tags/${encodeURIComponent(texte)}`, { method: 'DELETE' }),

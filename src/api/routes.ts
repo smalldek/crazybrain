@@ -78,6 +78,9 @@ api.post('/elements/:id/tags', async (c) => {
   return c.json({ tag }, ajoute ? 201 : 200);
 });
 
+// Tous les liens « appartient à », pour l'écran : dans les cercles, une tâche rattachée à un projet en est une part.
+api.get('/appartenances', async (c) => c.json({ appartenances: await service(c).appartenances() }));
+
 // Tous les tags posés, pour l'écran : la complétion, les couloirs et les filtres.
 api.get('/tags', async (c) => c.json({ tags: await service(c).tousLesTags() }));
 

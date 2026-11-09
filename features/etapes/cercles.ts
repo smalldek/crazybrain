@@ -45,6 +45,17 @@ Given('{string} contient la tâche faite {string}', async function (this: Monde,
   await creerNomme(this, { titre, parent: id(this, parent), statut: 'fait' });
 });
 
+Given('le projet de cercles {string} existe', async function (this: Monde, titre: string) {
+  await creerNomme(this, { titre, type: 'projet' });
+});
+
+Given('la tâche {string} est rattachée à {string}, sans y être rangée', async function (this: Monde, titre: string, projet: string) {
+  await creerNomme(this, { titre });
+  const reponse = await page(this).request.post(`${this.worker.adresse}/api/elements/${id(this, titre)}/liens`,
+    { data: { cible: id(this, projet), type: 'appartient_a' } });
+  expect(reponse.status()).toBe(201);
+});
+
 When("j'ouvre les cercles centrés sur {string}", async function (this: Monde, titre: string) {
   await page(this).goto(`${this.worker.adresse}/cercles?centre=${encodeURIComponent(id(this, titre))}`);
   await expect(cercles(this).locator('svg')).toBeVisible();
