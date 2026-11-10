@@ -25,3 +25,21 @@ Fonctionnalité: Le mode journée (tâche 6.2)
     Alors dans la journée, "Journée : appeler le garage" est faite
     Quand je retire de la journée "Journée : écrire le devis"
     Alors le backlog de la journée montre "Journée : écrire le devis"
+
+  Scénario: Les créneaux, le temps prévu face au temps disponible (tâche 6.3)
+    Étant donné que la tâche "Créneaux : relire" est prévue aujourd'hui avec l'estimation 30
+    Et que la tâche "Créneaux : appel" est prévue aujourd'hui à "23:00" avec l'estimation 30
+    Et que j'ouvre la page
+    Quand j'ouvre le mode journée
+    Et je règle ma journée de "00:00" à "23:59"
+    Et je case à la suite
+    Alors "Créneaux : relire" a une heure
+    Quand je mets "Créneaux : relire" à "23:10"
+    Alors la journée montre "Créneaux : relire" avec "23:10–23:40 · chevauche"
+    Et la journée montre "Créneaux : appel" avec "23:00–23:30 · chevauche"
+    Étant donné que la tâche "Créneaux : énorme" est prévue aujourd'hui avec l'estimation 2000
+    Quand je recharge la page
+    Alors la journée dit qu'il y a du temps de trop
+    Et ma journée va de "00:00" à "23:59"
+    Quand je retire de la journée "Créneaux : énorme"
+    Alors la journée ne dit plus qu'il y a du temps de trop

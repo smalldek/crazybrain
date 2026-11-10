@@ -650,7 +650,16 @@ survit au rechargement. Chaque point a son scénario joué dans le navigateur.
     « + Aujourd'hui » pose le jour prévu. « Retirer » rend une tâche au backlog (jour et heure
     vidés). Choisir une tâche, c'est seulement poser son jour prévu : pas de nouveau champ. Vérifié :
     `tests/unitaires/interface-journee.test.ts`, `features/journee.feature`.
-  - 6.3 Les caser dans des créneaux, et voir le temps prévu face au temps disponible.
+  - 6.3 ✓ Les caser dans des créneaux, et voir le temps prévu face au temps disponible (10/11).
+    Dans la journée, chaque tâche du jour a une heure ; son créneau dure son estimation (30 minutes
+    sans estimation), et deux créneaux qui se chevauchent sont signalés en rouge. « Caser à la
+    suite » donne une heure à chaque tâche qui n'en a pas, dans l'ordre, au premier moment libre
+    après maintenant et avant la fin de journée. Une jauge met le temps prévu face au temps
+    disponible (de maintenant à la fin de journée) et dit l'excès. Les heures de la journée
+    (9 h à 18 h par défaut) se règlent en haut et restent **dans le téléphone** : chaque appareil
+    garde les siennes. C'est l'option la plus simple ; si Adrien veut les mêmes partout, elles
+    passeront dans la base (un réglage par compte). Vérifié : `tests/unitaires/interface-creneaux.test.ts`,
+    `features/journee.feature`.
 - **Fait quand** : les éléments apparaissent à leur échéance ou à leur jour planifié ; le matin,
   Adrien choisit ses tâches du jour dans le backlog, les case dans des créneaux, et voit le temps
   prévu face au temps disponible.

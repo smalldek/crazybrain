@@ -75,3 +75,46 @@ Then('la journée montre {string} avec {string}', async function (this: Monde, t
 Then('dans la journée, {string} est faite', async function (this: Monde, titre: string) {
   await expect(ligne(page(this).locator('#journee ul.du-jour'), titre)).toHaveClass(/fait/);
 });
+
+const aujourdhui = (): string => new Intl.DateTimeFormat('sv-SE').format(new Date()); // le jour du navigateur
+
+Given("la tâche {string} est prévue aujourd'hui avec l'estimation {int}", async function (this: Monde, titre: string, estimation: number) {
+  await creer(this, { titre, jourPlanifie: aujourdhui(), estimation });
+});
+
+Given("la tâche {string} est prévue aujourd'hui à {string} avec l'estimation {int}", async function (this: Monde, titre: string, heure: string, estimation: number) {
+  await creer(this, { titre, jourPlanifie: aujourdhui(), heurePlanifiee: heure, estimation });
+});
+
+When('je règle ma journée de {string} à {string}', async function (this: Monde, debut: string, fin: string) {
+  await page(this).getByLabel('Début de journée').fill(debut);
+  await page(this).getByLabel('Fin de journée').fill(fin);
+});
+
+Then('ma journée va de {string} à {string}', async function (this: Monde, debut: string, fin: string) {
+  await expect(page(this).getByLabel('Début de journée')).toHaveValue(debut);
+  await expect(page(this).getByLabel('Fin de journée')).toHaveValue(fin);
+});
+
+When('je case à la suite', async function (this: Monde) {
+  await cliquerEtEnregistrer(this, page(this).getByRole('button', { name: /^Caser à la suite/ }));
+  await expect(page(this).locator('#message')).not.toHaveText('Chargement…');
+});
+
+Then('{string} a une heure', async function (this: Monde, titre: string) {
+  await expect(page(this).getByLabel(`Heure : ${titre}`, { exact: true })).toHaveValue(/^\d{2}:\d{2}$/);
+});
+
+When('je mets {string} à {string}', async function (this: Monde, titre: string, heure: string) {
+  const enregistre = page(this).waitForResponse((r) => r.request().method() === 'PATCH' && r.url().includes('/api/elements/'));
+  await page(this).getByLabel(`Heure : ${titre}`, { exact: true }).fill(heure);
+  expect((await enregistre).ok()).toBe(true);
+});
+
+Then("la journée dit qu'il y a du temps de trop", async function (this: Monde) {
+  await expect(page(this).locator('#journee #trop')).toContainText('de trop');
+});
+
+Then("la journée ne dit plus qu'il y a du temps de trop", async function (this: Monde) {
+  await expect(page(this).locator('#journee #trop')).toHaveCount(0);
+});
