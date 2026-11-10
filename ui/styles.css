@@ -360,3 +360,31 @@ li .ouvrir:hover, li .ouvrir:focus-visible { background: var(--fond); color: var
 #calendrier table.mois ul li .marque { display: none; }
 #calendrier table.mois ul li.echeance button { color: var(--erreur); }
 #calendrier .encore { font-size: .72rem; color: var(--doux); padding-left: 2px; }
+
+/* Le mode journée (tâche 6.2). */
+#journee section { margin-bottom: 18px; }
+#journee h2 { font-size: 1.05rem; margin: 12px 0 6px; }
+#journee .temps { margin: 0 0 8px; color: var(--doux); }
+#journee .temps strong { color: var(--texte); }
+#journee ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+#journee li { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+#journee li .texte { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+#journee li small { color: var(--doux); font-size: .78rem; }
+#journee li.fait .texte button { text-decoration: line-through; color: var(--doux); }
+#journee li .boutons { display: flex; align-items: center; gap: 6px; flex: none; }
+#journee button.lien { background: none; border: none; padding: 0; color: var(--texte); font: inherit; text-align: left; cursor: pointer; overflow-wrap: anywhere; }
+#journee .boutons button { font: inherit; font-size: .85rem; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--accent);
+  background: var(--accent); color: var(--fond); cursor: pointer; white-space: nowrap; }
+#journee .boutons button.secondaire { background: none; color: var(--accent); }
+/* Les créneaux (tâche 6.3). */
+#journee .plage { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; color: var(--doux); margin-bottom: 6px; }
+#journee .plage input { width: auto; padding: 4px 6px; }
+#journee .jauge { height: 8px; border-radius: 4px; background: var(--bord); overflow: hidden; margin: 0 0 8px; }
+#journee .jauge span { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+#journee .jauge.trop span { background: var(--erreur); }
+#journee button.caser { font: inherit; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--accent);
+  background: none; color: var(--accent); cursor: pointer; margin-bottom: 8px; }
+#journee .boutons input[type=time] { width: 6.2rem; padding: 4px 6px; font-size: .85rem; }
+#journee li.chevauche { border-color: var(--erreur); }
+#journee li.chevauche small { color: var(--erreur); }
+#journee ul.du-jour li { flex-wrap: wrap; }

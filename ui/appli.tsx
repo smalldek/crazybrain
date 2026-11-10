@@ -20,6 +20,7 @@ import { VueKanban } from './vue-kanban';
 import { VueProjets } from './vue-projets';
 import { VueTableau } from './vue-tableau';
 import { VueCalendrier } from './vue-calendrier';
+import { VueJournee } from './vue-journee';
 import { lireAnneaux, rattacher } from './cercles';
 import { VueCercles } from './vue-cercles';
 
@@ -30,7 +31,7 @@ interface Message {
   readonly annuler?: () => void;
 }
 
-const NOMS_VUES: Record<Vue, string> = { liste: 'Liste', kanban: 'Kanban', backlog: 'Backlog', calendrier: 'Calendrier', projets: 'Projets', cercles: 'Cercles', tableau: 'Tableau' };
+const NOMS_VUES: Record<Vue, string> = { liste: 'Liste', journee: 'Journée', kanban: 'Kanban', backlog: 'Backlog', calendrier: 'Calendrier', projets: 'Projets', cercles: 'Cercles', tableau: 'Tableau' };
 
 export function Appli() {
   const [elements, setElements] = useState<Element[] | null>(null);
@@ -82,7 +83,7 @@ export function Appli() {
     return () => { actif = false; };
   }, [filtres.requete]);
   const visibles = elements && filtrer(elements, filtres, tagsParElement(tags), aujourdhui(), idsRequete);
-  const rienAMontrer = vue !== 'projets' && vue !== 'cercles' && vue !== 'tableau' && vue !== 'calendrier' && elements !== null && elements.length > 0 && visibles !== null
+  const rienAMontrer = vue !== 'projets' && vue !== 'cercles' && vue !== 'tableau' && vue !== 'calendrier' && vue !== 'journee' && elements !== null && elements.length > 0 && visibles !== null
     && (vue === 'backlog' ? backlog(visibles) : visibles).length === 0;
   // La liste et le backlog dans leur ordre habituel, ou « modifié récemment » d'abord (filtre `tri`).
   const enOrdre = visibles && (vue === 'backlog' ? backlog(visibles) : ordonner(visibles));
@@ -189,16 +190,9 @@ export function Appli() {
     }
   }
 
-  // Une carte posée sur le kanban : son statut s'il a changé, et les rangs de sa colonne d'arrivée
-  // (seulement ceux qui changent). L'écran les montre tout de suite ; la relecture confirme.
-  async function poser(id: string, statut: StatutColonne, ordre: readonly string[]): Promise<void> {
-    const liste = elements ?? [];
-    const carte = liste.find((e) => e.id === id);
-    const parId = new Map<string, Changements>();
-    // La carte déplacée d'abord : son statut et son rang partent ensemble.
-    if (carte && carte.statut !== statut) parId.set(id, { statut });
-    for (const { id: autre, rang } of rangsAPoser(ordre, liste)) parId.set(autre, { ...parId.get(autre), rang });
-    const envois = [...parId];
+  // Plusieurs éléments d'un coup (une carte posée, une ligne rangée, la journée casée) : l'écran les
+  // montre tout de suite, les envois partent un par un, puis la relecture confirme.
+  async function modifierPlusieurs(envois: readonly (readonly [string, Changements])[]): Promise<void> {
     setElements((l) => l && l.map((e) => {
       const changement = envois.find(([i]) => i === e.id);
       return changement ? appliquer(e, changement[1]) : e;
@@ -212,6 +206,18 @@ export function Appli() {
     await charger();
   }
 
+  // Une carte posée sur le kanban : son statut s'il a changé, et les rangs de sa colonne d'arrivée
+  // (seulement ceux qui changent). L'écran les montre tout de suite ; la relecture confirme.
+  async function poser(id: string, statut: StatutColonne, ordre: readonly string[]): Promise<void> {
+    const liste = elements ?? [];
+    const carte = liste.find((e) => e.id === id);
+    const parId = new Map<string, Changements>();
+    // La carte déplacée d'abord : son statut et son rang partent ensemble.
+    if (carte && carte.statut !== statut) parId.set(id, { statut });
+    for (const { id: autre, rang } of rangsAPoser(ordre, liste)) parId.set(autre, { ...parId.get(autre), rang });
+    await modifierPlusieurs([...parId]);
+  }
+
   // Glisser une ligne du plan des cercles : son parent s'il change, puis les rangs de sa nouvelle
   // fratrie (seulement ceux qui changent).
   async function ranger(id: string, parent: string | null, ordre: readonly string[]): Promise<void> {
@@ -220,18 +226,7 @@ export function Appli() {
     const parId = new Map<string, Changements>();
     if (element && element.parent !== parent) parId.set(id, { parent });
     for (const { id: autre, rang } of rangsAPoser(ordre, liste)) parId.set(autre, { ...parId.get(autre), rang });
-    const envois = [...parId];
-    setElements((l) => l && l.map((e) => {
-      const changement = envois.find(([i]) => i === e.id);
-      return changement ? appliquer(e, changement[1]) : e;
-    }));
-    try {
-      for (const [i, changements] of envois) await api.modifier(i, changements);
-      setMessage({ texte: '' });
-    } catch (e) {
-      erreur(e);
-    }
-    await charger();
+    await modifierPlusieurs([...parId]);
   }
 
   // Supprimer ne demande pas de confirmation : la tâche est archivée, et « Annuler » la restaure
@@ -266,7 +261,7 @@ export function Appli() {
         <header className="entete-appli">
           <h1>Crazybrain</h1>
           <nav aria-label="Vues">
-            {(['liste', 'kanban', 'backlog', 'calendrier', 'projets', 'cercles', 'tableau'] as const).map((v) => (
+            {(['liste', 'journee', 'kanban', 'backlog', 'calendrier', 'projets', 'cercles', 'tableau'] as const).map((v) => (
               <a key={v} href={adresseVue(v) + window.location.search} aria-current={v === vue ? 'page' : undefined}
                 onClick={(e) => { e.preventDefault(); naviguer(adresseVue(v) + parametresIci()); }}>{NOMS_VUES[v]}</a>
             ))}
@@ -305,6 +300,9 @@ export function Appli() {
             ranger={ranger} signaler={(texte) => setMessage({ texte, erreur: true })} jour={aujourdhui()}
             tags={tags} recharger={charger}
             eclaires={visibles && (nombreDeFiltres(filtres) > 0 || filtres.texte) ? new Set(visibles.map((e) => e.id)) : null} />
+        ) : vue === 'journee' ? (
+          visibles && <VueJournee elements={visibles} aujourdhui={aujourdhui()} ouvrir={ouvrir}
+            modifier={(id, c) => void modifier(id, c)} modifierPlusieurs={(envois) => void modifierPlusieurs(envois)} />
         ) : vue === 'calendrier' ? (
           visibles && <VueCalendrier elements={visibles} parametres={parametres} aujourdhui={aujourdhui()} ouvrir={ouvrir} />
         ) : vue === 'tableau' ? (
