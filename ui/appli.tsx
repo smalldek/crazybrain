@@ -14,6 +14,7 @@ import { PanneauDetail } from './panneau-detail';
 import { LigneTache } from './ligne-tache';
 import { ecrireCritere, lireCritere, rangsAPoser, type Critere, type StatutColonne } from './kanban';
 import { appliquer, ordonner } from './liste';
+import { lirePartage } from './partage';
 import { tagsParElement } from './tags';
 import { VueKanban } from './vue-kanban';
 import { VueProjets } from './vue-projets';
@@ -37,6 +38,8 @@ export function Appli() {
   const [message, setMessage] = useState<Message>({ texte: 'Chargement…' });
   const [titre, setTitre] = useState('');
   const [envoi, setEnvoi] = useState(false);
+  // Ce qu'une autre appli a partagé (tâche 5.4) : le titre va dans la saisie, le reste attend ici.
+  const [descriptionPartagee, setDescriptionPartagee] = useState<string | null>(null);
   const { chemin, parametres } = useAdresse();
   const vue = vueDe(chemin);
   const ouvert = elementDeLAdresse(chemin);
@@ -122,13 +125,26 @@ export function Appli() {
     return () => document.removeEventListener('visibilitychange', auRetour);
   }, [charger]);
 
+  // Android ouvre /partage?titre=…&texte=…&lien=… (le share_target du manifeste) : on pré-remplit la
+  // saisie, puis l'adresse redevient / (un rechargement ne doit pas re-proposer le même partage).
+  useEffect(() => {
+    if (chemin !== '/partage') return;
+    const partage = lirePartage(new URLSearchParams(window.location.search));
+    if (partage) {
+      setTitre(partage.titre);
+      setDescriptionPartagee(partage.description);
+    }
+    naviguer('/', { remplacer: true });
+  }, [chemin]);
+
   async function ajouter(evenement: FormEvent): Promise<void> {
     evenement.preventDefault();
     if (titre.trim() === '') return;
     setEnvoi(true);
     try {
-      await api.creer({ titre });
+      await api.creer(descriptionPartagee ? { titre, description: descriptionPartagee } : { titre });
       setTitre('');
+      setDescriptionPartagee(null);
       setMessage({ texte: '' });
       await charger();
     } catch (e) {
@@ -259,6 +275,12 @@ export function Appli() {
           <label htmlFor="titre">Nouvelle tâche (Entrée pour l'ajouter)</label>
           <input id="titre" name="titre" maxLength={200} enterKeyHint="done" placeholder="Taper une tâche…"
             autoFocus={!ouvert} value={titre} disabled={envoi} onChange={(e) => setTitre(e.target.value)} />
+          {descriptionPartagee && (
+            <p id="partage" className="etat">
+              Avec en description : « {descriptionPartagee.length > 80 ? `${descriptionPartagee.slice(0, 79)}…` : descriptionPartagee} »{' '}
+              <button type="button" onClick={() => setDescriptionPartagee(null)}>Retirer</button>
+            </p>
+          )}
         </form>
         {deconnecte && (
           <p id="deconnexion" className="etat erreur" role="alert">

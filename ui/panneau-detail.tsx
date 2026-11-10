@@ -5,6 +5,7 @@ import { useEffect, useId, useState, type FormEvent, type ReactNode } from 'reac
 import { avancementsCalcules } from '../src/domaine/cercles';
 import { api, type Element, type ElementComplet, type Tag, type TypeElement } from './api';
 import { brouillonDe, changementsDepuis, parentsPossibles, type Brouillon } from './formulaire';
+import { contenuAPartager } from './partage';
 import { dateLisible, RelationsDetail } from './relations-detail';
 
 interface Proprietes {
@@ -162,6 +163,7 @@ export function PanneauDetail({ id, elements, tousLesTags, fermer, modifie }: Pr
         </div>
         <div className="actions">
           <button type="submit" className="principal" disabled={envoi}>Enregistrer</button>
+          <button type="button" onClick={() => void partager(element)}>Partager</button>
           {message && <span className={message.erreur ? 'etat erreur' : 'etat'} role="status">{message.texte}</span>}
         </div>
         <p className="dates">
@@ -184,6 +186,28 @@ export function PanneauDetail({ id, elements, tousLesTags, fermer, modifie }: Pr
       {contenu}
     </aside>
   );
+}
+
+/**
+ * Envoie la tâche à une autre appli par le menu de partage d'Android (tâche 5.3). Sans ce menu
+ * (ordinateur sans partage), le texte est copié. Fermer le menu sans choisir n'est pas une erreur.
+ */
+async function partager(e: Element): Promise<void> {
+  const contenu = contenuAPartager(e, window.location.origin);
+  if (typeof navigator.share === 'function') {
+    try {
+      await navigator.share(contenu);
+    } catch (erreur) {
+      if (!(erreur instanceof DOMException && erreur.name === 'AbortError')) window.alert('Le partage a échoué.');
+    }
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(`${contenu.text}\n${contenu.url}`);
+    window.alert('Copié : à coller où tu veux.');
+  } catch {
+    window.alert('Ce navigateur ne sait ni partager ni copier.');
+  }
 }
 
 /**

@@ -576,8 +576,17 @@ survit au rechargement. Chaque point a son scénario joué dans le navigateur.
     second échec dans la minute ne recharge plus (pas de boucle) : un bandeau « La connexion a
     expiré » propose « Se reconnecter ». L'appli relit aussi tout quand elle revient au premier plan,
     ce qui montre les changements faits ailleurs (par Claude) et détecte l'expiration tout de suite.
-  - 5.3 Le partage sortant d'une tâche (menu de partage d'Android).
-  - 5.4 Le partage entrant : depuis WhatsApp ou toute appli, la saisie rapide s'ouvre pré-remplie.
+  - 5.3 ✓ Le partage sortant d'une tâche (10/11). Un bouton « Partager » dans le détail ouvre le
+    menu de partage d'Android (`navigator.share`) avec le titre, l'échéance, la description et
+    l'adresse de la tâche ; sans ce menu (ordinateur), le texte est copié. Vérifié par un scénario
+    où un faux menu de partage note ce qu'il reçoit (`features/partage.feature`).
+  - 5.4 ✓ Le partage entrant (10/11). Le manifeste déclare l'appli comme cible de partage
+    (`share_target`, en GET vers `/partage`) : Crazybrain apparaît dans le menu de partage une fois
+    installée. La première ligne du texte partagé devient le titre dans la saisie, le reste et le
+    lien la description (`ui/partage.ts`, testé seul) ; Entrée crée la tâche. Choix fait sans
+    attendre : on n'ouvre pas le formulaire complet, la saisie rapide suffit, le détail se complète
+    après. Reste à essayer par Adrien depuis WhatsApp sur le téléphone (aucun test ne remplace le
+    vrai menu d'Android).
   - 5.5 Les rappels : abonnement Web Push, tâche planifiée (Cron Trigger) qui envoie les rappels,
     mesure du retard sur plusieurs jours.
   - 5.6 Les tâches récurrentes : la règle de récurrence ; cocher crée l'occurrence suivante.
