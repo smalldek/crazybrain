@@ -231,3 +231,47 @@ Fonctionnalité: Les objectifs en cercles (étape 3b)
     Alors "Glisser : courir" est rangé dans "Glisser : santé"
     Et la part "Glisser : santé" couvre 180°
     Et la part "Glisser : courir" couvre 180°
+
+  Scénario: Ajouter, renommer et supprimer sur le cercle même (3b.13)
+    Étant donné que l'objectif "Sur : maison" existe
+    Et que "Sur : maison" contient l'objectif "Sur : cuisine" sans poids
+    Quand j'ouvre les cercles centrés sur "Sur : maison"
+    Et je touche le « + » du centre et je tape "Sur : jardin"
+    Alors la part "Sur : jardin" est choisie
+    Et la part "Sur : jardin" couvre 180°
+    Quand je tape "Sur : potager" dans la saisie du cercle
+    Alors la part "Sur : potager" est choisie
+    Et la part "Sur : potager" couvre 120°
+    Quand je ferme la saisie du cercle
+    Et je touche la part "Sur : cuisine"
+    Alors la barre d'actions tient dans l'écran
+    Quand je touche « Ajouter à côté » sur le cercle
+    Alors la saisie du cercle tient dans l'écran
+    Quand je tape "Sur : garage" dans la saisie du cercle
+    Alors le plan montre "Sur : cuisine, Sur : garage, Sur : jardin, Sur : potager"
+    Quand je ferme la saisie du cercle
+    Et je touche la part "Sur : cuisine"
+    Et je touche « Ajouter un sous-élément » sur le cercle
+    Et je tape "Sur : laver" dans la saisie du cercle
+    Alors la part "Sur : laver" couvre 90°
+    Quand je ferme la saisie du cercle
+    Et je touche la part "Sur : potager"
+    Et je touche « Renommer » sur le cercle
+    Et je tape "Sur : verger" dans la saisie du cercle
+    Alors la part "Sur : verger" couvre 90°
+    Et la part "Sur : potager" n'existe plus
+    Et la part "Sur : verger" est choisie
+    Quand je touche « Supprimer » sur le cercle
+    Alors la part "Sur : verger" n'existe plus
+    Et la part "Sur : jardin" couvre 120°
+    Quand je touche la part "Sur : jardin"
+    Alors la barre d'actions tient dans l'écran
+    Quand j'appuie sur "Insert" dans les cercles
+    Alors la saisie du cercle propose "Ajouter dans « Sur : jardin »"
+    Et la saisie du cercle tient dans l'écran
+    Quand je ferme la saisie du cercle
+    Et j'appuie sur "Control+Shift+Enter" dans les cercles
+    Alors la saisie du cercle propose "Ajouter à côté"
+    Quand je ferme la saisie du cercle
+    Et j'appuie sur "Alt+Enter" dans les cercles
+    Alors la saisie du cercle propose "Renommer « Sur : jardin »"

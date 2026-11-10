@@ -418,3 +418,64 @@ Then('la ligne {string} du plan est éclairée', async function (this: Monde, ti
 Then('la ligne {string} du plan est grisée', async function (this: Monde, titre: string) {
   await expect(plan(this).locator(`li[data-titre="${titre}"]`)).toHaveClass(/eteinte/);
 });
+
+// ——— Éditer sur le cercle (3b.13) ———
+const saisie = (monde: Monde): Locator => cercles(monde).locator('.saisie-cercle input');
+
+When('je touche le « + » du centre et je tape {string}', async function (this: Monde, titre: string) {
+  await cercles(this).locator('button.ajout-centre').click();
+  await saisie(this).fill(titre);
+  await saisie(this).press('Enter');
+  await expect(part(this, titre)).toHaveCount(1);
+});
+
+When('je tape {string} dans la saisie du cercle', async function (this: Monde, titre: string) {
+  await expect(saisie(this)).toBeFocused();
+  await saisie(this).fill(titre);
+  await saisie(this).press('Enter');
+  await expect(part(this, titre)).toHaveCount(1);
+});
+
+When(/^je touche « (Ajouter un sous-élément|Ajouter à côté|Renommer|Supprimer) » sur le cercle$/, async function (this: Monde, action: string) {
+  await cercles(this).locator('.barre-part').getByRole('button', { name: action, exact: true }).click();
+});
+
+When('je ferme la saisie du cercle', async function (this: Monde) {
+  await saisie(this).press('Escape');
+  await expect(saisie(this)).toHaveCount(0);
+  // La part choisie reprend la main (pour enchaîner un raccourci) : on l'attend, comme le ferait l'œil.
+  const choisie = cercles(this).locator('g.part[aria-pressed="true"]');
+  if (await choisie.count() > 0) await expect(choisie).toBeFocused();
+});
+
+Then('la part {string} est choisie', async function (this: Monde, titre: string) {
+  await expect(cercles(this).locator('g.part[aria-pressed="true"]')).toHaveAttribute('data-titre', titre);
+});
+
+Then("la part {string} n'existe plus", async function (this: Monde, titre: string) {
+  await expect(part(this, titre)).toHaveCount(0);
+});
+
+Then('la saisie du cercle propose {string}', async function (this: Monde, libelle: string) {
+  await expect(saisie(this)).toHaveAttribute('aria-label', libelle);
+});
+
+/** Une bulle posée sur le cercle reste entière dans l'écran du téléphone (elle débordait à gauche). */
+async function tientDansLEcran(monde: Monde, selecteur: string): Promise<void> {
+  const bulle = cercles(monde).locator(selecteur);
+  await expect(bulle).toBeVisible();
+  const boite = await bulle.boundingBox();
+  const largeur = page(monde).viewportSize()?.width ?? 0;
+  if (boite === null) throw new Error(`${selecteur} : pas de boîte`);
+  if (boite.x < 0 || boite.x + boite.width > largeur) {
+    throw new Error(`${selecteur} déborde : de ${Math.round(boite.x)} à ${Math.round(boite.x + boite.width)} px, écran de ${largeur} px`);
+  }
+}
+
+Then("la barre d'actions tient dans l'écran", async function (this: Monde) {
+  await tientDansLEcran(this, '.barre-part');
+});
+
+Then("la saisie du cercle tient dans l'écran", async function (this: Monde) {
+  await tientDansLEcran(this, '.saisie-cercle');
+});
