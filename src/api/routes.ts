@@ -43,7 +43,7 @@ api.get('/elements/:id', async (c) => c.json(await service(c).lire(c.req.param('
 api.patch('/elements/:id', async (c) => {
   const changements = lireChangements(await objet(c));
   if (typeof changements === 'string') return c.json({ erreur: changements }, 400);
-  return c.json({ element: await service(c).modifier(c.req.param('id'), changements, 'adrien') });
+  return c.json(await service(c).modifier(c.req.param('id'), changements, 'adrien'));
 });
 
 // Supprimer une tâche : elle est archivée (sort de la liste, se restaure). 204 : rien à rendre.
@@ -99,7 +99,7 @@ api.post('/elements/:id/commentaires', async (c) => {
 });
 
 /** Les champs facultatifs, qu'on vide avec null ; les nombres ; les autres sont du texte. */
-const CHAMPS_NULLABLES = new Set<string>(['parent', 'description', 'priorite', 'echeance', 'jourPlanifie', 'heurePlanifiee', 'estimation', 'rang', 'poids', 'avancement', 'rappel']);
+const CHAMPS_NULLABLES = new Set<string>(['parent', 'description', 'priorite', 'echeance', 'jourPlanifie', 'heurePlanifiee', 'estimation', 'rang', 'poids', 'avancement', 'rappel', 'recurrence']);
 const CHAMPS_NOMBRES = new Set<string>(['estimation', 'rang', 'poids', 'avancement']);
 
 /**

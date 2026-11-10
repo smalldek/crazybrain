@@ -22,6 +22,8 @@ export interface Brouillon {
   readonly avancement: string;
   /** L'heure du rappel, à l'heure du téléphone : AAAA-MM-JJTHH:MM (champ datetime-local). */
   readonly rappel: string;
+  /** La règle de récurrence, en français (« chaque lundi »). */
+  readonly recurrence: string;
 }
 
 export function brouillonDe(e: Element): Brouillon {
@@ -39,6 +41,7 @@ export function brouillonDe(e: Element): Brouillon {
     poids: e.poids === null ? '' : String(e.poids),
     avancement: e.avancement === null ? '' : String(e.avancement),
     rappel: e.rappel === null ? '' : saisieLocale(new Date(e.rappel)),
+    recurrence: e.recurrence ?? '',
   };
 }
 
@@ -84,6 +87,7 @@ export function changementsDepuis(e: Element, b: Brouillon): Changements | strin
   // Le champ n'a que la minute : on ne compare qu'à la minute, sinon chaque enregistrement le renverrait.
   const rappel = b.rappel.trim() === '' ? null : new Date(b.rappel).toISOString();
   if ((b.rappel.trim() === '' ? '' : b.rappel) !== (e.rappel === null ? '' : saisieLocale(new Date(e.rappel)))) c.rappel = rappel;
+  if (ouNull(b.recurrence) !== e.recurrence) c.recurrence = ouNull(b.recurrence);
   return c as Changements;
 }
 

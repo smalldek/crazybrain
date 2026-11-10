@@ -37,3 +37,11 @@ function ecartParis(instant: number): number {
   const v = (type: string): number => Number(morceaux.find((m) => m.type === type)?.value);
   return Date.UTC(v('year'), v('month') - 1, v('day'), v('hour'), v('minute')) - Math.floor(instant / 60000) * 60000;
 }
+
+/** Le jour et l'heure de Paris d'un instant : « 2026-11-12 », « 08:30 ». */
+export function aParis(instant: Date): { jour: string; heure: string } {
+  const texte = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).format(instant);
+  return { jour: texte.slice(0, 10), heure: texte.slice(11, 16) };
+}

@@ -601,12 +601,31 @@ survit au rechargement. Chaque point a son scénario joué dans le navigateur.
     téléphone (`features/rappels.feature`).
     Reste la mesure réelle sur plusieurs jours, téléphone en veille : elle se fait à l'usage et
     nourrit la décision 5.7.
-  - 5.6 Les tâches récurrentes : la règle de récurrence ; cocher crée l'occurrence suivante.
-    Deux modes : à date fixe (« chaque lundi », « le 1er du mois ») et **après achèvement** (« 3 mois
-    après l'avoir faite ») : la suivante se réveille ce délai après la date où la tâche est cochée,
-    sans échéance, à faire au plus tôt (Adrien, 07/11/2026 : l'entretien des chaussures de
-    randonnée). Les tâches posées avant avec les tags `recurrence:apres-fait` et `intervalle:<délai>`
-    passent à la vraie règle.
+  - 5.6 ✓ Les tâches récurrentes (10/11). Une tâche porte une règle écrite en français, rangée sous
+    une forme unique. Deux modes :
+    - à date fixe : « chaque lundi », « le 1er du mois », « tous les 2 mois » ;
+    - après achèvement : « 3 mois après fait » (Adrien, 07/11/2026 : l'entretien des chaussures de
+      randonnée).
+
+    Une règle incomprise est refusée, avec des exemples. Cocher la tâche crée la suivante : même
+    titre, mêmes projets, mêmes tags, même priorité, même description, et un rappel à la même heure.
+    - À date fixe, la suivante prend la prochaine date de la règle, sur le même champ que la tâche
+      cochée (l'échéance, ou le jour prévu). Cochée en retard, elle prend la première date à venir.
+    - Après achèvement, la suivante est prévue ce délai après le jour où on coche, sans échéance.
+
+    La tâche cochée perd sa règle, qui passe à la suivante. Le journal le dit, et décocher puis
+    recocher ne crée pas de doublon.
+
+    Elle se règle dans le détail (« Se répète », avec des propositions) et par Claude (`recurrence`).
+
+    Choix fait sans attendre : la tâche « se réveille » par son jour prévu, et non par un champ
+    « caché jusqu'au » à part. La liste la montre avec ce jour. Le backlog, qui ne garde que les
+    tâches sans jour prévu, ne la montre pas. La vue journée (étape 6) la sortira le jour venu.
+
+    Les tâches posées avant avec les tags `recurrence:apres-fait` et `intervalle:<délai>` passent à
+    la vraie règle par le connecteur, sur la vraie base, après le déploiement.
+    Vérifié par `tests/unitaires/recurrence.test.ts` (lecture des règles, dates, fins de mois) et
+    `features/recurrences.feature` (API et page).
   - 5.7 La décision de fin d'étape : si les rappels arrivent trop en retard, on envisage l'appli
     native.
 - **Fait quand** : l'icône est sur l'écran d'accueil ; un message WhatsApp partagé vers
