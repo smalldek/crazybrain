@@ -96,7 +96,7 @@ Claude comme un refus expliqué (`isError`), pas comme une panne. L'API de la pa
 appellent le même service d'application (`src/application/service-elements.ts`) ; dans le journal,
 l'auteur est `adrien` pour la page, `claude` pour le connecteur.
 
-Outils prévus ensuite : tester une requête, enregistrer une requête (étape 4).
+Outils des requêtes (étape 4, tâche 4.2) : `tester_requete`, `enregistrer_requete`, `lister_requetes`, `executer_requete`, `supprimer_requete`.
 
 ## Modèle de données
 

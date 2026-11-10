@@ -1,6 +1,7 @@
 import type { InstantaneCommentaire } from './commentaire';
 import type { InstantaneElement } from './element';
 import type { InstantaneLien } from './lien';
+import type { InstantaneRequete } from './requete';
 import type { InstantaneTag } from './tag';
 
 /** Qui a fait la modification. */
@@ -17,6 +18,10 @@ interface FormesEvenement {
   tag_ajoute: InstantaneTag;
   tag_retire: InstantaneTag;
   commentaire_ajoute: InstantaneCommentaire;
+  /** Une requête enregistrée (tâche 4.2) : `elementId` porte alors l'id de la requête. */
+  requete_enregistree: InstantaneRequete;
+  requete_modifiee: InstantaneRequete;
+  requete_supprimee: InstantaneRequete;
 }
 export type TypeEvenement = keyof FormesEvenement;
 
