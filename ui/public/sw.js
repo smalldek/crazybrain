@@ -55,3 +55,43 @@ self.addEventListener('fetch', (evenement) => {
     })());
   }
 });
+
+// Les rappels (tâche 5.5) : le serveur envoie un message chiffré par Web Push ; le téléphone le
+// déchiffre et le remet ici, même appli fermée. On montre la notification, puis on dit au serveur
+// qu'on l'a reçue (pour mesurer le retard ; si la connexion Access a expiré, tant pis).
+self.addEventListener('push', (evenement) => {
+  let message = { titre: 'Crazybrain', corps: '', url: '/', envoi: null };
+  try {
+    message = { ...message, ...evenement.data.json() };
+  } catch {
+    // Un message illisible : la notification par défaut.
+  }
+  evenement.waitUntil(Promise.all([
+    self.registration.showNotification(message.titre, {
+      body: message.corps,
+      icon: '/icone-192.png',
+      badge: '/icone-192.png',
+      tag: message.url,
+      data: { url: message.url },
+    }),
+    message.envoi
+      ? fetch(`/api/push/recu/${encodeURIComponent(message.envoi)}`, { method: 'POST', credentials: 'include' }).catch(() => undefined)
+      : Promise.resolve(),
+  ]));
+});
+
+// Toucher la notification ouvre la tâche : dans l'appli déjà ouverte s'il y en a une, sinon une neuve.
+self.addEventListener('notificationclick', (evenement) => {
+  evenement.notification.close();
+  const url = new URL(evenement.notification.data?.url ?? '/', self.location.origin).href;
+  evenement.waitUntil((async () => {
+    const fenetres = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const ouverte = fenetres.find((f) => new URL(f.url).origin === self.location.origin);
+    if (ouverte) {
+      await ouverte.focus();
+      await ouverte.navigate(url);
+    } else {
+      await self.clients.openWindow(url);
+    }
+  })());
+});

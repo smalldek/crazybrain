@@ -144,6 +144,7 @@ export function PanneauDetail({ id, elements, tousLesTags, fermer, modifie }: Pr
           <Champ libelle="Prévu le">{(id) => <input id={id} type="date" {...champ('jourPlanifie')} />}</Champ>
           <Champ libelle="À">{(id) => <input id={id} type="time" {...champ('heurePlanifiee')} />}</Champ>
         </div>
+        <Champ libelle="Rappel sur le téléphone">{(id) => <input id={id} type="datetime-local" {...champ('rappel')} />}</Champ>
         <div className="rangee">
           <Champ libelle="Estimation (minutes)">{(id) => (
             <input id={id} type="number" inputMode="numeric" min={1} step={1} {...champ('estimation')} />

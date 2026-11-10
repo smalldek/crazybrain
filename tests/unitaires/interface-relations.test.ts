@@ -7,7 +7,7 @@ const lien = (id: string, source: string, cible: string, type: Lien['type']): Li
   ({ id, source, cible, type, creeLe: '2026-11-05T10:00:00.000Z' });
 const element = (id: string, titre: string): Element => ({
   id, titre, type: 'tache', parent: null, description: null, statut: 'a_faire', priorite: null, echeance: null,
-  jourPlanifie: null, heurePlanifiee: null, estimation: null, rang: null, poids: null, avancement: null, faitLe: null, archiveLe: null,
+  jourPlanifie: null, heurePlanifiee: null, estimation: null, rang: null, poids: null, avancement: null, rappel: null, faitLe: null, archiveLe: null,
   creeLe: '2026-11-05T10:00:00.000Z', modifieLe: '2026-11-05T10:00:00.000Z',
 });
 

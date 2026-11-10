@@ -6,7 +6,7 @@ import { colonnesDe, couloirsDe, deplacer, ecrireCritere, lireCritere, rangsAPos
 function element(id: string, champs: Partial<Element> = {}): Element {
   return {
     id, type: 'tache', parent: null, titre: id, description: null, statut: 'a_faire', priorite: null,
-    echeance: null, jourPlanifie: null, heurePlanifiee: null, estimation: null, rang: null, poids: null, avancement: null, faitLe: null,
+    echeance: null, jourPlanifie: null, heurePlanifiee: null, estimation: null, rang: null, poids: null, avancement: null, rappel: null, faitLe: null,
     archiveLe: null, creeLe: '2026-11-05T10:00:00.000Z', modifieLe: '2026-11-05T10:00:00.000Z', ...champs,
   };
 }

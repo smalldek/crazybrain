@@ -12,6 +12,7 @@ import { jetonAccessValide } from './acces/jeton-access';
 import { api } from './api/routes';
 import { ErreurConflit, ErreurIntrouvable } from './application/erreurs';
 import { ServiceElements } from './application/service-elements';
+import { clesVapid, ServiceRappels } from './application/service-rappels';
 import { ServiceRequetes } from './application/service-requetes';
 import { aJournaliser, appelantDe, cleJournal, DUREE_JOURNAL_SECONDES, erreurOAuth, type EntreeJournal } from './connecteur/journal-oauth';
 import { echapper, pageConsentement } from './connecteur/page-consentement';
@@ -31,6 +32,10 @@ interface Env {
   OAUTH_KV: KVNamespace;
   /** Les outils OAuth (lire la demande d'autorisation, la conclure), posés par la bibliothèque. */
   OAUTH_PROVIDER: OAuthHelpers;
+  /** La clé privée VAPID des rappels (tâche 5.5), en JWK : un secret du Worker, posé par le déploiement. */
+  VAPID_PRIVEE?: string;
+  /** La clé publique VAPID, en base64url : le téléphone la donne en s'abonnant. */
+  VAPID_PUBLIQUE?: string;
 }
 
 type Ctx = Context<{ Bindings: Env }>;
@@ -212,5 +217,10 @@ export default {
       ctx.waitUntil(journaliser(requete, typeDemande, reponse, env).catch((e: unknown) => console.error('journal du connecteur', e)));
     }
     return reponse;
+  },
+  // Chaque minute (wrangler.jsonc, « triggers ») : envoyer les rappels dont l'heure est passée.
+  scheduled: async (_evenement, env, ctx) => {
+    const service = new ServiceRappels(env.DB, clesVapid(env.VAPID_PRIVEE, env.VAPID_PUBLIQUE), (r) => fetch(r));
+    ctx.waitUntil(service.envoyerEchus().then(() => undefined, (e: unknown) => console.error('rappels', e)));
   },
 } satisfies ExportedHandler<Env>;

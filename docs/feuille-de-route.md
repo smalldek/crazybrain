@@ -587,8 +587,20 @@ survit au rechargement. Chaque point a son scénario joué dans le navigateur.
     attendre : on n'ouvre pas le formulaire complet, la saisie rapide suffit, le détail se complète
     après. Reste à essayer par Adrien depuis WhatsApp sur le téléphone (aucun test ne remplace le
     vrai menu d'Android).
-  - 5.5 Les rappels : abonnement Web Push, tâche planifiée (Cron Trigger) qui envoie les rappels,
-    mesure du retard sur plusieurs jours.
+  - 5.5 ✓ Les rappels (10/11). Le détail a un champ « Rappel sur le téléphone » ; Claude le règle
+    aussi (`rappel`, heure de Paris). Chaque minute, une tâche planifiée du Worker (Cron Trigger)
+    envoie les rappels dont l'heure est passée, une seule fois, et seulement sur une tâche ni faite ni
+    supprimée. Changer l'heure reprogramme le rappel.
+    Le message est chiffré pour le téléphone et signé par le Worker : Web Push est écrit sans
+    bibliothèque ([décision 006](decisions/006-web-push-sans-bibliotheque.md)). Les clés sont tirées
+    par le déploiement et rangées en secrets du Worker.
+    Dans l'onglet Tableau, « Activer les rappels » abonne le téléphone, et un bouton envoie un rappel
+    d'essai. Chaque envoi est noté avec l'heure prévue, l'heure de départ et l'heure de réception
+    (le téléphone la signale), d'où un bilan : retard médian et pire retard.
+    Vérifié de bout en bout contre un faux service de notification, qui déchiffre comme le
+    téléphone (`features/rappels.feature`).
+    Reste la mesure réelle sur plusieurs jours, téléphone en veille : elle se fait à l'usage et
+    nourrit la décision 5.7.
   - 5.6 Les tâches récurrentes : la règle de récurrence ; cocher crée l'occurrence suivante.
     Deux modes : à date fixe (« chaque lundi », « le 1er du mois ») et **après achèvement** (« 3 mois
     après l'avoir faite ») : la suivante se réveille ce délai après la date où la tâche est cochée,
