@@ -3,7 +3,7 @@
 // `id` mène à la liste filtrée ; les autres se lisent en tableau.
 import { useEffect, useState } from 'react';
 import { naviguer } from './adresse';
-import { api, type Element, type Requete, type ResultatRequete } from './api';
+import { api, type Element, type MailRecu, type Requete, type ResultatRequete } from './api';
 import { idsDeRequete } from './filtres';
 import { VueRappels } from './vue-rappels';
 import { chiffres, faitesParSemaine, jourCourt, prochainesEcheances } from './tableau';
@@ -52,6 +52,7 @@ export function VueTableau({ elements, aujourdhui, ouvrir }: Proprietes) {
 
       <RequetesDeClaude />
       <VueRappels />
+      <MailsRecus ouvrir={ouvrir} />
     </div>
   );
 }
@@ -136,5 +137,30 @@ function ResultatDeRequete({ requete }: { requete: Requete }) {
             </div>
           )}
     </article>
+  );
+}
+
+/**
+ * Les derniers mails reçus à l'adresse de Crazybrain (étape 8) : la tâche créée, ou la raison du
+ * refus. Rien ne s'affiche tant qu'aucun mail n'est arrivé.
+ */
+function MailsRecus({ ouvrir }: { ouvrir: (id: string) => void }) {
+  const [mails, setMails] = useState<MailRecu[]>([]);
+  useEffect(() => { api.mails().then(setMails, () => setMails([])); }, []);
+  if (mails.length === 0) return null;
+  return (
+    <section aria-label="Mails reçus">
+      <h2>Mails reçus</h2>
+      <ul className="echeances">
+        {mails.map((m) => (
+          <li key={m.id}>
+            {m.accepte && m.elementId
+              ? <button type="button" className="lien" onClick={() => ouvrir(m.elementId ?? '')}>{m.sujet ?? '(sans sujet)'}</button>
+              : <span>{m.sujet ?? '(sans sujet)'} — refusé : {m.raison}{m.authserv ? ` (résultat écrit par ${m.authserv})` : ''}</span>}
+            <span className="date">{jourCourt(m.recuLe.slice(0, 10))}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

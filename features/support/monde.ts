@@ -9,6 +9,10 @@ import type { BrowserContext, Page } from 'playwright';
 
 setDefaultTimeout(30_000);
 
+/** L'adresse d'Adrien dans les tests (inventée) et le serveur qui signe les résultats d'authentification. */
+export const ADRESSE_ADRIEN_DE_TEST = 'adrien.essai@exemple.fr';
+export const AUTHSERV_DE_TEST = 'mx.essai.local';
+
 let serrure: SerrureDeTest | undefined;
 let worker: WorkerLocal | undefined;
 
@@ -18,6 +22,8 @@ BeforeAll({ timeout: 180_000 }, async () => {
   const vapid = await nouvellesClesVapid();
   worker = await WorkerLocal.demarrer({
     TEAM_DOMAIN: serrure.emetteur, AUD: AUDIENCE_DE_TEST, VAPID_PRIVEE: JSON.stringify(vapid.privee), VAPID_PUBLIQUE: vapid.publique,
+    // Le mail → tâche (étape 8) : une adresse inventée, et le nom du serveur qui signe les résultats.
+    COURRIER_EXPEDITEURS: ADRESSE_ADRIEN_DE_TEST, COURRIER_AUTHSERV: AUTHSERV_DE_TEST,
   });
 });
 

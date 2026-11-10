@@ -54,7 +54,7 @@ La liste complète voulue par Adrien (03/11/2026), et pour chacune un statut :
 | Saisie rapide dans un champ | première version | 1 | Un champ, Entrée, la tâche existe. |
 | Saisie rapide par l'IA | première version | 2 | Adrien dit à Claude ce qu'il veut, dans une conversation ; Claude crée les éléments par le connecteur. |
 | Formulaire | première version | 3 | Le panneau de détail. |
-| Mail → tâche | première version | 8 | Cloudflare Email Routing vers un Email Worker. Seuls les mails d'Adrien sont acceptés. |
+| Mail → tâche | **construit, pas encore branché** (10/11) | 8 | Cloudflare Email Routing vers un Email Worker, sur un sous-domaine. Seuls les mails d’Adrien, authentifiés (SPF et DKIM), sont acceptés (décision 008). |
 | WhatsApp → tâche | première version | 5 | Par le partage Android vers l'appli installée (Web Share Target), pas par l'API WhatsApp Business. Marche aussi depuis toute appli qui partage. |
 
 ## Claude et les requêtes

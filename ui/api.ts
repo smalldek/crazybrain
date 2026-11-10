@@ -30,6 +30,18 @@ export interface TypeElement {
   readonly libelle: string;
 }
 
+/** Un mail reçu par le Worker (étape 8) : accepté (une tâche) ou refusé, et pourquoi. */
+export interface MailRecu {
+  readonly id: string;
+  readonly recuLe: string;
+  readonly expediteur: string;
+  readonly sujet: string | null;
+  readonly accepte: boolean;
+  readonly raison: string | null;
+  readonly authserv: string | null;
+  readonly elementId: string | null;
+}
+
 /** Les champs qu'on peut envoyer pour créer ou modifier un élément (null vide un champ facultatif). */
 export type Changements = Partial<Pick<Element,
   'titre' | 'statut' | 'type' | 'parent' | 'description' | 'priorite' | 'echeance' |
@@ -117,6 +129,7 @@ export const api = {
   desabonner: (endpoint: string): Promise<void> =>
     appeler<void>('/api/push/abonnements', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ endpoint }) }),
   essaiPush: async (): Promise<number> => (await appeler<{ envois: number }>('/api/push/essai', { method: 'POST' })).envois,
+  mails: async (): Promise<MailRecu[]> => (await appeler<{ mails: MailRecu[] }>('/api/mails')).mails,
   envoisPush: async (): Promise<EnvoiRappel[]> => (await appeler<{ envois: EnvoiRappel[] }>('/api/push/envois')).envois,
   requetes: async (): Promise<Requete[]> => (await appeler<{ requetes: Requete[] }>('/api/requetes')).requetes,
   lignesRequete: async (id: string): Promise<ResultatRequete> =>

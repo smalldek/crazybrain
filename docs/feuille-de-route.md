@@ -688,11 +688,24 @@ survit au rechargement. Chaque point a son scénario joué dans le navigateur.
 ## Étape 8 — Mail → tâche
 
 - **Tâches** :
-  - 8.1 Vérifier l'hypothèse : le domaine peut-il recevoir ce courrier sans casser l'existant
-    (lire ses serveurs de courrier) ; sinon, un sous-domaine.
-  - 8.2 L'adresse dédiée et Email Routing vers le Worker. **Il faut du projet Cloudflare.**
-  - 8.3 Le gestionnaire de mail du Worker : sujet en titre, corps en description ; seuls les mails
-    d'Adrien qui passent SPF et DKIM sont acceptés.
+  - 8.1 ✓ Vérifier l'hypothèse : le domaine peut-il recevoir ce courrier sans casser l'existant
+    (lire ses serveurs de courrier) ; sinon, un sous-domaine. Lu le 10/11 : non, le domaine reçoit
+    déjà son courrier chez Google (enregistrements MX dans `cloudflare/dns.tf` du dépôt `cluster`).
+    L'adresse ira sur un sous-domaine, proposé `taches.` (voir `docs/architecture.md`).
+  - 8.2 L'adresse dédiée et Email Routing vers le Worker. **Il faut du projet Cloudflare.** Attend
+    l'accord d'Adrien (tâche crazybrain-13 du vault) : la configuration Cloudflare vit dans le dépôt
+    `cluster`, et ajouter la réception de courrier sur un sous-domaine ne se défait pas sans risque
+    pour qui aurait déjà écrit à l'adresse. Il faudra aussi poser le secret `COURRIER_EXPEDITEURS`
+    (les adresses d'Adrien), puis, au premier mail, régler `COURRIER_AUTHSERV`.
+  - 8.3 ✓ Le gestionnaire de mail du Worker : sujet en titre, corps en description ; seuls les mails
+    d'Adrien qui passent SPF et DKIM sont acceptés (10/11, construit, pas encore branché). Le Worker
+    lit le mail avec postal-mime ; le sujet sans « Fwd: » ou « TR : » devient le titre, le texte la
+    description, avec le tag `source:mail`. Il refuse tout tant que les réglages manquent, et refuse
+    un résultat d'authentification qui n'est pas écrit par le serveur reconnu : sinon n'importe qui
+    pourrait écrire lui-même « dkim=pass » ([décision 008](decisions/008-mail-vers-tache.md)).
+    Chaque mail est noté, accepté ou refusé avec sa raison, et l'onglet Tableau montre les derniers.
+    Vérifié : `tests/unitaires/courrier.test.ts`, `features/courrier.feature` (mails remis au Worker
+    local par la porte de test de wrangler, comme le ferait Email Routing).
 - **Fait quand** : un mail envoyé par Adrien à l'adresse devient une tâche (sujet en titre, corps
   en description) ; un mail d'une autre adresse est rejeté.
 
