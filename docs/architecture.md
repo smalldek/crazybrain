@@ -161,6 +161,9 @@ Claude écrit la requête SQL par le connecteur, la teste, puis l'enregistre ; l
 comme un filtre ou dans un tableau de bord. Une requête ne doit jamais modifier ni effacer quoi
 que ce soit.
 
+**Construit le 10/11 (tâche 4.1)** : voir la [décision 005](decisions/005-requetes-en-lecture-seule.md).
+Les pistes du départ, gardées pour l'histoire :
+
 D1 n'a pas d'utilisateur en lecture seule : on ne peut pas donner aux requêtes un accès qui ne
 sait que lire. La garde est donc à construire. Pistes, à évaluer et à combiner à l'étape 4 :
 
@@ -191,7 +194,7 @@ dépend.
 | Hypothèse | Pourquoi elle compte | Comment on vérifie | Quand | Si elle est fausse |
 |---|---|---|---|---|
 | Un connecteur MCP marche avec les connecteurs claude.ai : Worker serveur OAuth, `/authorize` derrière Access, ouverture limitée aux adresses du connecteur ([décision 003](decisions/003-connecteur-claude.md)). **Vérifié le 05/11** : depuis une session du projet d'Adrien, Claude appelle `bonjour` par le connecteur et reçoit la réponse. | Le connecteur porte les étapes 2 et 4. | Les tests d'acceptation (`features/connecteur.feature`) jouent tout le parcours OAuth contre le Worker local. Reste le vrai test : Adrien ajoute le connecteur dans claude.ai, Claude appelle `bonjour` et reçoit la réponse. | Étape 1c, avant le socle. | Replis : Access en fournisseur OIDC, ou OAuth avec Google directement. Si rien ne marche, on revoit le socle. |
-| Une requête SQL peut s'exécuter en lecture seule sur D1. | Une requête écrite par Claude ne doit rien modifier. | La série de requêtes d'écriture du test, toutes refusées. | Étape 4. | Repli : exécuter les requêtes sur une copie de la base, refaite régulièrement. |
+| Une requête SQL peut s'exécuter en lecture seule sur D1. **Vérifié le 10/11** ([décision 005](decisions/005-requetes-en-lecture-seule.md)) : `PRAGMA query_only` est refusé, mais une garde à deux couches refuse les 35 écritures déguisées du test. | Une requête écrite par Claude ne doit rien modifier. | La série de requêtes d'écriture du test, toutes refusées. | Étape 4. | Repli : exécuter les requêtes sur une copie de la base, refaite régulièrement. |
 | L'appli installée survit à l'expiration de la connexion Access. | Quand la session Access expire, les appels de l'appli reçoivent la page de connexion au lieu des données : l'appli peut sembler vide ou bloquée. | Une durée de session courte en test ; on observe ce que fait l'appli. Elle doit détecter l'expiration et rouvrir la connexion. | Visible dès l'étape 1, traitée à l'étape 5. | Session Access longue, plus la détection et la reconnexion dans l'appli. |
 | Web Push est assez fiable sur Android. | Les rappels. | Des rappels de test sur plusieurs jours, téléphone en veille ; on mesure le retard. | Étape 5. | Appli native, plus tard. |
 | Email Routing peut recevoir le courrier de l'adresse choisie. (Ajoutée au cadrage.) | Mail → tâche. Si le domaine reçoit déjà son courrier ailleurs, Email Routing ne peut pas prendre sa place sans casser ce courrier. | Lire les serveurs de courrier (MX) du domaine ; essayer sur un sous-domaine si besoin. | Étape 8. | Une adresse sur un sous-domaine, ou un autre domaine. |
