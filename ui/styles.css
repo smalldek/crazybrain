@@ -254,7 +254,7 @@ li .ouvrir:hover, li .ouvrir:focus-visible { background: var(--fond); color: var
 @media (min-width: 900px) {
   .vue-cercles main { max-width: 72rem; }
   #cercles { display: grid; grid-template-columns: minmax(0, 3fr) minmax(18rem, 2fr); column-gap: 24px; align-items: start; }
-  #cercles > .reglages, #cercles > .dessin-cercles, #cercles > p.etat, #cercles > .consigne-glisse { grid-column: 1; }
+  #cercles > .reglages, #cercles > .zone-dessin, #cercles > p.etat, #cercles > .consigne-glisse { grid-column: 1; }
   #cercles > .cote { grid-column: 2; grid-row: 1 / span 3; }
 }
 
@@ -411,3 +411,22 @@ li .ouvrir:hover, li .ouvrir:focus-visible { background: var(--fond); color: var
 #horizons form input { width: 100%; padding: 6px 8px; font-size: .9rem; }
 #horizons .depasses { margin-top: 16px; }
 #horizons .depasses h2 { color: var(--erreur); margin-bottom: 6px; }
+
+/* Éditer sur le cercle (3b.13) : la barre d'actions de la part choisie, le « + » du centre, la saisie. */
+.zone-dessin { position: relative; max-width: 34rem; margin: 0 auto 12px; }
+.zone-dessin .dessin-cercles { margin: 0 auto; }
+.barre-part, .saisie-cercle { position: absolute; z-index: 5; display: flex; gap: 4px; align-items: center;
+  background: var(--carte); border: 1px solid var(--bord); border-radius: 999px; padding: 4px;
+  box-shadow: 0 4px 14px rgb(0 0 0 / .18); white-space: nowrap; }
+.barre-part.dessus, .saisie-cercle.dessus { transform: translate(-50%, calc(-100% - 6px)); }
+.barre-part.dessous, .saisie-cercle.dessous { transform: translate(-50%, 6px); }
+.barre-part button, .saisie-cercle button { font: inherit; font-size: .9rem; min-width: 40px; min-height: 40px; padding: 0 10px;
+  border-radius: 999px; border: 0; background: none; color: var(--accent); cursor: pointer; }
+.barre-part button:hover, .saisie-cercle button:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.barre-part .moins { color: var(--erreur); font-size: 1.3rem; }
+.saisie-cercle input { font: inherit; width: min(14rem, 52vw); padding: 8px 12px; border-radius: 999px; border: 1px solid var(--bord);
+  background: var(--fond); color: var(--texte); }
+.saisie-cercle button:disabled { opacity: .4; cursor: default; }
+.ajout-centre { position: absolute; z-index: 5; transform: translate(-50%, -50%); width: 40px; height: 40px; border-radius: 50%;
+  border: 1px solid var(--accent); background: var(--carte); color: var(--accent); font-size: 1.4rem; line-height: 1; cursor: pointer;
+  box-shadow: 0 2px 8px rgb(0 0 0 / .15); }

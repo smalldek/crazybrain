@@ -27,7 +27,7 @@ tâche en a besoin, elle le dit (« Il faut du projet Cloudflare »), et Adrien 
 | 1. Socle | Le site, la connexion Google, la base, l'API, le connecteur testé, modifier une tâche, le modèle complet | Fait le 05/11 |
 | 2. Connecteur Claude | Claude lit, crée et modifie les tâches depuis une conversation | Fait le 05/11 |
 | 3. Kanban, détail, tags, filtres | Le premier vrai écran de travail | Construite le 05/11 |
-| 3b. Objectifs en cercles | Le découpage pondéré en cercles, avancement qui remonte (avancé depuis l'étape 7 le 08/11) | Construite le 08/11 ; le cercle comme outil principal (3b.8 à 3b.12) le 09/11 ; essai d'Adrien quand il voudra |
+| 3b. Objectifs en cercles | Le découpage pondéré en cercles, avancement qui remonte (avancé depuis l'étape 7 le 08/11) | Construite le 08/11 ; le cercle comme outil principal (3b.8 à 3b.12) le 09/11 ; éditer sur le cercle (3b.13) le 10/11 ; essai d'Adrien quand il voudra |
 | 4. Requêtes enregistrées, tableaux de bord | Claude écrit des requêtes, l'outil les rejoue | — |
 | 5. L'appli sur le téléphone | Icône, partage, rappels, tâches récurrentes | — |
 | 6. Calendrier et mode journée | Planifier sa journée à la Sunsama | — |
@@ -355,6 +355,7 @@ responsables (une personne par part), qui n'ont de sens qu'à plusieurs.
 | 3b.10 | Des libellés lisibles : le long de l'arc, ou dans le sens du rayon pour une part fine ; le survol | **Fait le 09/11** |
 | 3b.11 | Les gestes directs sur le cercle : tirer le bord d'une part règle son importance, tirer son remplissage règle son avancement | **Fait le 09/11** |
 | 3b.12 | Glisser une part sur le cercle pour la ranger dans une autre ou la réordonner ; les flèches du clavier | **Fait le 09/11** |
+| 3b.13 | Éditer sur le cercle même : toucher une part ouvre ses boutons (ajouter dedans, à côté, renommer, supprimer), on tape le titre sur place | **Fait le 10/11** |
 
 ### 3b.1 Poids et avancement
 
@@ -509,6 +510,46 @@ on enchaîne, il essaiera plus tard.
   anneaux se partagent toute la place disponible (une branche à un seul niveau remplit le cercle au
   lieu d'y faire un petit anneau). Non vérifié par un test : le glisser au doigt sur le cercle (appui
   long) ; les scénarios le jouent à la souris.
+
+### 3b.13 Éditer sur le cercle
+
+Le 10/11, Adrien : « Je peux pas ajouter et supprimer depuis le cercle comme sur goalscape. Genre je
+clic et ça affiche un bout pour faire +. Il y a un bouton moins. » Jusque-là, on ajoutait et on
+supprimait dans la fiche sous le cercle : il fallait quitter le dessin des yeux.
+
+Ce que fait Goalscape, lu le 10/11 depuis le PC (pages d'aide, blog, vidéos tutoriels et leurs
+images, sans ouvrir l'application, qui demande un compte) : on clique un segment pour le choisir ;
+deux boutons au coin du cercle ajoutent un but au même niveau ou un sous-but ; le clic droit ouvre un
+menu (ajouter à côté ou dedans, renommer, couper, copier, coller, supprimer en rouge, avancement à zéro
+ou complet, égaliser, centrer, couleurs) avec ses raccourcis (Ctrl+Entrée ajoute dedans, Ctrl+Maj+Entrée
+à côté, Alt+Entrée renomme, Ctrl+Retour arrière supprime) ; pour renommer, on clique le libellé et un
+champ s'ouvre par-dessus, le texte déjà sélectionné. Goalscape n'a pas de glisser-déposer pour déplacer
+(couper puis coller), ni de geste pour l'avancement sur le segment : Crazybrain a les deux (3b.11, 3b.12).
+Rien sur le téléphone : Goalscape est pensé pour la souris.
+
+On en reprend le principe, pas l'apparence :
+
+- **Toucher une part** la choisit et pose contre son bord une petite barre : « + Dedans » (un
+  sous-élément), « + À côté » (une sœur, placée juste après), « ✎ » (renommer) et « − » en rouge
+  (supprimer, c'est-à-dire archiver : la suppression se restaure comme ailleurs). Retoucher la part
+  choisie zoome dessus, comme avant.
+- **Sans part choisie**, un « + » sous le centre ajoute dans le centre.
+- **Le titre se tape sur place**, dans un champ posé au même endroit. Entrée crée la part, qui apparaît
+  aussitôt dans le cercle, et le champ reste ouvert pour enchaîner la suivante à côté ; Échap ferme.
+  Une part créée dans un anneau qu'on ne voit pas encore fait zoomer sur son parent.
+- **Au clavier**, les raccourcis de Goalscape (Ctrl+Entrée dedans, Ctrl+Maj+Entrée à côté, Alt+Entrée
+  renommer, Ctrl+Retour arrière supprimer ; Cmd sur un Mac) et les habituels (Inser, F2, Suppr). Fermer
+  la saisie rend la main à la part, pour enchaîner. **Clic droit** sur une part : la choisit et ouvre sa
+  barre (pas un menu de Goalscape : sur le téléphone, il n'y a pas de clic droit, la barre sert aux deux).
+- La barre et le champ restent entiers dans l'écran du téléphone : posés au bord d'une part du côté de
+  l'écran, ils se décalent juste assez pour ne pas déborder.
+- **Vérifié par** : un scénario dans le navigateur à la taille d'un téléphone qui ajoute au centre,
+  enchaîne une deuxième part, ajoute à côté, ajoute dedans, renomme, supprime, ouvre la saisie par les
+  touches Inser, Ctrl+Maj+Entrée et Alt+Entrée, et vérifie que la barre et le champ tiennent dans l'écran (ce dernier contrôle échoue
+  si l'on retire le décalage : le défaut a été vu sur une capture avant d'être corrigé).
+- **Non vérifié par un test** : le clic droit (les scénarios passent par les boutons et le clavier).
+- **Pas repris pour l'instant** : couper, copier, coller une branche (le glisser de 3b.12 déplace déjà) ;
+  la miniature du cercle entier quand on a zoomé ; replier les anneaux extérieurs ; annuler et rétablir.
 
 ### 3b.6 L'essai d'Adrien
 

@@ -5,7 +5,7 @@
 // bord de la part choisie règle son importance, tirer son remplissage règle son avancement, glisser
 // une part la range ailleurs, les flèches du clavier passent d'une part à l'autre. La fiche fait le
 // reste (curseurs, ajouter, renommer, supprimer). Les calculs sont dans cercles.ts (sans React).
-import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent, type PointerEvent as EvenementPointeur } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type ReactNode, type RefObject, type KeyboardEvent, type PointerEvent as EvenementPointeur } from 'react';
 import { poidsPourPart } from '../src/domaine/cercles';
 import { naviguer } from './adresse';
 import { api, type Changements, type Element, type Tag } from './api';
@@ -63,6 +63,12 @@ interface Mouvement {
   readonly debut: number;
 }
 
+/** Une saisie sur le cercle : ajouter dans un élément (null : dans « Tout »), à côté d'une part, ou la renommer. */
+interface Edition {
+  readonly sorte: 'dedans' | 'cote' | 'renommer';
+  readonly id: string | null;
+}
+
 /** Un geste en cours sur la part choisie : tirer une frontière, ou tirer le remplissage. */
 type Geste =
   | { readonly sorte: 'frontiere'; readonly gauche: Part; readonly droite: Part; readonly pointeur: number }
@@ -104,6 +110,9 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
   const [geste, setGeste] = useState<Geste | null>(null);
   const [glisse, setGlisse] = useState<Glisse | null>(null);
   const [survol, setSurvol] = useState<{ part: Part; x: number; y: number } | null>(null);
+  const [edition, setEdition] = useState<Edition | null>(null);
+  // Après un ajout qui tombe hors des anneaux montrés, on zoome sur son parent puis on choisit le nouveau.
+  const aChoisir = useRef<{ id: string; edition: Edition } | null>(null);
   // Ce qui était affiché au dernier dessin : le départ du prochain mouvement.
   const affiche = useRef<{ geometries: ReadonlyMap<string, Geometrie>; parts: readonly Part[] }>({ geometries: new Map(), parts: [] });
   // Une part appuyée, pas encore attrapée (la souris doit bouger, le doigt rester appuyé).
@@ -202,7 +211,12 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
   }
 
   // Changer de centre oublie le choix et les essais.
-  useEffect(() => { setChoisi(null); setApercu(new Map()); setAvancementEssaye(null); setGeste(null); setGlisse(null); }, [centre]);
+  useEffect(() => {
+    const suivant = aChoisir.current;
+    aChoisir.current = null;
+    setChoisi(suivant?.id ?? null); setEdition(suivant?.edition ?? null);
+    setApercu(new Map()); setAvancementEssaye(null); setGeste(null); setGlisse(null);
+  }, [centre]);
 
   const zoomer = (id: string): void => naviguer(adresseCercles(id));
   const remonter = (): void => {
@@ -212,8 +226,79 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
   const toucher = (part: Part): void => {
     if (ignorerClic.current) { ignorerClic.current = false; return; }
     if (choisi === part.element.id) zoomer(part.element.id);
-    else setChoisi(part.element.id);
+    else { setChoisi(part.element.id); setEdition(null); }
   };
+
+  // ——— Ajouter, renommer, supprimer sur le cercle même ———
+  /** Le parent où tombe un ajout : dans l'élément (`dedans`, null : « Tout »), ou dans le parent de la part (`cote`). */
+  function parentDeLAjout(sorte: 'dedans' | 'cote', id: string | null): string | null {
+    if (sorte === 'dedans') return id;
+    const ref = elements.find((e) => e.id === id);
+    return ref?.parent && elements.some((e) => e.id === ref.parent) ? ref.parent : null;
+  }
+
+  async function ajouterSurLeCercle(sorte: 'dedans' | 'cote', id: string | null, titre: string): Promise<void> {
+    const parent = parentDeLAjout(sorte, id);
+    const enfants = enfantsParParent(elements);
+    const freres = enfantsDe(parent, elements, enfants);
+    // Son type : celui d'une sœur, sinon « objectif » à la racine et « tâche » ailleurs (comme la fiche).
+    const type = freres[0]?.type ?? (parent === null ? 'objectif' : 'tache');
+    try {
+      const cree = await api.creer({ titre, type, parent });
+      const ids = freres.map((f) => f.id);
+      const i = sorte === 'cote' && id ? ids.indexOf(id) : -1;
+      // « À côté » se place juste après la part, pas au bout de la fratrie.
+      if (i >= 0 && i < ids.length - 1) await ranger(cree.id, parent, [...ids.slice(0, i + 1), cree.id, ...ids.slice(i + 1)]);
+      else await recharger();
+      // La saisie reste ouverte : un autre titre ajoute la sœur suivante, comme on dresse une liste.
+      const suite: Edition = { sorte: 'cote', id: cree.id };
+      const anneauDuParent = parent === null || parent === (dessin.centre?.id ?? null) ? 0
+        : dessin.parts.find((p) => p.element.id === parent)?.anneau ?? Number.POSITIVE_INFINITY;
+      if (anneauDuParent + 1 > anneaux) {
+        // Le nouvel élément serait hors des anneaux montrés : on zoome sur son parent.
+        aChoisir.current = { id: cree.id, edition: suite };
+        naviguer(adresseCercles(parent));
+      } else {
+        setChoisi(cree.id);
+        setEdition(suite);
+      }
+    } catch (e) {
+      signaler(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  async function renommerSurLeCercle(id: string, titre: string): Promise<void> {
+    const actuel = elements.find((e) => e.id === id);
+    setEdition(null);
+    if (!actuel || titre === actuel.titre) return;
+    await modifier(id, { titre });
+  }
+
+  async function supprimerSurLeCercle(part: Part): Promise<void> {
+    setChoisi(null);
+    setEdition(null);
+    await supprimer(part.element);
+  }
+
+  /** Les raccourcis sur une part choisie : Inser ou + (sous-élément), F2 (renommer), Suppr (supprimer). */
+  /** Ferme la saisie et rend la main à la part, pour enchaîner au clavier. */
+  function fermerSaisie(id: string): void {
+    setEdition(null);
+    requestAnimationFrame(() => {
+      dessinRef.current?.querySelector<SVGGElement>(`g.part[data-id="${CSS.escape(id)}"]`)?.focus();
+    });
+  }
+
+  function raccourci(part: Part, touche: string): boolean {
+    // Les nôtres (Inser, F2, Suppr) et ceux du menu de Goalscape (Ctrl+Entrée, Ctrl+Maj+Entrée, Alt+Entrée,
+    // Ctrl+Retour arrière ; Cmd au lieu de Ctrl sur un Mac).
+    const editer = (sorte: Edition['sorte']): true => { setChoisi(part.element.id); setEdition({ sorte, id: part.element.id }); return true; };
+    if (touche === 'Insert' || touche === '+' || touche === 'Mod+Enter') return editer('dedans');
+    if (touche === 'Mod+Maj+Enter') return editer('cote');
+    if (touche === 'F2' || touche === 'Alt+Enter') return editer('renommer');
+    if (touche === 'Delete' || touche === 'Mod+Backspace') { void supprimerSurLeCercle(part); return true; }
+    return false;
+  }
 
   // Échap remonte d'un niveau, quand le panneau de détail n'est pas ouvert (il prend Échap pour lui).
   useEffect(() => {
@@ -427,6 +512,7 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
         </label>
       </div>
 
+      <div className="zone-dessin">
       <svg ref={dessinRef} viewBox="-100 -100 200 200" role="group" aria-label={`Cercles de « ${titreCentre} »`}
         className={['dessin-cercles', glisse && 'glisse-en-cours', geste && 'geste-en-cours'].filter(Boolean).join(' ')}
         data-anime={mouvement ? 'oui' : undefined}
@@ -452,6 +538,8 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
             glissee={glisse?.part.element.id === p.element.id}
             cible={cible?.sorte === 'part' && cible.part.element.id === p.element.id ? cible.ou : null}
             toucher={() => toucher(p)} zoomer={() => zoomer(p.element.id)} fleche={(touche) => fleche(p, touche)}
+            raccourci={(touche) => raccourci(p, touche)}
+            menu={() => { if (choisi !== p.element.id) { setChoisi(p.element.id); setEdition(null); } }}
             appuyer={(e) => appuyer(p, e)}
             survoler={(e) => {
               if (e.pointerType !== 'mouse' || glisse || geste) { setSurvol(null); return; }
@@ -514,6 +602,50 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
           </g>
         )}
       </svg>
+      {!mouvement && !glisse && !geste && (() => {
+        // La barre d'actions de la part choisie, posée contre son bord extérieur ; sans part choisie,
+        // un « + » sous le centre ajoute dans le centre.
+        if (edition && (edition.sorte === 'dedans' && edition.id === (dessin.centre?.id ?? null) && !partChoisie)) {
+          return (
+            <SaisieCercle x={0} y={RAYON_CENTRE} dessous libelle={`Ajouter dans « ${titreCentre} »`} valeur=""
+              valider={(t) => ajouterSurLeCercle('dedans', dessin.centre?.id ?? null, t)} fermer={() => setEdition(null)} />
+          );
+        }
+        if (!partChoisie) {
+          const q = { x: 0, y: RAYON_CENTRE };
+          return (
+            <button type="button" className="ajout-centre" aria-label={`Ajouter dans « ${titreCentre} »`} title={`Ajouter dans « ${titreCentre} »`}
+              style={{ left: `${((q.x + 100) / 200) * 100}%`, top: `${((q.y + 100) / 200) * 100}%` }}
+              onClick={() => setEdition({ sorte: 'dedans', id: dessin.centre?.id ?? null })}>+</button>
+          );
+        }
+        const { exterieur } = geometrieDe(partChoisie, anneauxDessines);
+        const a = partChoisie.fin - partChoisie.debut >= 2 * Math.PI - 1e-9 ? Math.PI : (partChoisie.debut + partChoisie.fin) / 2;
+        const q = point(exterieur, a);
+        const dessous = q.y >= 0;
+        const e = partChoisie.element;
+        if (edition && edition.id === e.id) {
+          const libelle = edition.sorte === 'dedans' ? `Ajouter dans « ${e.titre} »`
+            : edition.sorte === 'cote' ? 'Ajouter à côté' : `Renommer « ${e.titre} »`;
+          return (
+            <SaisieCercle key={`${edition.sorte}-${e.id}`} x={q.x} y={q.y} dessous={dessous} libelle={libelle}
+              valeur={edition.sorte === 'renommer' ? e.titre : ''}
+              valider={(t) => (edition.sorte === 'renommer' ? renommerSurLeCercle(e.id, t) : ajouterSurLeCercle(edition.sorte, e.id, t))}
+              fermer={() => fermerSaisie(e.id)} />
+          );
+        }
+        return (
+          <BarrePart x={q.x} y={q.y} dessous={dessous} titre={e.titre}>
+            <button type="button" aria-label="Ajouter un sous-élément" title="Ajouter un sous-élément (Inser)"
+              onClick={() => setEdition({ sorte: 'dedans', id: e.id })}><span aria-hidden="true">＋</span> Dedans</button>
+            <button type="button" aria-label="Ajouter à côté" title="Ajouter à côté"
+              onClick={() => setEdition({ sorte: 'cote', id: e.id })}><span aria-hidden="true">＋</span> À côté</button>
+            <button type="button" aria-label="Renommer" title="Renommer (F2)" onClick={() => setEdition({ sorte: 'renommer', id: e.id })}>✎</button>
+            <button type="button" className="moins" aria-label="Supprimer" title="Supprimer (Suppr)" onClick={() => void supprimerSurLeCercle(partChoisie)}>−</button>
+          </BarrePart>
+        );
+      })()}
+      </div>
 
       {glisse && (
         <p className="consigne-glisse" role="status">
@@ -525,7 +657,7 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
         </p>
       )}
 
-      {survol && !glisse && (
+      {survol && !glisse && survol.part.element.id !== partChoisie?.element.id && (
         <div className="bulle-part" role="tooltip" style={{ left: survol.x + 14, top: survol.y + 14 }}>
           <strong>{survol.part.element.titre}</strong>
           <span>{pourcent(survol.part.part)} de son parent · {pourcent(survol.part.absolue)} du centre</span>
@@ -571,6 +703,71 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
   );
 }
 
+/** La barre d'actions de la part choisie, posée contre son bord extérieur. */
+function BarrePart({ x, y, dessous, titre, children }: {
+  x: number; y: number; dessous: boolean; titre: string; children: ReactNode;
+}) {
+  const cadre = useGarderDansLEcran<HTMLDivElement>();
+  return (
+    <div ref={cadre} className={`barre-part ${dessous ? 'dessous' : 'dessus'}`} role="toolbar" aria-label={`Actions sur « ${titre} »`}
+      style={{ left: `${((x + 100) / 200) * 100}%`, top: `${((y + 100) / 200) * 100}%` }}>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * Garde une bulle posée sur le cercle dans l'écran : si elle déborde à gauche ou à droite
+ * (part au bord d'un téléphone), on la décale juste assez, sans changer sa hauteur.
+ */
+function useGarderDansLEcran<T extends HTMLElement>(): RefObject<T | null> {
+  const ref = useRef<T>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.marginLeft = '0px';
+    const r = el.getBoundingClientRect();
+    const marge = 8;
+    const largeur = document.documentElement.clientWidth;
+    let decalage = 0;
+    if (r.left < marge) decalage = marge - r.left;
+    else if (r.right > largeur - marge) decalage = largeur - marge - r.right;
+    el.style.marginLeft = `${decalage}px`;
+  });
+  return ref;
+}
+
+/** Le champ posé sur le cercle pour taper un titre : Entrée valide, Échap ferme (sans remonter d'un niveau). */
+function SaisieCercle({ x, y, dessous, libelle, valeur, valider, fermer }: {
+  x: number; y: number; dessous: boolean; libelle: string; valeur: string;
+  valider: (titre: string) => Promise<void>; fermer: () => void;
+}) {
+  const [texte, setTexte] = useState(valeur);
+  const [envoi, setEnvoi] = useState(false);
+  const champ = useRef<HTMLInputElement>(null);
+  const cadre = useGarderDansLEcran<HTMLFormElement>();
+  useEffect(() => { champ.current?.focus(); champ.current?.select(); }, []);
+  async function envoyer(ev: FormEvent): Promise<void> {
+    ev.preventDefault();
+    const titre = texte.trim();
+    if (titre === '' || envoi) return;
+    setEnvoi(true);
+    try { await valider(titre); } finally { setEnvoi(false); }
+    setTexte('');
+  }
+  return (
+    <form ref={cadre} className={`saisie-cercle ${dessous ? 'dessous' : 'dessus'}`} autoComplete="off"
+      style={{ left: `${((x + 100) / 200) * 100}%`, top: `${((y + 100) / 200) * 100}%` }}
+      onSubmit={(ev) => void envoyer(ev)}>
+      <input ref={champ} aria-label={libelle} placeholder={libelle} maxLength={200} enterKeyHint="done" value={texte}
+        onChange={(ev) => setTexte(ev.target.value)}
+        onKeyDown={(ev) => { if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); fermer(); } }} />
+      <button type="submit" aria-label="Valider" disabled={texte.trim() === '' || envoi}>✓</button>
+      <button type="button" aria-label="Fermer" onClick={fermer}>✕</button>
+    </form>
+  );
+}
+
 interface ProprietesPart {
   readonly part: Part;
   /** Où elle se dessine en ce moment (pendant un mouvement, entre deux places). */
@@ -587,13 +784,17 @@ interface ProprietesPart {
   readonly toucher: () => void;
   readonly zoomer: () => void;
   readonly fleche: (touche: string) => void;
+  /** Inser, +, F2, Suppr : rend vrai si la touche a servi. */
+  readonly raccourci: (touche: string) => boolean;
+  /** Le clic droit : la part est choisie et sa barre d'actions apparaît. */
+  readonly menu: () => void;
   readonly appuyer: (evenement: EvenementPointeur) => void;
   readonly survoler: (evenement: EvenementPointeur) => void;
   readonly quitter: () => void;
 }
 
 /** Une part : sa couleur claire, sa portion faite en foncé (du bord intérieur vers l'extérieur), son titre s'il tient. */
-function PartDessinee({ part, geometrie, opacite, enMouvement, choisie, eteinte, enRetard, glissee, cible, toucher, zoomer, fleche, appuyer, survoler, quitter }: ProprietesPart) {
+function PartDessinee({ part, geometrie, opacite, enMouvement, choisie, eteinte, enRetard, glissee, cible, toucher, zoomer, fleche, raccourci, menu, appuyer, survoler, quitter }: ProprietesPart) {
   const { interieur, exterieur, debut, fin } = geometrie;
   const fait = interieur + ((exterieur - interieur) * part.avancement) / 100;
   const a = (debut + fin) / 2;
@@ -612,9 +813,14 @@ function PartDessinee({ part, geometrie, opacite, enMouvement, choisie, eteinte,
       data-interieur={Math.round(interieur * 100) / 100} data-exterieur={Math.round(exterieur * 100) / 100}
       onClick={toucher} onPointerDown={appuyer} onPointerEnter={survoler} onPointerMove={survoler} onPointerLeave={quitter}
       onKeyDown={(e: KeyboardEvent) => {
+        // Les raccourcis à touches combinées (ceux de Goalscape) passent avant Entrée seule, qui zoome.
+        const combinee = `${e.ctrlKey || e.metaKey ? 'Mod+' : ''}${e.shiftKey ? 'Maj+' : ''}${e.altKey ? 'Alt+' : ''}${e.key}`;
+        if (combinee !== e.key && raccourci(combinee)) { e.preventDefault(); return; }
         if (e.key === 'Enter') { e.preventDefault(); zoomer(); } else if (e.key === ' ') { e.preventDefault(); toucher(); }
         else if (e.key.startsWith('Arrow')) { e.preventDefault(); fleche(e.key); }
-      }}>
+        else if (raccourci(e.key)) e.preventDefault();
+      }}
+      onContextMenu={(e) => { e.preventDefault(); menu(); }}>
       <path className="fond" d={chemin(interieur, exterieur, debut, fin)} />
       {part.avancement > 0 && <path className="rempli" d={chemin(interieur, fait, debut, fin)} />}
       <path className="contour" d={chemin(interieur, exterieur, debut, fin)} />
