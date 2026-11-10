@@ -302,3 +302,29 @@ li .ouvrir:hover, li .ouvrir:focus-visible { background: var(--fond); color: var
 .etiquette-glisse rect { fill: var(--texte); opacity: .85; }
 .etiquette-glisse text { fill: var(--fond); font-size: 4px; text-anchor: middle; dominant-baseline: central; }
 .consigne-glisse { margin: 0 0 8px; text-align: center; color: var(--accent); font-size: .95rem; }
+
+/* Le tableau de bord (tâche 4.4). */
+#tableau h2 { font-size: 1.1rem; margin: 18px 0 8px; }
+#tableau .chiffres { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+#tableau .chiffre { background: var(--carte); border: 1px solid var(--bord); border-radius: 10px; padding: 10px; display: flex; flex-direction: column; }
+#tableau .chiffre .valeur { font-size: 1.6rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+#tableau .chiffre .libelle { font-size: .85rem; color: var(--doux); }
+#tableau .chiffre.alerte .valeur { color: var(--erreur); }
+#tableau .barres { width: 100%; max-width: 480px; height: auto; display: block; }
+#tableau .barres .axe { stroke: var(--bord); stroke-width: 1; }
+#tableau .barres .barre { fill: var(--accent); }
+#tableau .barres .survol { fill: transparent; }
+#tableau .barres g:hover .survol { fill: var(--bord); opacity: .4; }
+#tableau .barres text { font-size: 10px; fill: var(--doux); text-anchor: middle; }
+#tableau .barres .nombre { fill: var(--texte); }
+#tableau .echeances { list-style: none; padding: 0; margin: 0; }
+#tableau .echeances li { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--bord); }
+#tableau .echeances .date { color: var(--doux); flex: none; font-variant-numeric: tabular-nums; }
+#tableau button.lien { background: none; border: none; padding: 0; color: var(--accent); font: inherit; text-align: left; cursor: pointer; }
+#tableau .requete { background: var(--carte); border: 1px solid var(--bord); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; }
+#tableau .requete h3 { font-size: 1rem; margin: 0 0 4px; }
+#tableau .requete .description { color: var(--doux); margin: 0 0 6px; font-size: .9rem; }
+#tableau .defile { overflow-x: auto; }
+#tableau table { border-collapse: collapse; font-size: .9rem; }
+#tableau th, #tableau td { text-align: left; padding: 4px 10px 4px 0; border-bottom: 1px solid var(--bord); white-space: nowrap; }
+#tableau th { color: var(--doux); font-weight: 500; }

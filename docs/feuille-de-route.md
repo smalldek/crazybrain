@@ -550,7 +550,11 @@ survit au rechargement. Chaque point a son scénario joué dans le navigateur.
     les éléments dont la requête rend l'`id`, dans toutes les vues, gardé dans l'adresse
     (`?requete=<id>`). Une requête sans colonne `id` le dit au lieu de filtrer ; au-delà de 500
     lignes, l'écran prévient que seules les 500 premières comptent.
-  - 4.4 Les premiers tableaux de bord, codés.
+  - 4.4 ✓ Les premiers tableaux de bord, codés (10/11). Un onglet Tableau (`/tableau`) : cinq
+    chiffres (à faire, en cours, en retard, faites et créées en 7 jours, sans compter les projets),
+    les tâches faites semaine par semaine sur huit semaines (barres, le nombre au-dessus, une bulle
+    au survol), les cinq prochaines échéances, puis chaque requête enregistrée par Claude : en
+    tableau, ou, si elle rend des `id`, leur nombre et « Voir dans la liste » (la liste filtrée).
 - **Fait quand** : le test de lecture seule passe ; Claude écrit, teste et enregistre une requête
   depuis une conversation, et Adrien la retrouve comme filtre dans l'outil.
 
