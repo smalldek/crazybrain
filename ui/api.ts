@@ -4,6 +4,7 @@ import type { InstantaneCommentaire } from '../src/domaine/commentaire';
 import type { InstantaneElement } from '../src/domaine/element';
 import type { InstantaneLien } from '../src/domaine/lien';
 import type { InstantaneTag } from '../src/domaine/tag';
+import { ErreurConnexion } from './connexion';
 
 export type Element = InstantaneElement;
 export type Lien = InstantaneLien;
@@ -36,20 +37,20 @@ export type Changements = Partial<Pick<Element,
 
 /**
  * Appelle l'API. Si la connexion Access a expiré, la réponse n'est pas du JSON (page de connexion,
- * ou redirection que le navigateur bloque) : on le dit au lieu de rester vide.
+ * ou redirection que le navigateur bloque), ou le Worker répond 401 ou 403 : on lève ErreurConnexion,
+ * que l'appli traite en se reconnectant (tâche 5.2) au lieu de rester vide.
  */
 async function appeler<T>(chemin: string, options?: RequestInit): Promise<T> {
   let reponse: Response;
   try {
     reponse = await fetch(chemin, options);
   } catch {
-    throw new Error('Connexion perdue ou expirée : recharger la page.');
+    throw new ErreurConnexion('Connexion perdue ou expirée.');
   }
+  if (reponse.status === 401 || reponse.status === 403) throw new ErreurConnexion('Connexion expirée.');
   if (reponse.status === 204) return undefined as T;
   const type = reponse.headers.get('content-type') ?? '';
-  if (!type.includes('application/json')) {
-    throw new Error('Connexion expirée : recharger la page.');
-  }
+  if (!type.includes('application/json')) throw new ErreurConnexion('Connexion expirée.');
   const corps = (await reponse.json()) as T & { erreur?: string };
   if (!reponse.ok) throw new Error(corps.erreur ?? `Erreur ${reponse.status}`);
   return corps;

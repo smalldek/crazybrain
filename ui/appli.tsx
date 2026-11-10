@@ -8,6 +8,7 @@ import { adresseElement, adresseVue, elementDeLAdresse, naviguer, parametresIci,
 import { api, type Appartenance, type Changements, type Element, type Tag } from './api';
 import { BarreFiltres } from './barre-filtres';
 import { aujourdhui } from './dates';
+import { ErreurConnexion, memoire, quoiFaire } from './connexion';
 import { backlog, filtrer, idsDeRequete, lireFiltres, nombreDeFiltres, parModification } from './filtres';
 import { PanneauDetail } from './panneau-detail';
 import { LigneTache } from './ligne-tache';
@@ -83,7 +84,21 @@ export function Appli() {
   const enOrdre = visibles && (vue === 'backlog' ? backlog(visibles) : ordonner(visibles));
   const lignes = enOrdre && filtres.tri === 'modifie' ? parModification(enOrdre) : enOrdre;
 
-  const erreur = (e: unknown): void => setMessage({ texte: e instanceof Error ? e.message : String(e), erreur: true });
+  // La connexion Access a expiré (tâche 5.2) : on recharge la page une fois, Access reconnecte et
+  // revient ; si ça échoue encore juste après, un bouton plutôt qu'une boucle de rechargements.
+  const [deconnecte, setDeconnecte] = useState(false);
+  const reconnecter = (): void => {
+    memoire.ecrire(Date.now());
+    window.location.reload();
+  };
+  const erreur = (e: unknown): void => {
+    if (e instanceof ErreurConnexion) {
+      if (quoiFaire(memoire.lire(), Date.now()) === 'recharger') reconnecter();
+      else setDeconnecte(true);
+      return;
+    }
+    setMessage({ texte: e instanceof Error ? e.message : String(e), erreur: true });
+  };
 
   /** Relit la liste ; garde le message en cours sauf « Chargement… » et « Aucune tâche ». */
   const charger = useCallback(async (): Promise<void> => {
@@ -99,6 +114,13 @@ export function Appli() {
   }, []);
 
   useEffect(() => { void charger(); }, [charger]);
+  // L'appli revient au premier plan (le téléphone l'avait mise de côté, parfois des heures) : on
+  // relit, ce qui montre les changements faits ailleurs et détecte une connexion expirée.
+  useEffect(() => {
+    const auRetour = (): void => { if (document.visibilityState === 'visible') void charger(); };
+    document.addEventListener('visibilitychange', auRetour);
+    return () => document.removeEventListener('visibilitychange', auRetour);
+  }, [charger]);
 
   async function ajouter(evenement: FormEvent): Promise<void> {
     evenement.preventDefault();
@@ -238,6 +260,11 @@ export function Appli() {
           <input id="titre" name="titre" maxLength={200} enterKeyHint="done" placeholder="Taper une tâche…"
             autoFocus={!ouvert} value={titre} disabled={envoi} onChange={(e) => setTitre(e.target.value)} />
         </form>
+        {deconnecte && (
+          <p id="deconnexion" className="etat erreur" role="alert">
+            La connexion a expiré. <button type="button" onClick={reconnecter}>Se reconnecter</button>
+          </p>
+        )}
         <p id="message" className={message.erreur ? 'etat erreur' : 'etat'} role="status" aria-live="polite"
           hidden={message.texte === ''}>
           {message.texte}

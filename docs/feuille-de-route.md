@@ -570,8 +570,12 @@ survit au rechargement. Chaque point a son scénario joué dans le navigateur.
     réseau d'abord, et sans réseau de la dernière gardée ; une réponse redirigée (connexion expirée)
     n'est jamais gardée. Les icônes PNG se refont depuis les SVG par `node outils/icones.mjs`.
     Vérifié : Chromium ne trouve aucun obstacle à l'installation (`Page.getInstallabilityErrors`).
-  - 5.2 La reprise après expiration de la connexion Access (l'appli se reconnecte au lieu de
-    rester vide).
+  - 5.2 ✓ La reprise après expiration de la connexion Access (10/11). Un appel à l'API qui ne
+    rend pas de données (redirection bloquée, page de connexion, 401 ou 403) lève `ErreurConnexion`
+    (`ui/connexion.ts`) ; l'appli recharge alors la page, et Access reconnecte puis revient. Un
+    second échec dans la minute ne recharge plus (pas de boucle) : un bandeau « La connexion a
+    expiré » propose « Se reconnecter ». L'appli relit aussi tout quand elle revient au premier plan,
+    ce qui montre les changements faits ailleurs (par Claude) et détecte l'expiration tout de suite.
   - 5.3 Le partage sortant d'une tâche (menu de partage d'Android).
   - 5.4 Le partage entrant : depuis WhatsApp ou toute appli, la saisie rapide s'ouvre pré-remplie.
   - 5.5 Les rappels : abonnement Web Push, tâche planifiée (Cron Trigger) qui envoie les rappels,
