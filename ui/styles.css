@@ -388,3 +388,26 @@ li .ouvrir:hover, li .ouvrir:focus-visible { background: var(--fond); color: var
 #journee li.chevauche { border-color: var(--erreur); }
 #journee li.chevauche small { color: var(--erreur); }
 #journee ul.du-jour li { flex-wrap: wrap; }
+
+/* L'horizon dans le détail, et la vue horizons (étape 7). */
+.panneau .aide { margin: -6px 0 10px; font-size: .8rem; color: var(--doux); }
+#horizons .colonnes { display: flex; flex-direction: column; gap: 10px; }
+@media (min-width: 900px) {
+  #horizons .colonnes { flex-direction: row; overflow-x: auto; align-items: flex-start; padding-bottom: 8px; }
+  #horizons .colonne { flex: 0 0 15rem; }
+}
+#horizons .colonne { background: var(--carte); border: 1px solid var(--bord); border-radius: 10px; padding: 8px 10px; }
+#horizons .colonne.en-cours header h2 { color: var(--accent); }
+#horizons header { display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: wrap; }
+#horizons h2 { font-size: 1rem; margin: 0; }
+#horizons .periode { display: flex; align-items: center; gap: 4px; font-size: .85rem; color: var(--doux); }
+#horizons .periode button { font: inherit; min-width: 32px; min-height: 32px; border-radius: 8px; border: 1px solid var(--bord);
+  background: var(--fond); color: var(--texte); cursor: pointer; }
+#horizons ul { list-style: none; padding: 0; margin: 8px 0; display: flex; flex-direction: column; gap: 4px; }
+#horizons li { background: none; border: 0; padding: 2px 0; display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
+#horizons li small { color: var(--doux); font-size: .75rem; }
+#horizons li.fait button { text-decoration: line-through; color: var(--doux); }
+#horizons button.lien { background: none; border: none; padding: 0; color: var(--texte); font: inherit; text-align: left; cursor: pointer; overflow-wrap: anywhere; }
+#horizons form input { width: 100%; padding: 6px 8px; font-size: .9rem; }
+#horizons .depasses { margin-top: 16px; }
+#horizons .depasses h2 { color: var(--erreur); margin-bottom: 6px; }

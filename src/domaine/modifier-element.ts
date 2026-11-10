@@ -6,9 +6,10 @@ import { ErreurDomaine } from './erreur-domaine';
 import { Estimation } from './estimation';
 import { VERSION_FORME, type Auteur, type Evenement } from './evenement';
 import { Heure } from './heure';
+import { Horizon } from './horizon';
 import { Jour } from './jour';
 import { Poids } from './poids';
-import { lireRappel } from './rappel';
+import { aParis, lireRappel } from './rappel';
 import { Recurrence } from './recurrence';
 import { lirePriorite } from './priorite';
 import { Titre } from './titre';
@@ -37,12 +38,14 @@ export interface ChangementsElement {
   readonly rappel?: string | null;
   /** La règle de récurrence en français (« chaque lundi », « 3 mois après fait ») ; null la retire. */
   readonly recurrence?: string | null;
+  /** L'horizon : « 2026-S46 », « novembre 2026 », « T4 », « 2027 », « un jour »… ; null le retire. */
+  readonly horizon?: string | null;
 }
 
 /** Les noms des champs modifiables, pour vérifier un corps de requête. */
 export const CHAMPS_MODIFIABLES = [
   'titre', 'statut', 'type', 'parent', 'description', 'priorite', 'echeance',
-  'jourPlanifie', 'heurePlanifiee', 'estimation', 'rang', 'poids', 'avancement', 'rappel', 'recurrence',
+  'jourPlanifie', 'heurePlanifiee', 'estimation', 'rang', 'poids', 'avancement', 'rappel', 'recurrence', 'horizon',
 ] as const satisfies readonly (keyof ChangementsElement)[];
 
 /**
@@ -121,6 +124,7 @@ export function appliquerChangements(
   const avancement = c.avancement === undefined ? undefined : c.avancement === null ? null : Avancement.creer(c.avancement);
   const rappel = c.rappel === undefined ? undefined : c.rappel === null ? null : lireRappel(c.rappel);
   const recurrence = c.recurrence === undefined ? undefined : c.recurrence === null || c.recurrence.trim() === '' ? null : Recurrence.lire(c.recurrence);
+  const horizon = c.horizon === undefined ? undefined : c.horizon === null || c.horizon.trim() === '' ? null : Horizon.lire(c.horizon, aParis(maintenant).jour);
   if (c.rang !== undefined && c.rang !== null && !Number.isFinite(c.rang)) {
     throw new ErreurDomaine('Le rang doit être un nombre.');
   }
@@ -157,6 +161,7 @@ export function appliquerChangements(
   if (Object.keys(simples).length > 0) e = e.changer(simples, maintenant);
   if (rappel !== undefined && rappel?.getTime() !== e.rappel?.getTime()) e = e.programmerRappel(rappel, maintenant);
   if (recurrence !== undefined && recurrence?.texte !== e.recurrence?.texte) e = e.changerRecurrence(recurrence, maintenant);
+  if (horizon !== undefined && horizon?.texte !== e.horizon?.texte) e = e.changerHorizon(horizon, maintenant);
   // Cocher une tâche récurrente : sa règle passe à la suivante (que le service crée), elle-même n'en a plus.
   if (element.statut !== 'fait' && e.statut === 'fait' && e.recurrence) e = e.changerRecurrence(null, maintenant);
   return e;

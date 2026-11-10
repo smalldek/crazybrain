@@ -144,8 +144,9 @@ l'archive (`archive_le`) : il sort des listes, et se restaure.
 
 `poids`, `rang` et l'heure du jour planifié s'ajoutent au modèle proposé par Adrien : la vue
 Goalscape, le glisser-déposer et le mode journée en ont besoin. Les **horizons** à la Timestripe
-(cet élément est pour « novembre », pour « 2027 ») se conçoivent à l'étape 7 : un champ dédié ou
-un tag `horizon:2026-11`.
+(cet élément est pour « novembre », pour « 2027 ») sont un champ dédié, `horizon`, rangé sous une
+forme unique par échelle : `2026-11-10`, `2026-S46`, `2026-11`, `2026-T4`, `2027`, `2030-2039`,
+`vie` ([décision 007](decisions/007-horizon-champ-dedie.md)).
 
 Tranché le 03/11 ([décision 002](decisions/002-langage-et-modele.md)) :
 

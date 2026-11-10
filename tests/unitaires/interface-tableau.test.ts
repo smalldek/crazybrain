@@ -6,7 +6,7 @@ import { chiffres, faitesParSemaine, jourCourt, lundiDe, prochainesEcheances } f
 function element(id: string, champs: Partial<Element> = {}): Element {
   return {
     id, type: 'tache', parent: null, titre: id, description: null, statut: 'a_faire', priorite: null,
-    echeance: null, jourPlanifie: null, heurePlanifiee: null, estimation: null, rang: null, poids: null, avancement: null, rappel: null, recurrence: null, faitLe: null,
+    echeance: null, jourPlanifie: null, heurePlanifiee: null, estimation: null, rang: null, poids: null, avancement: null, rappel: null, recurrence: null, horizon: null, faitLe: null,
     archiveLe: null, creeLe: '2026-10-01T10:00:00.000Z', modifieLe: '2026-10-01T10:00:00.000Z', ...champs,
   };
 }

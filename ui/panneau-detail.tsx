@@ -3,6 +3,7 @@
 // /e/<id> : on peut la garder, la partager (derrière Access), y revenir.
 import { useEffect, useId, useState, type FormEvent, type ReactNode } from 'react';
 import { avancementsCalcules } from '../src/domaine/cercles';
+import { libelleHorizon } from './horizons';
 import { api, type Element, type ElementComplet, type Tag, type TypeElement } from './api';
 import { brouillonDe, changementsDepuis, parentsPossibles, type Brouillon } from './formulaire';
 import { contenuAPartager } from './partage';
@@ -150,6 +151,13 @@ export function PanneauDetail({ id, elements, tousLesTags, fermer, modifie }: Pr
         )}</Champ>
         <datalist id="recurrences">
           {['chaque jour', 'chaque lundi', 'chaque semaine', 'le 1er du mois', 'chaque mois', 'chaque année', '3 mois après fait', '1 an après fait'].map((r) => <option key={r} value={r} />)}
+        </datalist>
+        <Champ libelle="Horizon">{(id) => (
+          <input id={id} list="horizons" placeholder="semaine 46, novembre, T1 2027, 2027, un jour…" {...champ('horizon')} />
+        )}</Champ>
+        {element.horizon && <p className="aide">Horizon : {libelleHorizon(element.horizon)}</p>}
+        <datalist id="horizons">
+          {['cette semaine', 'la semaine prochaine', 'ce mois', 'le mois prochain', 'ce trimestre', 'cette année', "l'an prochain", 'cette décennie', 'un jour'].map((h) => <option key={h} value={h} />)}
         </datalist>
         <div className="rangee">
           <Champ libelle="Estimation (minutes)">{(id) => (

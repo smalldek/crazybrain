@@ -1,15 +1,15 @@
 // Les adresses de l'appli, sans le navigateur : testées seules (tests/unitaires/interface-formulaire.test.ts).
 // `/` la liste, `/kanban` le kanban, `/backlog` le backlog, `/projets` les projets et les releases,
-// `/cercles` les objectifs en cercles, `/tableau` le tableau de bord, `/calendrier` le calendrier, `/journee` le mode journée ;
+// `/cercles` les objectifs en cercles, `/tableau` le tableau de bord, `/calendrier` le calendrier, `/journee` le mode journée, `/horizons` les horizons ;
 // `/e/<id>`, `/kanban/e/<id>`… ajoutent le panneau de détail d'un élément à la vue.
 
-export type Vue = 'liste' | 'journee' | 'kanban' | 'backlog' | 'calendrier' | 'projets' | 'cercles' | 'tableau';
+export type Vue = 'liste' | 'journee' | 'kanban' | 'backlog' | 'calendrier' | 'horizons' | 'projets' | 'cercles' | 'tableau';
 
-const PREFIXE: Record<Vue, string> = { liste: '', kanban: '/kanban', backlog: '/backlog', projets: '/projets', cercles: '/cercles', tableau: '/tableau', calendrier: '/calendrier', journee: '/journee' };
+const PREFIXE: Record<Vue, string> = { liste: '', kanban: '/kanban', backlog: '/backlog', projets: '/projets', cercles: '/cercles', tableau: '/tableau', calendrier: '/calendrier', journee: '/journee', horizons: '/horizons' };
 
 /** La vue que montre cette adresse. */
 export function vueDe(chemin: string): Vue {
-  for (const vue of ['journee', 'kanban', 'backlog', 'calendrier', 'projets', 'cercles', 'tableau'] as const) {
+  for (const vue of ['journee', 'kanban', 'backlog', 'calendrier', 'horizons', 'projets', 'cercles', 'tableau'] as const) {
     if (chemin === PREFIXE[vue] || chemin.startsWith(`${PREFIXE[vue]}/`)) return vue;
   }
   return 'liste';
@@ -27,7 +27,7 @@ export function adresseElement(id: string, vue: Vue = 'liste'): string {
 
 /** L'id de l'élément ouvert par cette adresse, ou null. */
 export function elementDeLAdresse(chemin: string): string | null {
-  const trouve = /^(?:\/journee|\/kanban|\/backlog|\/calendrier|\/projets|\/cercles|\/tableau)?\/e\/([^/]+)\/?$/.exec(chemin);
+  const trouve = /^(?:\/journee|\/kanban|\/backlog|\/calendrier|\/horizons|\/projets|\/cercles|\/tableau)?\/e\/([^/]+)\/?$/.exec(chemin);
   if (!trouve?.[1]) return null;
   try {
     return decodeURIComponent(trouve[1]);
