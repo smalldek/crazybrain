@@ -141,3 +141,22 @@ When('je touche la release {string}', async function (this: Monde, nom: string) 
   await ligneRelease(this, nom).getByRole('link', { name: nom, exact: true }).click();
   await expect(page(this).locator('#kanban')).toBeVisible();
 });
+
+// --- Le tri « modifié récemment » (tâche 3.9) ---
+
+Given('la tâche {string} est commentée', async function (this: Monde, titre: string) {
+  const liste = await page(this).request.get(`${this.worker.adresse}/api/elements`);
+  const { elements } = (await liste.json()) as { elements: { id: string; titre: string }[] };
+  const id = elements.find((e) => e.titre === titre)?.id;
+  expect(id, `« ${titre} » absente`).toBeDefined();
+  // Quelques millisecondes après la dernière création : sinon les deux dates pourraient être égales.
+  await new Promise((r) => setTimeout(r, 5));
+  const reponse = await page(this).request.post(`${this.worker.adresse}/api/elements/${id}/commentaires`, { data: { texte: 'Relancée.' } });
+  expect(reponse.status()).toBe(201);
+});
+
+When('je trie par {string}', async function (this: Monde, ordre: string) {
+  await ouvrirFiltres(this);
+  await filtres(this).getByLabel('Ordre (liste et backlog)').selectOption({ label: ordre });
+  await expect.poll(() => new URL(page(this).url()).searchParams.get('tri')).not.toBeNull();
+});

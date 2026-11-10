@@ -53,6 +53,22 @@ Fonctionnalité: Les outils du connecteur (étape 2)
     Quand Claude appelle "chercher_elements" avec {"texte": "Envoyer le dossier", "inclureFaits": true}
     Alors la recherche trouve exactement "Envoyer le dossier"
 
+  Scénario: « Sur quoi ai-je travaillé ? » : un commentaire, un tag ou un lien comptent comme une modification (tâche 3.9)
+    Quand Claude appelle "creer_elements" avec {"elements": [{"titre": "Récent : la cible"}]}
+    Et Claude appelle "creer_elements" avec {"elements": [{"titre": "Récent : la première"}]}
+    Et Claude appelle "creer_elements" avec {"elements": [{"titre": "Récent : la seconde"}]}
+    Et Claude appelle "chercher_elements" avec {"texte": "Récent :", "tri": "modifie", "limite": 1}
+    Alors la recherche trouve exactement "Récent : la seconde"
+    Quand Claude appelle "commenter_element" avec {"id": "{id:Récent : la première}", "texte": "Relancée."}
+    Et Claude appelle "chercher_elements" avec {"texte": "Récent :", "tri": "modifie", "limite": 1}
+    Alors la recherche trouve exactement "Récent : la première"
+    Quand Claude appelle "tagger_element" avec {"id": "{id:Récent : la seconde}", "tags": ["urgent"]}
+    Et Claude appelle "chercher_elements" avec {"texte": "Récent :", "tri": "modifie", "limite": 1}
+    Alors la recherche trouve exactement "Récent : la seconde"
+    Quand Claude appelle "lier_elements" avec {"source": "{id:Récent : la première}", "cible": "{id:Récent : la cible}", "type": "lie_a"}
+    Et Claude appelle "chercher_elements" avec {"texte": "Récent :", "tri": "modifie", "limite": 2}
+    Alors la recherche trouve exactement "Récent : la première, Récent : la cible"
+
   Scénario: Lier, tagger, puis défaire
     Quand Claude appelle "creer_elements" avec {"elements": [{"titre": "Commander le bois"}, {"titre": "Construire la cabane"}]}
     Et Claude appelle "lier_elements" avec {"source": "{id:Commander le bois}", "cible": "{id:Construire la cabane}", "type": "bloque"}

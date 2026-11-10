@@ -19,6 +19,7 @@ type CleFiltre = (typeof CLES_FILTRES)[number];
 const STATUTS = [['a_faire', 'À faire'], ['en_cours', 'En cours'], ['fait', 'Fait']] as const;
 const PRIORITES = [['urgente', 'Urgente'], ['haute', 'Haute'], ['normale', 'Normale'], ['basse', 'Basse'], ['aucune', 'Sans priorité']] as const;
 const ECHEANCES = [['en_retard', 'En retard'], ['semaine', 'D’ici 7 jours'], ['sans', 'Sans échéance']] as const;
+const TRIS = [['modifie', 'Modifié récemment']] as const;
 
 export function BarreFiltres({ filtres, elements, tags, changer }: Proprietes) {
   const nombre = nombreDeFiltres(filtres);
@@ -45,11 +46,11 @@ export function BarreFiltres({ filtres, elements, tags, changer }: Proprietes) {
     .sort((a, b) => Number(b.type === 'projet') - Number(a.type === 'projet') || a.titre.localeCompare(b.titre, 'fr'));
   const textesTags = [...new Set(tags.flatMap((t) => [t.cle, texteTag(t)]))].sort((a, b) => a.localeCompare(b, 'fr'));
 
-  const choix = (cle: CleFiltre, libelle: string, options: readonly (readonly [string, string])[]) => (
+  const choix = (cle: CleFiltre, libelle: string, options: readonly (readonly [string, string])[], aucun = 'Tous') => (
     <div className="champ">
       <label htmlFor={`${id}-${cle}`}>{libelle}</label>
       <select id={`${id}-${cle}`} value={filtres[cle] ?? ''} onChange={(e) => poser(cle, e.target.value || null)}>
-        <option value="">Tous</option>
+        <option value="">{aucun}</option>
         {/* Une valeur de l'adresse que la liste ne connaît pas reste visible, pour pouvoir l'enlever. */}
         {filtres[cle] && !options.some(([v]) => v === filtres[cle]) && <option value={filtres[cle]}>{filtres[cle]}</option>}
         {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
@@ -73,6 +74,7 @@ export function BarreFiltres({ filtres, elements, tags, changer }: Proprietes) {
           {choix('priorite', 'Priorité', PRIORITES)}
           {choix('dans', 'Dans', conteneurs.map((e) => [e.id, e.titre] as const))}
           {choix('echeance', 'Échéance', ECHEANCES)}
+          {choix('tri', 'Ordre (liste et backlog)', TRIS, 'Habituel')}
           <div className="champ">
             <label htmlFor={`${id}-tag`}>Tag (clé ou clé:valeur)</label>
             <input id={`${id}-tag`} list={`${id}-tags`} defaultValue={filtres.tag ?? ''} key={filtres.tag ?? ''}

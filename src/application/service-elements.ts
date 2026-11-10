@@ -134,7 +134,7 @@ export class ServiceElements {
   async delier(idLien: string, auteur: Auteur): Promise<void> {
     const lien = await this.relations.lien(idLien);
     if (!lien) throw new ErreurIntrouvable(`Lien inconnu : « ${idLien} ».`);
-    await this.relations.retirerLien(lien.id, evenementDe({
+    await this.relations.retirerLien(lien, evenementDe({
       id: crypto.randomUUID(), elementId: lien.source, type: 'lien_retire', avant: lien, apres: null, auteur, maintenant: this.horloge(),
     }));
   }
