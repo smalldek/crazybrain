@@ -160,3 +160,22 @@ When('je trie par {string}', async function (this: Monde, ordre: string) {
   await filtres(this).getByLabel('Ordre (liste et backlog)').selectOption({ label: ordre });
   await expect.poll(() => new URL(page(this).url()).searchParams.get('tri')).not.toBeNull();
 });
+
+// --- Les requêtes de Claude comme filtres (tâche 4.3) ---
+
+Given('Claude a enregistré la requête {string} qui fait {string}', async function (this: Monde, nom: string, sql: string) {
+  const q = (t: string): string => `'${t.replace(/'/g, "''")}'`;
+  const maintenant = new Date().toISOString();
+  await this.worker.requete(`INSERT INTO requetes (id, nom, description, sql, cree_le, modifie_le)
+    VALUES (${q(crypto.randomUUID())}, ${q(nom)}, NULL, ${q(sql)}, ${q(maintenant)}, ${q(maintenant)})`);
+});
+
+When('je filtre sur la requête {string}', async function (this: Monde, nom: string) {
+  await ouvrirFiltres(this);
+  await filtres(this).getByLabel('Requête de Claude').selectOption({ label: nom });
+  await expect.poll(() => new URL(page(this).url()).searchParams.get('requete')).not.toBeNull();
+});
+
+Then("l'avis de la requête dit {string}", async function (this: Monde, morceau: string) {
+  await expect(page(this).locator('#avis-requete')).toContainText(morceau);
+});

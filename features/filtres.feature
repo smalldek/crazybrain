@@ -91,3 +91,24 @@ Fonctionnalité: Les filtres et le backlog
     Et le bouton des filtres dit "Filtres"
     Quand je recharge la page
     Alors la tâche "Tri : créée après" est après la tâche "Tri : commentée"
+
+  Scénario: Une requête enregistrée par Claude sert de filtre, dans toutes les vues (tâche 4.3)
+    Étant donné que la tâche "Requête : à rappeler" existe avec la priorité "basse"
+    Et que la tâche "Requête : à oublier" existe avec la priorité "basse"
+    Et que Claude a enregistré la requête "Mes rappels" qui fait "SELECT id FROM v_elements WHERE titre LIKE '%rappeler%'"
+    Et que j'ouvre la page
+    Quand je filtre sur la requête "Mes rappels"
+    Alors la page montre la tâche "Requête : à rappeler"
+    Et la page ne montre pas la tâche "Requête : à oublier"
+    Et le bouton des filtres dit "Filtres (1)"
+    Quand je recharge la page
+    Alors la page ne montre pas la tâche "Requête : à oublier"
+    Quand j'ouvre le kanban
+    Alors la carte "Requête : à rappeler" est dans la colonne "À faire"
+    Et le kanban ne montre pas la carte "Requête : à oublier"
+
+  Scénario: Une requête sans colonne id le dit au lieu de filtrer
+    Étant donné que Claude a enregistré la requête "Compte des éléments" qui fait "SELECT count(*) AS n FROM v_elements"
+    Et que j'ouvre la page
+    Quand je filtre sur la requête "Compte des éléments"
+    Alors l'avis de la requête dit "ne rend pas de colonne « id »"

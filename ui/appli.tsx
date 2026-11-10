@@ -8,7 +8,7 @@ import { adresseElement, adresseVue, elementDeLAdresse, naviguer, parametresIci,
 import { api, type Appartenance, type Changements, type Element, type Tag } from './api';
 import { BarreFiltres } from './barre-filtres';
 import { aujourdhui } from './dates';
-import { backlog, filtrer, lireFiltres, nombreDeFiltres, parModification } from './filtres';
+import { backlog, filtrer, idsDeRequete, lireFiltres, nombreDeFiltres, parModification } from './filtres';
 import { PanneauDetail } from './panneau-detail';
 import { LigneTache } from './ligne-tache';
 import { ecrireCritere, lireCritere, rangsAPoser, type Critere, type StatutColonne } from './kanban';
@@ -58,7 +58,24 @@ export function Appli() {
     const seulLeTexte = p.get('texte') !== parametres.get('texte');
     naviguer(window.location.pathname + (recherche ? `?${recherche}` : ''), { remplacer: seulLeTexte });
   };
-  const visibles = elements && filtrer(elements, filtres, tagsParElement(tags), aujourdhui());
+  // Le filtre « Requête de Claude » : les ids qu'elle rend, lus quand on la choisit (tâche 4.3).
+  const [idsRequete, setIdsRequete] = useState<ReadonlySet<string> | null>(null);
+  const [avisRequete, setAvisRequete] = useState('');
+  useEffect(() => {
+    setIdsRequete(null);
+    setAvisRequete('');
+    if (!filtres.requete) return;
+    let actif = true;
+    api.lignesRequete(filtres.requete).then((r) => {
+      if (!actif) return;
+      const ids = idsDeRequete(r);
+      setIdsRequete(ids ?? new Set());
+      if (!ids) setAvisRequete('Cette requête ne rend pas de colonne « id » : elle ne choisit pas d’éléments.');
+      else if (r.tronque) setAvisRequete('La requête rend plus de 500 lignes : seules les 500 premières comptent.');
+    }, (e: unknown) => { if (actif) { setIdsRequete(new Set()); setAvisRequete(e instanceof Error ? e.message : String(e)); } });
+    return () => { actif = false; };
+  }, [filtres.requete]);
+  const visibles = elements && filtrer(elements, filtres, tagsParElement(tags), aujourdhui(), idsRequete);
   const rienAMontrer = vue !== 'projets' && vue !== 'cercles' && elements !== null && elements.length > 0 && visibles !== null
     && (vue === 'backlog' ? backlog(visibles) : visibles).length === 0;
   // La liste et le backlog dans leur ordre habituel, ou « modifié récemment » d'abord (filtre `tri`).
@@ -229,6 +246,7 @@ export function Appli() {
         {elements && elements.length > 0 && vue !== 'projets' && (
           <BarreFiltres filtres={filtres} elements={elements} tags={tags} changer={changerFiltres} />
         )}
+        {avisRequete && <p className="etat" id="avis-requete">{avisRequete}</p>}
         {rienAMontrer && <p className="etat" id="aucun-resultat">Rien ne correspond{vue === 'backlog' ? ' dans le backlog' : ''}.</p>}
         {vue === 'cercles' ? (
           elements && <VueCercles elements={rattacher(elements, appartenances)} centre={parametres.get('centre')} anneaux={lireAnneaux(parametres.get('anneaux'))}

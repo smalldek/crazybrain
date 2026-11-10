@@ -63,6 +63,21 @@ const json = (methode: string, corps: unknown): RequestInit => ({
 
 const adresse = (id: string): string => `/api/elements/${encodeURIComponent(id)}`;
 
+/** Une requête enregistrée par Claude (tâche 4.2). */
+export interface Requete {
+  readonly id: string;
+  readonly nom: string;
+  readonly description: string | null;
+  readonly sql: string;
+}
+
+/** Ce que rend une requête : ses colonnes, ses lignes (500 au plus), et si c'est coupé. */
+export interface ResultatRequete {
+  readonly colonnes: string[];
+  readonly lignes: Record<string, unknown>[];
+  readonly tronque: boolean;
+}
+
 export const api = {
   lire: (id: string): Promise<ElementComplet> => appeler<ElementComplet>(adresse(id)),
   types: async (): Promise<TypeElement[]> => (await appeler<{ types: TypeElement[] }>('/api/types')).types,
@@ -84,6 +99,9 @@ export const api = {
     (await appeler<{ lien: Lien }>(`${adresse(source)}/liens`, json('POST', { cible, type }))).lien,
   delier: (idLien: string): Promise<void> =>
     appeler<void>(`/api/liens/${encodeURIComponent(idLien)}`, { method: 'DELETE' }),
+  requetes: async (): Promise<Requete[]> => (await appeler<{ requetes: Requete[] }>('/api/requetes')).requetes,
+  lignesRequete: async (id: string): Promise<ResultatRequete> =>
+    (await appeler<{ resultat: ResultatRequete }>(`/api/requetes/${encodeURIComponent(id)}/lignes`)).resultat,
   restaurer: async (id: string): Promise<Element> =>
     (await appeler<{ element: Element }>(`${adresse(id)}/restaurer`, { method: 'POST' })).element,
 };
