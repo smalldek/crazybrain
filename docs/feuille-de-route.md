@@ -561,7 +561,15 @@ survit au rechargement. Chaque point a son scénario joué dans le navigateur.
 ## Étape 5 — L'appli sur le téléphone
 
 - **Tâches** :
-  - 5.1 L'appli installable : manifeste, icône, service worker.
+  - 5.1 ✓ L'appli installable : manifeste, icône, service worker (10/11). Le manifeste
+    (`ui/public/manifest.webmanifest`) : nom, plein écran sans barre du navigateur, couleurs, icônes
+    192 et 512 pixels (et une « masquable », qu'Android découpe en rond), raccourcis Kanban, Backlog,
+    Tableau. Il se charge avec le cookie d'Access (`crossorigin="use-credentials"`), sinon Access le
+    refuse. Le service worker (`ui/public/sw.js`) reste prudent : les données (`/api`, le connecteur,
+    Access) ne passent jamais par lui ; les fichiers de `/assets/` sont gardés ; une page vient du
+    réseau d'abord, et sans réseau de la dernière gardée ; une réponse redirigée (connexion expirée)
+    n'est jamais gardée. Les icônes PNG se refont depuis les SVG par `node outils/icones.mjs`.
+    Vérifié : Chromium ne trouve aucun obstacle à l'installation (`Page.getInstallabilityErrors`).
   - 5.2 La reprise après expiration de la connexion Access (l'appli se reconnecte au lieu de
     rester vide).
   - 5.3 Le partage sortant d'une tâche (menu de partage d'Android).
