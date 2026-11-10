@@ -3,6 +3,7 @@
 import { AfterAll, BeforeAll, setDefaultTimeout, setWorldConstructor, World } from '@cucumber/cucumber';
 import { AUDIENCE_DE_TEST, SerrureDeTest } from './serrure-de-test';
 import { WorkerLocal } from './worker-local';
+import { nouvellesClesVapid } from '../../src/infra/web-push';
 import type { ClientOAuth } from './client-oauth';
 import type { BrowserContext, Page } from 'playwright';
 
@@ -13,7 +14,11 @@ let worker: WorkerLocal | undefined;
 
 BeforeAll({ timeout: 180_000 }, async () => {
   serrure = await SerrureDeTest.demarrer();
-  worker = await WorkerLocal.demarrer({ TEAM_DOMAIN: serrure.emetteur, AUD: AUDIENCE_DE_TEST });
+  // Des clés VAPID de test, tirées à chaque lancement (en production : des secrets du Worker).
+  const vapid = await nouvellesClesVapid();
+  worker = await WorkerLocal.demarrer({
+    TEAM_DOMAIN: serrure.emetteur, AUD: AUDIENCE_DE_TEST, VAPID_PRIVEE: JSON.stringify(vapid.privee), VAPID_PUBLIQUE: vapid.publique,
+  });
 });
 
 AfterAll({ timeout: 30_000 }, async () => {

@@ -109,6 +109,23 @@ jobs:
           npm run construire
           npx wrangler deploy --var "AUD:$AUD"
 
+      # Les clés VAPID des rappels (tâche 5.5) : tirées une seule fois, la première fois que le Worker
+      # n'a pas ces secrets, et rangées comme secrets du Worker (jamais affichées, jamais dans le
+      # dépôt). Les déploiements suivants les gardent : les téléphones abonnés restent abonnés.
+      - name: Clés des rappels (créer si elles manquent)
+        if: steps.config.outputs.ok == 'oui'
+        run: |
+          set -o pipefail
+          if npx wrangler secret list --format json | python3 -c 'import json,sys; sys.exit(0 if any(s["name"] == "VAPID_PRIVEE" for s in json.load(sys.stdin)) else 1)'; then
+            echo "Clés des rappels déjà en place."
+          else
+            echo "Clés des rappels absentes : création."
+            FICHIER="$RUNNER_TEMP/vapid.json"
+            npx tsx outils/cles-vapid.ts "$FICHIER"
+            npx wrangler secret bulk "$FICHIER" > /dev/null
+            rm -f "$FICHIER"
+          fi
+
       - name: Sans connexion, l'adresse refuse-t-elle ?
         if: steps.config.outputs.ok == 'oui'
         run: python3 outils/verifier_access.py apres

@@ -33,7 +33,7 @@ export interface TypeElement {
 /** Les champs qu'on peut envoyer pour créer ou modifier un élément (null vide un champ facultatif). */
 export type Changements = Partial<Pick<Element,
   'titre' | 'statut' | 'type' | 'parent' | 'description' | 'priorite' | 'echeance' |
-  'jourPlanifie' | 'heurePlanifiee' | 'estimation' | 'rang' | 'poids' | 'avancement'>>;
+  'jourPlanifie' | 'heurePlanifiee' | 'estimation' | 'rang' | 'poids' | 'avancement' | 'rappel'>>;
 
 /**
  * Appelle l'API. Si la connexion Access a expiré, la réponse n'est pas du JSON (page de connexion,
@@ -79,6 +79,17 @@ export interface ResultatRequete {
   readonly tronque: boolean;
 }
 
+/** Un envoi de rappel, pour mesurer le retard (tâche 5.5). */
+export interface EnvoiRappel {
+  readonly id: string;
+  readonly elementId: string | null;
+  readonly titre: string;
+  readonly prevuLe: string;
+  readonly envoyeLe: string;
+  readonly statutHttp: number | null;
+  readonly recuLe: string | null;
+}
+
 export const api = {
   lire: (id: string): Promise<ElementComplet> => appeler<ElementComplet>(adresse(id)),
   types: async (): Promise<TypeElement[]> => (await appeler<{ types: TypeElement[] }>('/api/types')).types,
@@ -100,6 +111,13 @@ export const api = {
     (await appeler<{ lien: Lien }>(`${adresse(source)}/liens`, json('POST', { cible, type }))).lien,
   delier: (idLien: string): Promise<void> =>
     appeler<void>(`/api/liens/${encodeURIComponent(idLien)}`, { method: 'DELETE' }),
+  clePush: async (): Promise<string | null> => (await appeler<{ cle: string | null }>('/api/push/cle')).cle,
+  abonner: (abonnement: unknown): Promise<void> =>
+    appeler<void>('/api/push/abonnements', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(abonnement) }),
+  desabonner: (endpoint: string): Promise<void> =>
+    appeler<void>('/api/push/abonnements', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ endpoint }) }),
+  essaiPush: async (): Promise<number> => (await appeler<{ envois: number }>('/api/push/essai', { method: 'POST' })).envois,
+  envoisPush: async (): Promise<EnvoiRappel[]> => (await appeler<{ envois: EnvoiRappel[] }>('/api/push/envois')).envois,
   requetes: async (): Promise<Requete[]> => (await appeler<{ requetes: Requete[] }>('/api/requetes')).requetes,
   lignesRequete: async (id: string): Promise<ResultatRequete> =>
     (await appeler<{ resultat: ResultatRequete }>(`/api/requetes/${encodeURIComponent(id)}/lignes`)).resultat,

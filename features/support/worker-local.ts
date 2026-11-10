@@ -29,7 +29,9 @@ export class WorkerLocal {
     const options = ['dev', '--ip', '127.0.0.1', '--port', String(port), '--persist-to', dossierBase,
       '--inspector-port', String(await portLibre()), '--show-interactive-dev-session=false',
       // Sans ceci, wrangler présente au Worker l'adresse de la route (crazybrain.dekermadec.net), pas l'adresse locale.
-      '--local-upstream', `127.0.0.1:${port}`];
+      '--local-upstream', `127.0.0.1:${port}`,
+      // Pour déclencher la tâche planifiée (les rappels) à la main : GET /cdn-cgi/local/scheduled.
+      '--test-scheduled'];
     for (const [nom, valeur] of Object.entries(variables)) {
       options.push('--var', `${nom}:${valeur}`);
     }

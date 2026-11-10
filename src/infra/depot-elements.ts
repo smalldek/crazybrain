@@ -36,7 +36,7 @@ export interface Trouve {
 }
 
 const COLONNES =
-  'id, type, parent, titre, description, statut, priorite, echeance, jour_planifie, heure_planifiee, estimation, rang, poids, avancement, fait_le, archive_le, cree_le, modifie_le';
+  'id, type, parent, titre, description, statut, priorite, echeance, jour_planifie, heure_planifiee, estimation, rang, poids, avancement, rappel, fait_le, archive_le, cree_le, modifie_le';
 
 /** Une ligne de la table elements, telle que D1 la rend (noms de colonnes en snake_case). */
 interface LigneElement {
@@ -54,6 +54,7 @@ interface LigneElement {
   rang: number | null;
   poids: number | null;
   avancement: number | null;
+  rappel: string | null;
   archive_le: string | null;
   fait_le: string | null;
   cree_le: string;
@@ -174,7 +175,7 @@ export class DepotElements {
     const etat = element.instantane();
     await this.db.batch([
       this.db
-        .prepare(`INSERT INTO elements (${COLONNES}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        .prepare(`INSERT INTO elements (${COLONNES}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
         .bind(etat.id, ...valeursModifiables(etat), etat.creeLe, etat.modifieLe),
       this.insererEvenement(evenement),
     ]);
@@ -187,7 +188,8 @@ export class DepotElements {
       this.db
         .prepare(
           `UPDATE elements SET type = ?, parent = ?, titre = ?, description = ?, statut = ?, priorite = ?, echeance = ?,
-           jour_planifie = ?, heure_planifiee = ?, estimation = ?, rang = ?, poids = ?, avancement = ?, fait_le = ?, archive_le = ?, modifie_le = ? WHERE id = ?`,
+           jour_planifie = ?, heure_planifiee = ?, estimation = ?, rang = ?, poids = ?, avancement = ?, rappel = ?, fait_le = ?, archive_le = ?,
+           modifie_le = ?, rappel_envoye_le = CASE WHEN rappel IS ?14 THEN rappel_envoye_le END WHERE id = ?`,
         )
         .bind(...valeursModifiables(etat), etat.modifieLe, etat.id),
       this.insererEvenement(evenement),
@@ -232,7 +234,7 @@ export class DepotElements {
 /** Les valeurs d'un élément dans l'ordre des colonnes, sans id ni dates de création et de modification. */
 function valeursModifiables(etat: InstantaneElement): (string | number | null)[] {
   return [etat.type, etat.parent, etat.titre, etat.description, etat.statut, etat.priorite, etat.echeance,
-    etat.jourPlanifie, etat.heurePlanifiee, etat.estimation, etat.rang, etat.poids, etat.avancement, etat.faitLe, etat.archiveLe];
+    etat.jourPlanifie, etat.heurePlanifiee, etat.estimation, etat.rang, etat.poids, etat.avancement, etat.rappel, etat.faitLe, etat.archiveLe];
 }
 
 function versInstantane(ligne: LigneElement): InstantaneElement {
@@ -251,6 +253,7 @@ function versInstantane(ligne: LigneElement): InstantaneElement {
     rang: ligne.rang,
     poids: ligne.poids,
     avancement: ligne.avancement,
+    rappel: ligne.rappel,
     faitLe: ligne.fait_le,
     archiveLe: ligne.archive_le,
     creeLe: ligne.cree_le,

@@ -8,6 +8,7 @@ import { VERSION_FORME, type Auteur, type Evenement } from './evenement';
 import { Heure } from './heure';
 import { Jour } from './jour';
 import { Poids } from './poids';
+import { lireRappel } from './rappel';
 import { lirePriorite } from './priorite';
 import { Titre } from './titre';
 
@@ -31,12 +32,14 @@ export interface ChangementsElement {
   readonly poids?: number | null;
   /** L'avancement saisi, entier de 0 à 100 ; null l'efface. */
   readonly avancement?: number | null;
+  /** L'heure du rappel : ISO avec fuseau, ou « AAAA-MM-JJ HH:MM » à l'heure de Paris ; null le retire. */
+  readonly rappel?: string | null;
 }
 
 /** Les noms des champs modifiables, pour vérifier un corps de requête. */
 export const CHAMPS_MODIFIABLES = [
   'titre', 'statut', 'type', 'parent', 'description', 'priorite', 'echeance',
-  'jourPlanifie', 'heurePlanifiee', 'estimation', 'rang', 'poids', 'avancement',
+  'jourPlanifie', 'heurePlanifiee', 'estimation', 'rang', 'poids', 'avancement', 'rappel',
 ] as const satisfies readonly (keyof ChangementsElement)[];
 
 /**
@@ -113,6 +116,7 @@ export function appliquerChangements(
   const estimation = c.estimation === undefined ? undefined : c.estimation === null ? null : Estimation.creer(c.estimation);
   const poids = c.poids === undefined ? undefined : c.poids === null ? null : Poids.creer(c.poids);
   const avancement = c.avancement === undefined ? undefined : c.avancement === null ? null : Avancement.creer(c.avancement);
+  const rappel = c.rappel === undefined ? undefined : c.rappel === null ? null : lireRappel(c.rappel);
   if (c.rang !== undefined && c.rang !== null && !Number.isFinite(c.rang)) {
     throw new ErreurDomaine('Le rang doit être un nombre.');
   }
@@ -147,5 +151,6 @@ export function appliquerChangements(
     ...(avancement !== undefined && avancement?.pourcent !== e.avancement?.pourcent ? { avancement } : {}),
   };
   if (Object.keys(simples).length > 0) e = e.changer(simples, maintenant);
+  if (rappel !== undefined && rappel?.getTime() !== e.rappel?.getTime()) e = e.programmerRappel(rappel, maintenant);
   return e;
 }

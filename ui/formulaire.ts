@@ -20,6 +20,8 @@ export interface Brouillon {
   readonly poids: string;
   /** En pour cent, de 0 à 100. */
   readonly avancement: string;
+  /** L'heure du rappel, à l'heure du téléphone : AAAA-MM-JJTHH:MM (champ datetime-local). */
+  readonly rappel: string;
 }
 
 export function brouillonDe(e: Element): Brouillon {
@@ -36,6 +38,7 @@ export function brouillonDe(e: Element): Brouillon {
     estimation: e.estimation === null ? '' : String(e.estimation),
     poids: e.poids === null ? '' : String(e.poids),
     avancement: e.avancement === null ? '' : String(e.avancement),
+    rappel: e.rappel === null ? '' : saisieLocale(new Date(e.rappel)),
   };
 }
 
@@ -78,6 +81,9 @@ export function changementsDepuis(e: Element, b: Brouillon): Changements | strin
   if (estimation !== e.estimation) c.estimation = estimation;
   if (poids !== e.poids) c.poids = poids;
   if (avancement !== e.avancement) c.avancement = avancement;
+  // Le champ n'a que la minute : on ne compare qu'à la minute, sinon chaque enregistrement le renverrait.
+  const rappel = b.rappel.trim() === '' ? null : new Date(b.rappel).toISOString();
+  if ((b.rappel.trim() === '' ? '' : b.rappel) !== (e.rappel === null ? '' : saisieLocale(new Date(e.rappel)))) c.rappel = rappel;
   return c as Changements;
 }
 
@@ -99,4 +105,10 @@ export function parentsPossibles(id: string, elements: readonly Element[]): Elem
   }
   return elements.filter((e) => !exclus.has(e.id))
     .sort((a, b) => Number(b.type === 'projet') - Number(a.type === 'projet') || a.titre.localeCompare(b.titre, 'fr'));
+}
+
+/** Un instant écrit pour un champ datetime-local, à l'heure du téléphone (AAAA-MM-JJTHH:MM). */
+export function saisieLocale(d: Date): string {
+  const deux = (n: number): string => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${deux(d.getMonth() + 1)}-${deux(d.getDate())}T${deux(d.getHours())}:${deux(d.getMinutes())}`;
 }

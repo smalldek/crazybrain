@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { naviguer } from './adresse';
 import { api, type Element, type Requete, type ResultatRequete } from './api';
 import { idsDeRequete } from './filtres';
+import { VueRappels } from './vue-rappels';
 import { chiffres, faitesParSemaine, jourCourt, prochainesEcheances } from './tableau';
 
 interface Proprietes {
@@ -50,6 +51,7 @@ export function VueTableau({ elements, aujourdhui, ouvrir }: Proprietes) {
       </section>
 
       <RequetesDeClaude />
+      <VueRappels />
     </div>
   );
 }

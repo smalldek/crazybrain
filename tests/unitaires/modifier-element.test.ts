@@ -22,7 +22,7 @@ describe('modifierElement', () => {
       id: 'ev-2',
       elementId: 'el-1',
       type: 'element_modifie',
-      versionForme: 4,
+      versionForme: 5,
       avant: element.instantane(),
       apres: resultat.element.instantane(),
       auteur: 'adrien',

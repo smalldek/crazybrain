@@ -42,6 +42,7 @@ describe('Element', () => {
       rang: null,
       poids: null,
       avancement: null,
+      rappel: null,
       faitLe: null,
       archiveLe: null,
       creeLe: '2026-11-03T08:30:00.000Z',

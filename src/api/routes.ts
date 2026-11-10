@@ -4,10 +4,11 @@
 // index.ts. L'auteur est toujours Adrien : seul lui passe Access ; Claude passe par le connecteur.
 import { Hono, type Context } from 'hono';
 import { ServiceElements } from '../application/service-elements';
+import { clesVapid, ServiceRappels } from '../application/service-rappels';
 import { ServiceRequetes } from '../application/service-requetes';
 import { CHAMPS_MODIFIABLES, type ChangementsElement } from '../domaine/modifier-element';
 
-type Liaisons = { Bindings: { DB: D1Database } };
+type Liaisons = { Bindings: { DB: D1Database; VAPID_PRIVEE?: string; VAPID_PUBLIQUE?: string } };
 type Ctx = Context<Liaisons>;
 
 export const api = new Hono<Liaisons>();
@@ -98,7 +99,7 @@ api.post('/elements/:id/commentaires', async (c) => {
 });
 
 /** Les champs facultatifs, qu'on vide avec null ; les nombres ; les autres sont du texte. */
-const CHAMPS_NULLABLES = new Set<string>(['parent', 'description', 'priorite', 'echeance', 'jourPlanifie', 'heurePlanifiee', 'estimation', 'rang', 'poids', 'avancement']);
+const CHAMPS_NULLABLES = new Set<string>(['parent', 'description', 'priorite', 'echeance', 'jourPlanifie', 'heurePlanifiee', 'estimation', 'rang', 'poids', 'avancement', 'rappel']);
 const CHAMPS_NOMBRES = new Set<string>(['estimation', 'rang', 'poids', 'avancement']);
 
 /**
@@ -139,3 +140,33 @@ api.delete('/requetes/:id', async (c) => {
   await new ServiceRequetes(c.env.DB).supprimer(c.req.param('id'), 'adrien');
   return c.body(null, 204);
 });
+
+// Les rappels sur le téléphone (tâche 5.5). La clé publique pour s'abonner ; s'abonner et se
+// désabonner ; un rappel d'essai tout de suite ; le téléphone qui dit « reçu » ; les derniers envois.
+const rappels = (c: Ctx): ServiceRappels =>
+  new ServiceRappels(c.env.DB, clesVapid(c.env.VAPID_PRIVEE, c.env.VAPID_PUBLIQUE), (r) => fetch(r));
+
+api.get('/push/cle', (c) => c.json({ cle: rappels(c).clePublique() }));
+
+api.post('/push/abonnements', async (c) => {
+  const corps = await objet(c);
+  if (!corps) return c.json({ erreur: 'Le corps doit être un abonnement (PushSubscription.toJSON()).' }, 400);
+  await rappels(c).abonner(corps);
+  return c.body(null, 204);
+});
+
+api.delete('/push/abonnements', async (c) => {
+  const corps = await objet(c);
+  if (typeof corps?.endpoint !== 'string') return c.json({ erreur: 'Le corps doit être {"endpoint": "…"}.' }, 400);
+  await rappels(c).desabonner(corps.endpoint);
+  return c.body(null, 204);
+});
+
+api.post('/push/essai', async (c) => c.json(await rappels(c).essai()));
+
+api.post('/push/recu/:id', async (c) => {
+  await rappels(c).recu(c.req.param('id'));
+  return c.body(null, 204);
+});
+
+api.get('/push/envois', async (c) => c.json({ envois: await rappels(c).envois() }));

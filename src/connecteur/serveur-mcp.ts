@@ -29,7 +29,7 @@ export type RequetesMcp = Pick<ServiceRequetes, 'essayer' | 'enregistrer' | 'lis
 
 /** Les vues que lit une requête, et leurs colonnes : Claude les lit dans la description des outils. */
 const VUES_DECRITES = `Une requête est un seul SELECT (ou WITH … SELECT) SQLite, en lecture seule, qui ne lit que ces vues :
-- v_elements(id, type, parent, titre, description, statut, priorite, echeance, jour_planifie, heure_planifiee, estimation, rang, poids, avancement, fait_le, cree_le, modifie_le) : les éléments non supprimés.
+- v_elements(id, type, parent, titre, description, statut, priorite, echeance, jour_planifie, heure_planifiee, estimation, rang, poids, avancement, rappel, fait_le, cree_le, modifie_le) : les éléments non supprimés (rappel : instant UTC).
 - v_tags(element_id, cle, valeur, texte) : texte vaut « cle » ou « cle:valeur ».
 - v_liens(id, source, cible, type, cree_le) : type appartient_a (source = la tâche, cible = le projet), bloque, lie_a.
 - v_commentaires(id, element_id, texte, auteur, cree_le).
@@ -67,6 +67,7 @@ const champsElement = {
   estimation: z.number().int().nullable().optional().describe('Temps prévu, en minutes'),
   poids: z.number().positive().nullable().optional().describe('Ce que pèse l\'élément parmi ses frères (vue en cercles) ; null : compte pour 1'),
   avancement: z.number().int().min(0).max(100).nullable().optional().describe('Avancement saisi, 0 à 100, pour un élément sans enfant'),
+  rappel: z.string().nullable().optional().describe("Quand le téléphone d'Adrien sonne pour cet élément : AAAA-MM-JJ HH:MM, heure de Paris ; null retire le rappel"),
 };
 
 /** Le texte rendu à Claude : du JSON lisible. */
@@ -90,7 +91,7 @@ async function proteger(action: () => Promise<{ content: { type: 'text'; text: s
 /** Un élément en bref, pour les listes : seulement les champs remplis. */
 function enBref(element: InstantaneElement, tags?: string[]): Record<string, unknown> {
   const bref: Record<string, unknown> = { id: element.id, type: element.type, titre: element.titre, statut: element.statut };
-  for (const cle of ['priorite', 'echeance', 'jourPlanifie', 'heurePlanifiee', 'estimation', 'parent', 'poids', 'avancement'] as const) {
+  for (const cle of ['priorite', 'echeance', 'jourPlanifie', 'heurePlanifiee', 'estimation', 'parent', 'poids', 'avancement', 'rappel'] as const) {
     if (element[cle] !== null) bref[cle] = element[cle];
   }
   if (tags?.length) bref.tags = tags;

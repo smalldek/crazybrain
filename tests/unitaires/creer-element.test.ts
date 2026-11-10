@@ -26,7 +26,7 @@ describe('creerElement', () => {
       id: 'ev-1',
       elementId: 'el-1',
       type: 'element_cree',
-      versionForme: 4,
+      versionForme: 5,
       avant: null,
       apres: element.instantane(),
       auteur: 'adrien',

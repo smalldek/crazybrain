@@ -59,6 +59,6 @@ describe('evenementDe', () => {
   it('raconte un ajout : avant vide, après la donnée', () => {
     const tag = { elementId: 't-1', cle: 'release', valeur: 'v1' };
     expect(evenementDe({ id: 'e-1', elementId: 't-1', type: 'tag_ajoute', avant: null, apres: tag, auteur: 'adrien', maintenant }))
-      .toEqual({ id: 'e-1', elementId: 't-1', type: 'tag_ajoute', versionForme: 4, avant: null, apres: tag, auteur: 'adrien', date: '2026-11-05T22:00:00.000Z' });
+      .toEqual({ id: 'e-1', elementId: 't-1', type: 'tag_ajoute', versionForme: 5, avant: null, apres: tag, auteur: 'adrien', date: '2026-11-05T22:00:00.000Z' });
   });
 });

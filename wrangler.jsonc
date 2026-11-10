@@ -41,6 +41,8 @@
 		// l'application Access, est passée au déploiement (--var AUD:…), pas écrite ici.
 		"TEAM_DOMAIN": "https://2ker-consulting.cloudflareaccess.com"
 	},
+	// Les rappels (tâche 5.5) : chaque minute, le Worker envoie ceux dont l'heure est passée.
+	"triggers": { "crons": ["* * * * *"] },
 	"workers_dev": false,
 	"preview_urls": false,
 	"routes": [
