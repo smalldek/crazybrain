@@ -6,6 +6,7 @@ import { Estimation } from './estimation';
 import { Heure } from './heure';
 import { Jour } from './jour';
 import { Poids } from './poids';
+import { Recurrence } from './recurrence';
 import { lirePriorite, type Priorite } from './priorite';
 import { Titre } from './titre';
 
@@ -53,6 +54,8 @@ export interface InstantaneElement {
   readonly avancement: number | null;
   /** Date ISO (UTC) où le téléphone doit sonner (tâche 5.5), ou null. */
   readonly rappel: string | null;
+  /** La règle de récurrence (tâche 5.6), sous sa forme rangée (« chaque lundi »), ou null. */
+  readonly recurrence: string | null;
   /** Date ISO du passage à « fait », ou null. */
   readonly faitLe: string | null;
   /** Date ISO de l'archivage (une tâche « supprimée »), ou null. */
@@ -78,6 +81,7 @@ interface Valeurs {
   readonly poids: Poids | null;
   readonly avancement: Avancement | null;
   readonly rappel: Date | null;
+  readonly recurrence: Recurrence | null;
   readonly faitLe: Date | null;
   readonly archiveLe: Date | null;
   readonly creeLe: Date;
@@ -107,6 +111,7 @@ export class Element {
   get poids(): Poids | null { return this.v.poids; }
   get avancement(): Avancement | null { return this.v.avancement; }
   get rappel(): Date | null { return this.v.rappel; }
+  get recurrence(): Recurrence | null { return this.v.recurrence; }
   get faitLe(): Date | null { return this.v.faitLe; }
   get archiveLe(): Date | null { return this.v.archiveLe; }
   get creeLe(): Date { return this.v.creeLe; }
@@ -130,6 +135,7 @@ export class Element {
       poids: null,
       avancement: null,
       rappel: null,
+      recurrence: null,
       faitLe: null,
       archiveLe: null,
       creeLe: params.maintenant,
@@ -158,6 +164,7 @@ export class Element {
       poids: etat.poids == null ? null : Poids.creer(etat.poids),
       avancement: etat.avancement == null ? null : Avancement.creer(etat.avancement),
       rappel: etat.rappel == null ? null : new Date(etat.rappel),
+      recurrence: etat.recurrence == null ? null : Recurrence.lire(etat.recurrence),
       faitLe: etat.faitLe == null ? null : new Date(etat.faitLe),
       archiveLe: etat.archiveLe == null ? null : new Date(etat.archiveLe),
       creeLe: new Date(etat.creeLe),
@@ -198,6 +205,11 @@ export class Element {
   /** Programmer (ou retirer, null) le rappel : le téléphone sonnera à cet instant. */
   programmerRappel(rappel: Date | null, maintenant: Date): Element {
     return this.avec({ rappel }, maintenant);
+  }
+
+  /** Poser (ou retirer, null) la règle de récurrence. */
+  changerRecurrence(recurrence: Recurrence | null, maintenant: Date): Element {
+    return this.avec({ recurrence }, maintenant);
   }
 
   /** Les champs sans règle entre eux (type, description, priorité, estimation, rang, poids, avancement). */
@@ -246,6 +258,7 @@ export class Element {
       poids: this.poids?.valeur ?? null,
       avancement: this.avancement?.pourcent ?? null,
       rappel: this.rappel?.toISOString() ?? null,
+      recurrence: this.recurrence?.texte ?? null,
       faitLe: this.faitLe?.toISOString() ?? null,
       archiveLe: this.archiveLe?.toISOString() ?? null,
       creeLe: this.creeLe.toISOString(),

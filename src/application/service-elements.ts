@@ -6,6 +6,9 @@
 import { archiverElement, restaurerElement } from '../domaine/archiver-element';
 import { creerCommentaire, type InstantaneCommentaire } from '../domaine/commentaire';
 import { creerElement } from '../domaine/creer-element';
+import { Jour } from '../domaine/jour';
+import { champsDeLaSuivante } from '../domaine/suivante';
+import { aujourdhuiAParis } from './aujourdhui';
 import type { InstantaneElement, Statut } from '../domaine/element';
 import { ErreurDomaine } from '../domaine/erreur-domaine';
 import { evenementDe, type Auteur } from '../domaine/evenement';
@@ -99,15 +102,29 @@ export class ServiceElements {
     return this.lire(element.id);
   }
 
-  async modifier(id: string, changements: ChangementsElement, auteur: Auteur): Promise<InstantaneElement> {
+  /**
+   * Modifie un élément. Cocher une tâche récurrente crée aussi la suivante (tâche 5.6), avec les
+   * mêmes projets et les mêmes tags ; son id est rendu dans `suivante`.
+   */
+  async modifier(id: string, changements: ChangementsElement, auteur: Auteur): Promise<{ element: InstantaneElement; suivante: string | null }> {
     const actuel = await this.elements.lire(id);
     if (!actuel) throw new ErreurIntrouvable(`Élément inconnu : « ${id} ».`);
     const contexte = await this.contexte(changements);
+    const maintenant = this.horloge();
     const { element, evenement } = modifierElement({
-      element: actuel, changements, ...contexte, idEvenement: crypto.randomUUID(), auteur, maintenant: this.horloge(),
+      element: actuel, changements, ...contexte, idEvenement: crypto.randomUUID(), auteur, maintenant,
     });
     if (evenement) await this.elements.enregistrerModification(element, evenement);
-    return element.instantane();
+    const champs = actuel.statut !== 'fait' && element.statut === 'fait'
+      ? champsDeLaSuivante(actuel, Jour.creer(aujourdhuiAParis(maintenant))) : null;
+    if (!champs) return { element: element.instantane(), suivante: null };
+    const [liens, tags] = await Promise.all([this.relations.liensDe(id), this.relations.tagsDe(id)]);
+    const suivante = await this.creer({
+      ...champs,
+      projets: liens.filter((l) => l.type === 'appartient_a' && l.source === id).map((l) => l.cible),
+      tags: tags.map((t) => (t.valeur === '' ? t.cle : `${t.cle}:${t.valeur}`)),
+    }, auteur);
+    return { element: element.instantane(), suivante: suivante.element.id };
   }
 
   async supprimer(id: string, auteur: Auteur): Promise<void> {

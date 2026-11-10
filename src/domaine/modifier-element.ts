@@ -9,6 +9,7 @@ import { Heure } from './heure';
 import { Jour } from './jour';
 import { Poids } from './poids';
 import { lireRappel } from './rappel';
+import { Recurrence } from './recurrence';
 import { lirePriorite } from './priorite';
 import { Titre } from './titre';
 
@@ -34,12 +35,14 @@ export interface ChangementsElement {
   readonly avancement?: number | null;
   /** L'heure du rappel : ISO avec fuseau, ou « AAAA-MM-JJ HH:MM » à l'heure de Paris ; null le retire. */
   readonly rappel?: string | null;
+  /** La règle de récurrence en français (« chaque lundi », « 3 mois après fait ») ; null la retire. */
+  readonly recurrence?: string | null;
 }
 
 /** Les noms des champs modifiables, pour vérifier un corps de requête. */
 export const CHAMPS_MODIFIABLES = [
   'titre', 'statut', 'type', 'parent', 'description', 'priorite', 'echeance',
-  'jourPlanifie', 'heurePlanifiee', 'estimation', 'rang', 'poids', 'avancement', 'rappel',
+  'jourPlanifie', 'heurePlanifiee', 'estimation', 'rang', 'poids', 'avancement', 'rappel', 'recurrence',
 ] as const satisfies readonly (keyof ChangementsElement)[];
 
 /**
@@ -117,6 +120,7 @@ export function appliquerChangements(
   const poids = c.poids === undefined ? undefined : c.poids === null ? null : Poids.creer(c.poids);
   const avancement = c.avancement === undefined ? undefined : c.avancement === null ? null : Avancement.creer(c.avancement);
   const rappel = c.rappel === undefined ? undefined : c.rappel === null ? null : lireRappel(c.rappel);
+  const recurrence = c.recurrence === undefined ? undefined : c.recurrence === null || c.recurrence.trim() === '' ? null : Recurrence.lire(c.recurrence);
   if (c.rang !== undefined && c.rang !== null && !Number.isFinite(c.rang)) {
     throw new ErreurDomaine('Le rang doit être un nombre.');
   }
@@ -152,5 +156,8 @@ export function appliquerChangements(
   };
   if (Object.keys(simples).length > 0) e = e.changer(simples, maintenant);
   if (rappel !== undefined && rappel?.getTime() !== e.rappel?.getTime()) e = e.programmerRappel(rappel, maintenant);
+  if (recurrence !== undefined && recurrence?.texte !== e.recurrence?.texte) e = e.changerRecurrence(recurrence, maintenant);
+  // Cocher une tâche récurrente : sa règle passe à la suivante (que le service crée), elle-même n'en a plus.
+  if (element.statut !== 'fait' && e.statut === 'fait' && e.recurrence) e = e.changerRecurrence(null, maintenant);
   return e;
 }

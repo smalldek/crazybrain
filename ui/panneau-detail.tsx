@@ -145,6 +145,12 @@ export function PanneauDetail({ id, elements, tousLesTags, fermer, modifie }: Pr
           <Champ libelle="À">{(id) => <input id={id} type="time" {...champ('heurePlanifiee')} />}</Champ>
         </div>
         <Champ libelle="Rappel sur le téléphone">{(id) => <input id={id} type="datetime-local" {...champ('rappel')} />}</Champ>
+        <Champ libelle="Se répète">{(id) => (
+          <input id={id} list="recurrences" placeholder="chaque lundi, le 1er du mois, 3 mois après fait…" {...champ('recurrence')} />
+        )}</Champ>
+        <datalist id="recurrences">
+          {['chaque jour', 'chaque lundi', 'chaque semaine', 'le 1er du mois', 'chaque mois', 'chaque année', '3 mois après fait', '1 an après fait'].map((r) => <option key={r} value={r} />)}
+        </datalist>
         <div className="rangee">
           <Champ libelle="Estimation (minutes)">{(id) => (
             <input id={id} type="number" inputMode="numeric" min={1} step={1} {...champ('estimation')} />

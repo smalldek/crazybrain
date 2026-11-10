@@ -33,7 +33,7 @@ export interface TypeElement {
 /** Les champs qu'on peut envoyer pour créer ou modifier un élément (null vide un champ facultatif). */
 export type Changements = Partial<Pick<Element,
   'titre' | 'statut' | 'type' | 'parent' | 'description' | 'priorite' | 'echeance' |
-  'jourPlanifie' | 'heurePlanifiee' | 'estimation' | 'rang' | 'poids' | 'avancement' | 'rappel'>>;
+  'jourPlanifie' | 'heurePlanifiee' | 'estimation' | 'rang' | 'poids' | 'avancement' | 'rappel' | 'recurrence'>>;
 
 /**
  * Appelle l'API. Si la connexion Access a expiré, la réponse n'est pas du JSON (page de connexion,
