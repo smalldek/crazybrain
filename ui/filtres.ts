@@ -1,7 +1,7 @@
 // Les filtres et le backlog, sans React : testés seuls (tests/unitaires/interface-filtres.test.ts).
 // Les filtres vivent dans l'adresse (`?tag=composant:pxe&priorite=haute`) : une vue filtrée se
 // garde, se recharge et se partage. Ils s'appliquent à toutes les vues.
-import type { Element } from './api';
+import type { Element, ResultatRequete } from './api';
 
 /** Les filtres possibles ; un champ absent ne filtre pas. */
 export interface Filtres {
@@ -17,11 +17,13 @@ export interface Filtres {
   readonly dans?: string;
   /** `en_retard`, `semaine` (d'ici 7 jours, retard compris), `sans`. */
   readonly echeance?: string;
+  /** Une requête enregistrée par Claude (son id) : on garde les éléments dont elle rend l'id (tâche 4.3). */
+  readonly requete?: string;
   /** L'ordre de la liste et du backlog : `modifie` (modifié récemment d'abord) ; absent, l'ordre habituel. Ne filtre rien. */
   readonly tri?: string;
 }
 
-export const CLES_FILTRES = ['texte', 'type', 'statut', 'priorite', 'tag', 'dans', 'echeance', 'tri'] as const;
+export const CLES_FILTRES = ['texte', 'type', 'statut', 'priorite', 'tag', 'dans', 'echeance', 'requete', 'tri'] as const;
 
 export function lireFiltres(p: URLSearchParams): Filtres {
   const f: Record<string, string> = {};
@@ -73,10 +75,12 @@ function contenus(racine: string, elements: readonly Element[]): Set<string> {
 
 /**
  * Les éléments qui passent tous les filtres. `tags` : les tags de chaque élément, en texte ;
- * `aujourdhui` : le jour AAAA-MM-JJ, pour les échéances.
+ * `aujourdhui` : le jour AAAA-MM-JJ, pour les échéances ; `idsRequete` : les ids que rend la requête
+ * choisie (null : pas encore lus, ou pas de requête, on ne filtre pas dessus).
  */
 export function filtrer(
   elements: readonly Element[], f: Filtres, tags: ReadonlyMap<string, readonly string[]>, aujourdhui: string,
+  idsRequete: ReadonlySet<string> | null = null,
 ): Element[] {
   const dans = f.dans ? contenus(f.dans, elements) : null;
   const texte = f.texte ? simple(f.texte.trim()) : '';
@@ -91,6 +95,7 @@ export function filtrer(
       if (!siens.some((t) => (avecValeur ? t === f.tag : t === f.tag || t.startsWith(`${f.tag}:`)))) return false;
     }
     if (dans && !dans.has(e.id)) return false;
+    if (f.requete && idsRequete && !idsRequete.has(e.id)) return false;
     if (f.echeance === 'sans' && e.echeance !== null) return false;
     if (f.echeance === 'en_retard' && !(e.echeance !== null && e.echeance < aujourdhui && e.statut !== 'fait')) return false;
     if (f.echeance === 'semaine' && !(e.echeance !== null && e.echeance <= plusJours(aujourdhui, 7) && e.statut !== 'fait')) return false;
@@ -119,4 +124,13 @@ export function backlog(elements: readonly Element[]): Element[] {
  */
 export function parModification(elements: readonly Element[]): Element[] {
   return [...elements].sort((a, b) => b.modifieLe.localeCompare(a.modifieLe) || b.creeLe.localeCompare(a.creeLe));
+}
+
+/**
+ * Les ids d'éléments que rend une requête : sa colonne `id` (tâche 4.3). Null si elle n'en a pas :
+ * elle ne peut pas servir de filtre, elle se lit comme un tableau.
+ */
+export function idsDeRequete(r: ResultatRequete): Set<string> | null {
+  if (!r.colonnes.includes('id')) return r.lignes.length === 0 ? new Set() : null;
+  return new Set(r.lignes.map((l) => l.id).filter((id): id is string => typeof id === 'string'));
 }

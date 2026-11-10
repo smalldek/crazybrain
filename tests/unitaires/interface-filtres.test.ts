@@ -1,7 +1,7 @@
 // Les filtres de l'écran et le backlog.
 import { describe, expect, it } from 'vitest';
 import type { Element } from '../../ui/api';
-import { avecFiltre, backlog, filtrer, lireFiltres, nombreDeFiltres, parModification } from '../../ui/filtres';
+import { avecFiltre, backlog, filtrer, idsDeRequete, lireFiltres, nombreDeFiltres, parModification } from '../../ui/filtres';
 
 function element(id: string, champs: Partial<Element> = {}): Element {
   return {
@@ -102,5 +102,25 @@ describe('le tri « modifié récemment » (tâche 3.9)', () => {
     expect(f).toEqual({ tri: 'modifie', tag: 'a' });
     expect(nombreDeFiltres(f)).toBe(1);
     expect(ids(filtrer([element('x')], { tri: 'modifie' }, new Map(), '2026-11-10'))).toEqual(['x']);
+  });
+});
+
+describe('le filtre « Requête de Claude » (tâche 4.3)', () => {
+  const liste = [element('a'), element('b'), element('c')];
+
+  it('garde les éléments dont la requête rend l’id, et compte comme un filtre', () => {
+    const f = lireFiltres(new URLSearchParams('requete=r1'));
+    expect(nombreDeFiltres(f)).toBe(1);
+    expect(ids(filtrer(liste, f, new Map(), '2026-11-10', new Set(['a', 'c', 'inconnu'])))).toEqual(['a', 'c']);
+  });
+
+  it('ne filtre pas tant que les lignes ne sont pas lues', () => {
+    expect(ids(filtrer(liste, { requete: 'r1' }, new Map(), '2026-11-10', null))).toEqual(['a', 'b', 'c']);
+  });
+
+  it('lit la colonne id ; sans elle, la requête ne choisit pas d’éléments', () => {
+    expect(idsDeRequete({ colonnes: ['id', 'titre'], lignes: [{ id: 'a', titre: 'A' }, { id: 7, titre: 'x' }], tronque: false })).toEqual(new Set(['a']));
+    expect(idsDeRequete({ colonnes: ['n'], lignes: [{ n: 3 }], tronque: false })).toBeNull();
+    expect(idsDeRequete({ colonnes: [], lignes: [], tronque: false })).toEqual(new Set());
   });
 });

@@ -545,7 +545,11 @@ survit au rechargement. Chaque point a son scénario joué dans le navigateur.
     (`requete_enregistree`, `requete_modifiee`, `requete_supprimee`). Convention : une requête qui
     rend une colonne `id` peut servir de filtre (4.3). API : `GET /api/requetes`,
     `GET /api/requetes/<id>/lignes`, `DELETE /api/requetes/<id>`.
-  - 4.3 Les requêtes enregistrées comme filtres dans l'interface.
+  - 4.3 ✓ Les requêtes enregistrées comme filtres dans l'interface (10/11). Dans « Filtres », un
+    choix « Requête de Claude » (visible dès qu'une requête est enregistrée) : la vue ne garde que
+    les éléments dont la requête rend l'`id`, dans toutes les vues, gardé dans l'adresse
+    (`?requete=<id>`). Une requête sans colonne `id` le dit au lieu de filtrer ; au-delà de 500
+    lignes, l'écran prévient que seules les 500 premières comptent.
   - 4.4 Les premiers tableaux de bord, codés.
 - **Fait quand** : le test de lecture seule passe ; Claude écrit, teste et enregistre une requête
   depuis une conversation, et Adrien la retrouve comme filtre dans l'outil.

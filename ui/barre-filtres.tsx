@@ -2,7 +2,7 @@
 // « Filtres (n) » qui montre ou cache les autres critères. Tout est dans l'adresse : la barre lit
 // les filtres dans l'adresse et les y écrit (les règles sont dans filtres.ts).
 import { useEffect, useId, useState } from 'react';
-import { api, type Element, type Tag, type TypeElement } from './api';
+import { api, type Element, type Requete, type Tag, type TypeElement } from './api';
 import { avecFiltre, CLES_FILTRES, nombreDeFiltres, type Filtres } from './filtres';
 import { texteTag } from './tags';
 
@@ -25,10 +25,12 @@ export function BarreFiltres({ filtres, elements, tags, changer }: Proprietes) {
   const nombre = nombreDeFiltres(filtres);
   const [ouverte, setOuverte] = useState(nombre > 0);
   const [types, setTypes] = useState<TypeElement[]>([]);
+  const [requetes, setRequetes] = useState<Requete[]>([]);
   // Le texte tapé s'écrit dans l'adresse à chaque lettre, mais sans attendre l'adresse pour s'afficher.
   const [texte, setTexte] = useState(filtres.texte ?? '');
   useEffect(() => { setTexte(filtres.texte ?? ''); }, [filtres.texte]);
   useEffect(() => { api.types().then(setTypes, () => setTypes([])); }, []);
+  useEffect(() => { api.requetes().then(setRequetes, () => setRequetes([])); }, []);
   const id = useId();
 
   const poser = (cle: CleFiltre, valeur: string | null): void =>
@@ -74,6 +76,8 @@ export function BarreFiltres({ filtres, elements, tags, changer }: Proprietes) {
           {choix('priorite', 'Priorité', PRIORITES)}
           {choix('dans', 'Dans', conteneurs.map((e) => [e.id, e.titre] as const))}
           {choix('echeance', 'Échéance', ECHEANCES)}
+          {/* Les requêtes que Claude a enregistrées (tâche 4.3) : seulement s'il y en a. */}
+          {(requetes.length > 0 || filtres.requete) && choix('requete', 'Requête de Claude', requetes.map((r) => [r.id, r.nom] as const))}
           {choix('tri', 'Ordre (liste et backlog)', TRIS, 'Habituel')}
           <div className="champ">
             <label htmlFor={`${id}-tag`}>Tag (clé ou clé:valeur)</label>
