@@ -4,5 +4,5 @@
   "compilerOptions": {
     "types": ["node"]
   },
-  "include": ["tests", "features", "src/domaine", "src/acces", "src/connecteur/journal-oauth.ts", "ui/api.ts", "ui/liste.ts", "ui/dates.ts", "ui/formulaire.ts", "ui/chemins.ts", "ui/relations.ts", "ui/kanban.ts", "ui/tags.ts", "ui/filtres.ts", "ui/projets.ts", "ui/tableau.ts", "ui/connexion.ts", "ui/partage.ts", "ui/rappels.ts", "ui/calendrier.ts", "vitest.config.ts"]
+  "include": ["tests", "features", "src/domaine", "src/acces", "src/connecteur/journal-oauth.ts", "ui/api.ts", "ui/liste.ts", "ui/dates.ts", "ui/formulaire.ts", "ui/chemins.ts", "ui/relations.ts", "ui/kanban.ts", "ui/tags.ts", "ui/filtres.ts", "ui/projets.ts", "ui/tableau.ts", "ui/connexion.ts", "ui/partage.ts", "ui/rappels.ts", "ui/calendrier.ts", "ui/journee.ts", "vitest.config.ts"]
 }

@@ -20,6 +20,7 @@ import { VueKanban } from './vue-kanban';
 import { VueProjets } from './vue-projets';
 import { VueTableau } from './vue-tableau';
 import { VueCalendrier } from './vue-calendrier';
+import { VueJournee } from './vue-journee';
 import { lireAnneaux, rattacher } from './cercles';
 import { VueCercles } from './vue-cercles';
 
@@ -30,7 +31,7 @@ interface Message {
   readonly annuler?: () => void;
 }
 
-const NOMS_VUES: Record<Vue, string> = { liste: 'Liste', kanban: 'Kanban', backlog: 'Backlog', calendrier: 'Calendrier', projets: 'Projets', cercles: 'Cercles', tableau: 'Tableau' };
+const NOMS_VUES: Record<Vue, string> = { liste: 'Liste', journee: 'Journée', kanban: 'Kanban', backlog: 'Backlog', calendrier: 'Calendrier', projets: 'Projets', cercles: 'Cercles', tableau: 'Tableau' };
 
 export function Appli() {
   const [elements, setElements] = useState<Element[] | null>(null);
@@ -82,7 +83,7 @@ export function Appli() {
     return () => { actif = false; };
   }, [filtres.requete]);
   const visibles = elements && filtrer(elements, filtres, tagsParElement(tags), aujourdhui(), idsRequete);
-  const rienAMontrer = vue !== 'projets' && vue !== 'cercles' && vue !== 'tableau' && vue !== 'calendrier' && elements !== null && elements.length > 0 && visibles !== null
+  const rienAMontrer = vue !== 'projets' && vue !== 'cercles' && vue !== 'tableau' && vue !== 'calendrier' && vue !== 'journee' && elements !== null && elements.length > 0 && visibles !== null
     && (vue === 'backlog' ? backlog(visibles) : visibles).length === 0;
   // La liste et le backlog dans leur ordre habituel, ou « modifié récemment » d'abord (filtre `tri`).
   const enOrdre = visibles && (vue === 'backlog' ? backlog(visibles) : ordonner(visibles));
@@ -266,7 +267,7 @@ export function Appli() {
         <header className="entete-appli">
           <h1>Crazybrain</h1>
           <nav aria-label="Vues">
-            {(['liste', 'kanban', 'backlog', 'calendrier', 'projets', 'cercles', 'tableau'] as const).map((v) => (
+            {(['liste', 'journee', 'kanban', 'backlog', 'calendrier', 'projets', 'cercles', 'tableau'] as const).map((v) => (
               <a key={v} href={adresseVue(v) + window.location.search} aria-current={v === vue ? 'page' : undefined}
                 onClick={(e) => { e.preventDefault(); naviguer(adresseVue(v) + parametresIci()); }}>{NOMS_VUES[v]}</a>
             ))}
@@ -305,6 +306,9 @@ export function Appli() {
             ranger={ranger} signaler={(texte) => setMessage({ texte, erreur: true })} jour={aujourdhui()}
             tags={tags} recharger={charger}
             eclaires={visibles && (nombreDeFiltres(filtres) > 0 || filtres.texte) ? new Set(visibles.map((e) => e.id)) : null} />
+        ) : vue === 'journee' ? (
+          visibles && <VueJournee elements={visibles} aujourdhui={aujourdhui()} ouvrir={ouvrir}
+            modifier={(id, c) => void modifier(id, c)} />
         ) : vue === 'calendrier' ? (
           visibles && <VueCalendrier elements={visibles} parametres={parametres} aujourdhui={aujourdhui()} ouvrir={ouvrir} />
         ) : vue === 'tableau' ? (

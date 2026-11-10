@@ -643,7 +643,13 @@ survit au rechargement. Chaque point a son scénario joué dans le navigateur.
     « Aujourd'hui » y revient, le numéro d'un jour du mois ouvre sa semaine ; la période et le jour
     vivent dans l'adresse. Les filtres s'appliquent. Vérifié : `tests/unitaires/interface-calendrier.test.ts`,
     `features/calendrier.feature` (navigateur à la taille d'un téléphone).
-  - 6.2 Le mode journée, le matin : choisir ses tâches du jour dans le backlog.
+  - 6.2 ✓ Le mode journée, le matin : choisir ses tâches du jour dans le backlog (10/11). Un onglet
+    Journée : en haut les tâches prévues aujourd'hui, à cocher, avec le temps prévu (somme des
+    estimations de ce qui reste, et combien n'en ont pas) ; puis celles prévues un jour passé et
+    pas faites, à reprendre aujourd'hui ou à rendre au backlog ; en bas le backlog, où
+    « + Aujourd'hui » pose le jour prévu. « Retirer » rend une tâche au backlog (jour et heure
+    vidés). Choisir une tâche, c'est seulement poser son jour prévu : pas de nouveau champ. Vérifié :
+    `tests/unitaires/interface-journee.test.ts`, `features/journee.feature`.
   - 6.3 Les caser dans des créneaux, et voir le temps prévu face au temps disponible.
 - **Fait quand** : les éléments apparaissent à leur échéance ou à leur jour planifié ; le matin,
   Adrien choisit ses tâches du jour dans le backlog, les case dans des créneaux, et voit le temps
