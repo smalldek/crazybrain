@@ -4,6 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Crazybrain</title>
+  <!-- L'appli installable (tâche 5.1). use-credentials : derrière Cloudflare Access, le manifeste
+       se charge avec le cookie de connexion, sinon Access le refuse et l'appli n'est pas installable. -->
+  <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials">
+  <meta name="theme-color" content="#2f5fd0">
+  <link rel="icon" href="/icone.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 </head>
 <body>
   <!-- L'interface est construite par React (décision 004) dans cette balise ; le code est dans ui/. -->

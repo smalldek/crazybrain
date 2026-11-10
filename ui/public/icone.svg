@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- L'icône de Crazybrain : des anneaux, comme la vue en cercles, sur le bleu de l'appli. -->
+  <rect width="512" height="512" rx="112" fill="#2f5fd0"/>
+  <g fill="none" stroke="#ffffff" stroke-linecap="round">
+    <circle cx="256" cy="256" r="58" stroke-width="40"/>
+    <path d="M256 128 A128 128 0 1 1 135 297" stroke-width="36"/>
+    <path d="M256 58 A198 198 0 0 1 437 340" stroke-width="32" opacity=".7"/>
+  </g>
+</svg>

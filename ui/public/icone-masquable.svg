@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Version « masquable » : Android découpe l'icône en rond ou en carré ; le dessin reste dans la zone sûre (80 % du centre). -->
+  <rect width="512" height="512" fill="#2f5fd0"/>
+  <g fill="none" stroke="#ffffff" stroke-linecap="round" transform="translate(256 256) scale(.72) translate(-256 -256)">
+    <circle cx="256" cy="256" r="58" stroke-width="40"/>
+    <path d="M256 128 A128 128 0 1 1 135 297" stroke-width="36"/>
+    <path d="M256 58 A198 198 0 0 1 437 340" stroke-width="32" opacity=".7"/>
+  </g>
+</svg>
