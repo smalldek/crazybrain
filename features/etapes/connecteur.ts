@@ -216,7 +216,7 @@ Then('la recherche trouve {string} et pas {string}', function (this: Monde, oui:
 
 Then("l'élément lu a {string} égal à {}", function (this: Monde, champ: string, valeur: string) {
   const lu = dernier(this).json as Record<string, unknown>;
-  assert.deepEqual(lu[champ], JSON.parse(valeur), dernier(this).texte);
+  assert.deepEqual(lu[champ], JSON.parse(avecIds(this, valeur)), dernier(this).texte);
 });
 
 Then('le journal de {string} ne contient que des événements de {string}', async function (this: Monde, titre: string, auteur: string) {
@@ -243,3 +243,39 @@ Then(
     assert.ok(message.includes(`${ligne?.nombre ?? '?'} tâche`), message);
   },
 );
+
+// --- Les requêtes (tâche 4.2) ---
+
+interface RequeteLue { id: string; nom: string }
+
+async function requetesDeLaPage(monde: Monde): Promise<RequeteLue[]> {
+  const reponse = await fetch(`${monde.worker.adresse}/api/requetes`, { headers: entetesAdrien(monde) });
+  assert.equal(reponse.status, 200);
+  return ((await reponse.json()) as { requetes: RequeteLue[] }).requetes;
+}
+
+Then('la page, connectée par Access, a la requête {string}', async function (this: Monde, nom: string) {
+  assert.ok((await requetesDeLaPage(this)).some((r) => r.nom === nom), `« ${nom} » absente des requêtes de la page`);
+});
+
+Then('la page, connectée par Access, rejoue {string} et trouve {int} ligne(s)', async function (this: Monde, nom: string, nombre: number) {
+  const requete = (await requetesDeLaPage(this)).find((r) => r.nom === nom);
+  assert.ok(requete, `« ${nom} » absente`);
+  const reponse = await fetch(`${this.worker.adresse}/api/requetes/${requete.id}/lignes`, { headers: entetesAdrien(this) });
+  assert.equal(reponse.status, 200);
+  const { resultat } = (await reponse.json()) as { resultat: { lignes: unknown[] } };
+  assert.equal(resultat.lignes.length, nombre);
+});
+
+Then('le journal de la requête {string} contient {string} par {string}', async function (this: Monde, nom: string, types: string, auteur: string) {
+  const lignes = await this.worker.requete<{ type: string; auteur: string }>(
+    `SELECT type, auteur FROM evenements WHERE type LIKE 'requete_%' AND json_extract(coalesce(apres, avant), '$.nom') = '${nom.replace(/'/g, "''")}' ORDER BY date`,
+  );
+  assert.deepEqual(lignes.map((l) => l.type), types.split(', '));
+  assert.deepEqual([...new Set(lignes.map((l) => l.auteur))], [auteur]);
+});
+
+Then('la liste des requêtes ne contient ni {string} ni {string}', function (this: Monde, a: string, b: string) {
+  const noms = (dernier(this).json as RequeteLue[]).map((r) => r.nom);
+  assert.ok(!noms.includes(a) && !noms.includes(b), JSON.stringify(noms));
+});

@@ -12,6 +12,7 @@ import { z } from 'zod';
 import { aujourdhuiAParis } from '../application/aujourdhui';
 import { ErreurConflit, ErreurIntrouvable } from '../application/erreurs';
 import type { DemandeCreation, ElementComplet, FiltresRecherche, ServiceElements, Statut, Trouve } from '../application/service-elements';
+import type { ResultatLecture, ServiceRequetes } from '../application/service-requetes';
 import { messageBonjour } from '../domaine/bonjour';
 import type { InstantaneElement } from '../domaine/element';
 import { ErreurDomaine } from '../domaine/erreur-domaine';
@@ -23,6 +24,20 @@ export type SourcesMcp = Pick<ServiceElements,
   'compter' | 'chercher' | 'lire' | 'creer' | 'modifier' | 'supprimer' | 'restaurer' | 'commenter' | 'lier'
   | 'delier' | 'tagger' | 'detagger' | 'types' | 'trouverProjet'>;
 
+/** Ce que les outils de requêtes utilisent (étape 4). */
+export type RequetesMcp = Pick<ServiceRequetes, 'essayer' | 'enregistrer' | 'lister' | 'executer' | 'supprimer'>;
+
+/** Les vues que lit une requête, et leurs colonnes : Claude les lit dans la description des outils. */
+const VUES_DECRITES = `Une requête est un seul SELECT (ou WITH … SELECT) SQLite, en lecture seule, qui ne lit que ces vues :
+- v_elements(id, type, parent, titre, description, statut, priorite, echeance, jour_planifie, heure_planifiee, estimation, rang, poids, avancement, fait_le, cree_le, modifie_le) : les éléments non supprimés.
+- v_tags(element_id, cle, valeur, texte) : texte vaut « cle » ou « cle:valeur ».
+- v_liens(id, source, cible, type, cree_le) : type appartient_a (source = la tâche, cible = le projet), bloque, lie_a.
+- v_commentaires(id, element_id, texte, auteur, cree_le).
+- v_evenements(id, element_id, type, avant, apres, auteur, date) : le journal ; avant et apres en JSON (json_extract).
+- v_types(code, libelle, ordre).
+Dates en texte ISO (AAAA-MM-JJ, ou AAAA-MM-JJTHH:MM:SS.sssZ pour cree_le, modifie_le, fait_le, date) ; date('now') est en UTC. Pas de paramètre : les valeurs s'écrivent dans la requête. 500 lignes au plus.
+Pour servir de filtre dans l'outil, la requête rend une colonne « id » : les éléments à montrer.`;
+
 /** Ce que Claude lit en se connectant : comment Crazybrain est organisé, et comment s'en servir. */
 const INSTRUCTIONS = `Crazybrain est l'outil de gestion de tâches et de projets d'Adrien.
 Tout est un « élément » : projet, initiative, objectif, epic, feature, tâche (type « tache »).
@@ -32,6 +47,7 @@ Tout est un « élément » : projet, initiative, objectif, epic, feature, tâch
 - Statuts : a_faire, en_cours, fait. Priorités : basse, normale, haute, urgente. Dates AAAA-MM-JJ, heures HH:MM, estimation en minutes.
 - Vue en cercles : « poids » dit ce que pèse un élément parmi ses frères (sa part dans son parent = son poids sur la somme des poids des frères ; sans poids, il compte pour 1). « avancement » (0 à 100) se saisit sur un élément sans enfant ; celui d'un parent se calcule de ses enfants, pondéré par leurs parts, et un élément « fait » vaut 100.
 - Supprimer archive l'élément : il sort des listes et peut se restaurer.
+- Pour une question qu'aucun filtre de chercher_elements ne couvre (compter, regrouper, croiser) : tester_requete, du SQL en lecture seule sur les vues v_elements, v_tags… ; enregistrer_requete la garde sous un nom, et Adrien la retrouve dans l'outil.
 Avant de créer un projet, chercher s'il existe déjà. Les dates relatives (« demain », « vendredi ») se comptent au jour de Paris.
 Tout ce que Claude fait ici est noté dans le journal avec Claude pour auteur.`;
 
@@ -104,7 +120,9 @@ export function versionConnue(requete: Request): Request {
   return new Request(requete, { headers: entetes });
 }
 
-export async function repondreMcp(requete: Request, sources: SourcesMcp, horloge: () => Date = () => new Date()): Promise<Response> {
+export async function repondreMcp(
+  requete: Request, sources: SourcesMcp, requetes?: RequetesMcp, horloge: () => Date = () => new Date(),
+): Promise<Response> {
   const serveur = new McpServer({ name: 'crazybrain', version: '0.2.0' }, { instructions: INSTRUCTIONS });
 
   serveur.registerTool('bonjour', {
@@ -255,6 +273,8 @@ bloque (la source empêche la cible d'avancer), duplique (la source est un doubl
     return texte(`Tag ${tag} retiré de ${id}.`);
   }));
 
+  if (requetes) enregistrerOutilsRequetes(serveur, requetes);
+
   serveur.registerTool('lister_types', {
     title: "Lister les types d'éléments",
     description: "Les types d'éléments possibles (code et libellé).",
@@ -266,4 +286,67 @@ bloque (la source empêche la cible d'avancer), duplique (la source est un doubl
   const transport = new WebStandardStreamableHTTPServerTransport({ enableJsonResponse: true });
   await serveur.connect(transport);
   return transport.handleRequest(versionConnue(requete));
+}
+
+/** Le résultat d'une requête pour Claude : les premières lignes, et combien il y en a. */
+function apercu(r: ResultatLecture, limite: number): Record<string, unknown> {
+  return {
+    colonnes: r.colonnes,
+    nombre: r.tronque ? `plus de ${r.lignes.length}` : r.lignes.length,
+    lignes: r.lignes.slice(0, limite),
+    ...(r.lignes.length > limite ? { note: `${limite} premières lignes montrées sur ${r.lignes.length}${r.tronque ? '+' : ''}.` } : {}),
+  };
+}
+
+/** Les outils des requêtes (tâche 4.2) : essayer, enregistrer, lister, rejouer, supprimer. */
+function enregistrerOutilsRequetes(serveur: McpServer, requetes: RequetesMcp): void {
+  const limite = z.number().int().min(1).max(500).optional().describe('Lignes montrées, 50 par défaut');
+
+  serveur.registerTool('tester_requete', {
+    title: 'Tester une requête SQL',
+    description: `Exécute une requête SQL en lecture seule et rend ses lignes, sans rien enregistrer. Pour répondre à une question qu'aucun filtre de chercher_elements ne couvre, ou pour mettre au point une requête avant de l'enregistrer.
+${VUES_DECRITES}`,
+    inputSchema: { sql: z.string(), limite },
+    annotations: { readOnlyHint: true },
+  }, async ({ sql, limite: n }) => proteger(async () => texte(apercu(await requetes.essayer(sql), n ?? 50))));
+
+  serveur.registerTool('enregistrer_requete', {
+    title: 'Enregistrer une requête',
+    description: `Enregistre une requête sous un nom, après l'avoir essayée : Adrien la retrouve dans l'outil comme filtre (si elle rend une colonne « id ») ou comme tableau. Un nom déjà pris est remplacé.
+${VUES_DECRITES}`,
+    inputSchema: {
+      nom: z.string().describe('Court et parlant : « En retard ce mois-ci »'),
+      sql: z.string(),
+      description: z.string().optional().describe('Ce que la requête montre, en une phrase'),
+    },
+  }, async (a) => proteger(async () => {
+    const { requete, remplacee, resultat } = await requetes.enregistrer({ nom: a.nom, sql: a.sql, description: a.description ?? null }, 'claude');
+    return texte({ enregistree: requete, remplacee, essai: apercu(resultat, 5) });
+  }));
+
+  serveur.registerTool('lister_requetes', {
+    title: 'Lister les requêtes enregistrées',
+    description: 'Les requêtes enregistrées : id, nom, description et SQL.',
+    annotations: { readOnlyHint: true },
+  }, async () => texte(await requetes.lister()));
+
+  serveur.registerTool('executer_requete', {
+    title: 'Rejouer une requête enregistrée',
+    description: 'Rejoue une requête enregistrée (son id ou son nom) et rend ses lignes.',
+    inputSchema: { requete: z.string().describe('Id ou nom de la requête'), limite },
+    annotations: { readOnlyHint: true },
+  }, async ({ requete, limite: n }) => proteger(async () => {
+    const { requete: r, resultat } = await requetes.executer(requete);
+    return texte({ requete: r.nom, ...apercu(resultat, n ?? 50) });
+  }));
+
+  serveur.registerTool('supprimer_requete', {
+    title: 'Supprimer une requête enregistrée',
+    description: 'Supprime une requête enregistrée (son id ou son nom). Le journal garde son texte.',
+    inputSchema: { requete: z.string().describe('Id ou nom de la requête') },
+    annotations: { destructiveHint: true },
+  }, async ({ requete }) => proteger(async () => {
+    await requetes.supprimer(requete, 'claude');
+    return texte(`Requête « ${requete} » supprimée.`);
+  }));
 }

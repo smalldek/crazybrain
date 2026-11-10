@@ -537,7 +537,14 @@ survit au rechargement. Chaque point a son scénario joué dans le navigateur.
     sur les vues, puis la requête exécutée en sous-requête, où SQLite lui-même refuse toute écriture.
     `PRAGMA query_only` est refusé par D1. 35 écritures déguisées, toutes refusées, la base inchangée.
     L'API : `POST /api/requetes/essai` avec `{"sql": "SELECT …"}` rend colonnes et lignes (500 au plus).
-  - 4.2 La table `requetes` et les outils du connecteur pour tester et enregistrer une requête.
+  - 4.2 ✓ La table `requetes` et les outils du connecteur (10/11) : `tester_requete` (rend les
+    lignes sans rien garder), `enregistrer_requete` (l'essaie d'abord : une requête refusée ou
+    fautive ne s'enregistre pas ; un nom déjà pris est remplacé), `lister_requetes`,
+    `executer_requete`, `supprimer_requete`. La description des outils donne à Claude les vues et
+    leurs colonnes. Chaque enregistrement, remplacement ou suppression s'écrit au journal
+    (`requete_enregistree`, `requete_modifiee`, `requete_supprimee`). Convention : une requête qui
+    rend une colonne `id` peut servir de filtre (4.3). API : `GET /api/requetes`,
+    `GET /api/requetes/<id>/lignes`, `DELETE /api/requetes/<id>`.
   - 4.3 Les requêtes enregistrées comme filtres dans l'interface.
   - 4.4 Les premiers tableaux de bord, codés.
 - **Fait quand** : le test de lecture seule passe ; Claude écrit, teste et enregistre une requête

@@ -129,3 +129,13 @@ api.post('/requetes/essai', async (c) => {
   if (typeof corps?.sql !== 'string') return c.json({ erreur: 'Le corps doit contenir {"sql": "SELECT …"}.' }, 400);
   return c.json(await new ServiceRequetes(c.env.DB).essayer(corps.sql));
 });
+
+// Les requêtes enregistrées par Claude (tâche 4.2) : la liste, une requête rejouée, la supprimer.
+api.get('/requetes', async (c) => c.json({ requetes: await new ServiceRequetes(c.env.DB).lister() }));
+
+api.get('/requetes/:id/lignes', async (c) => c.json(await new ServiceRequetes(c.env.DB).executer(c.req.param('id'))));
+
+api.delete('/requetes/:id', async (c) => {
+  await new ServiceRequetes(c.env.DB).supprimer(c.req.param('id'), 'adrien');
+  return c.body(null, 204);
+});

@@ -7,13 +7,13 @@ Fonctionnalité: Les outils du connecteur (étape 2)
     Étant donné que Claude est branché sur Crazybrain par le connecteur
 
   Scénario: Le connecteur propose tous ses outils
-    Alors le connecteur propose les outils "bonjour, chercher_elements, lire_element, creer_elements, modifier_element, supprimer_element, restaurer_element, commenter_element, lier_elements, retirer_lien, tagger_element, retirer_tag, lister_types"
+    Alors le connecteur propose les outils "bonjour, chercher_elements, lire_element, creer_elements, modifier_element, supprimer_element, restaurer_element, commenter_element, lier_elements, retirer_lien, tagger_element, retirer_tag, tester_requete, enregistrer_requete, lister_requetes, executer_requete, supprimer_requete, lister_types"
 
   Scénario: Un Claude qui parle une version plus récente du protocole MCP est servi quand même
     # Constaté le 07/11 dans le journal du connecteur : claude.ai annonçait la version 2026-07-28,
     # que la bibliothèque MCP ne connaît pas encore, et chaque appel était refusé (400).
     Étant donné que Claude parle la version "2026-07-28" du protocole MCP
-    Alors le connecteur propose les outils "bonjour, chercher_elements, lire_element, creer_elements, modifier_element, supprimer_element, restaurer_element, commenter_element, lier_elements, retirer_lien, tagger_element, retirer_tag, lister_types"
+    Alors le connecteur propose les outils "bonjour, chercher_elements, lire_element, creer_elements, modifier_element, supprimer_element, restaurer_element, commenter_element, lier_elements, retirer_lien, tagger_element, retirer_tag, tester_requete, enregistrer_requete, lister_requetes, executer_requete, supprimer_requete, lister_types"
     Quand Claude appelle "bonjour"
     Alors l'outil répond sans erreur
 

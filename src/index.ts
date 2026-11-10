@@ -12,6 +12,7 @@ import { jetonAccessValide } from './acces/jeton-access';
 import { api } from './api/routes';
 import { ErreurConflit, ErreurIntrouvable } from './application/erreurs';
 import { ServiceElements } from './application/service-elements';
+import { ServiceRequetes } from './application/service-requetes';
 import { aJournaliser, appelantDe, cleJournal, DUREE_JOURNAL_SECONDES, erreurOAuth, type EntreeJournal } from './connecteur/journal-oauth';
 import { echapper, pageConsentement } from './connecteur/page-consentement';
 import { repondreMcp } from './connecteur/serveur-mcp';
@@ -148,7 +149,7 @@ function fournisseur(origine: string): OAuthProvider<Env> {
   if (!f) {
     f = new OAuthProvider<Env>({
       apiRoute: '/mcp',
-      apiHandler: { fetch: (requete, env) => repondreMcp(requete, new ServiceElements(env.DB)) },
+      apiHandler: { fetch: (requete, env) => repondreMcp(requete, new ServiceElements(env.DB), new ServiceRequetes(env.DB)) },
       defaultHandler: { fetch: (requete, env, ctx) => app.fetch(requete, env, ctx) },
       authorizeEndpoint: '/authorize',
       tokenEndpoint: '/token',
