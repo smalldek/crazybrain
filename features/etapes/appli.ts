@@ -1,5 +1,5 @@
 // Les phrases de l'appli installable (features/appli.feature), jouées dans Chromium.
-import { Then } from '@cucumber/cucumber';
+import { Then, When } from '@cucumber/cucumber';
 import { expect, type Page } from 'playwright/test';
 import type { Monde } from '../support/monde';
 
@@ -57,4 +57,40 @@ Then("aucune réponse de l'API n'est dans le cache du service worker", async fun
   })()`);
   expect(adresses.length).toBeGreaterThan(0);
   expect(adresses.filter((a) => a.startsWith('/api/'))).toEqual([]);
+});
+
+// --- La reprise après expiration de la connexion Access (tâche 5.2) ---
+
+const chargements = new WeakMap<Monde, { nombre: number }>();
+
+When('la connexion Access expire', async function (this: Monde) {
+  const compte = { nombre: 0 };
+  page(this).on('load', () => { compte.nombre += 1; });
+  chargements.set(this, compte);
+  // Le Worker refuse un jeton qu'il ne sait pas vérifier (403), comme après l'expiration.
+  await page(this).context().setExtraHTTPHeaders({ 'Cf-Access-Jwt-Assertion': 'jeton-expire' });
+});
+
+When("l'appli revient au premier plan", async function (this: Monde) {
+  await page(this).evaluate("document.dispatchEvent(new Event('visibilitychange'))");
+});
+
+Then("la page s'est rechargée seule une fois", async function (this: Monde) {
+  await expect.poll(() => chargements.get(this)?.nombre ?? 0).toBe(1);
+});
+
+Then('la page propose de se reconnecter', async function (this: Monde) {
+  await expect(page(this).locator('#deconnexion')).toContainText('La connexion a expiré');
+});
+
+When('la connexion Access revient', async function (this: Monde) {
+  await page(this).context().setExtraHTTPHeaders({ 'Cf-Access-Jwt-Assertion': await this.serrure.jeton() });
+});
+
+When('je touche « Se reconnecter »', async function (this: Monde) {
+  await page(this).getByRole('button', { name: 'Se reconnecter' }).click();
+});
+
+Then('la page ne propose plus de se reconnecter', async function (this: Monde) {
+  await expect(page(this).locator('#deconnexion')).toHaveCount(0);
 });
