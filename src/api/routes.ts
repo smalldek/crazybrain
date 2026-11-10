@@ -99,7 +99,7 @@ api.post('/elements/:id/commentaires', async (c) => {
 });
 
 /** Les champs facultatifs, qu'on vide avec null ; les nombres ; les autres sont du texte. */
-const CHAMPS_NULLABLES = new Set<string>(['parent', 'description', 'priorite', 'echeance', 'jourPlanifie', 'heurePlanifiee', 'estimation', 'rang', 'poids', 'avancement', 'rappel', 'recurrence']);
+const CHAMPS_NULLABLES = new Set<string>(['parent', 'description', 'priorite', 'echeance', 'jourPlanifie', 'heurePlanifiee', 'estimation', 'rang', 'poids', 'avancement', 'rappel', 'recurrence', 'horizon']);
 const CHAMPS_NOMBRES = new Set<string>(['estimation', 'rang', 'poids', 'avancement']);
 
 /**

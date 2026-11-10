@@ -24,6 +24,8 @@ export interface Brouillon {
   readonly rappel: string;
   /** La règle de récurrence, en français (« chaque lundi »). */
   readonly recurrence: string;
+  /** L'horizon, rangé (« 2026-S46 ») ou en français (« semaine 46 ») : le serveur le range. */
+  readonly horizon: string;
 }
 
 export function brouillonDe(e: Element): Brouillon {
@@ -42,6 +44,7 @@ export function brouillonDe(e: Element): Brouillon {
     avancement: e.avancement === null ? '' : String(e.avancement),
     rappel: e.rappel === null ? '' : saisieLocale(new Date(e.rappel)),
     recurrence: e.recurrence ?? '',
+    horizon: e.horizon ?? '',
   };
 }
 
@@ -88,6 +91,7 @@ export function changementsDepuis(e: Element, b: Brouillon): Changements | strin
   const rappel = b.rappel.trim() === '' ? null : new Date(b.rappel).toISOString();
   if ((b.rappel.trim() === '' ? '' : b.rappel) !== (e.rappel === null ? '' : saisieLocale(new Date(e.rappel)))) c.rappel = rappel;
   if (ouNull(b.recurrence) !== e.recurrence) c.recurrence = ouNull(b.recurrence);
+  if (ouNull(b.horizon) !== e.horizon) c.horizon = ouNull(b.horizon);
   return c as Changements;
 }
 

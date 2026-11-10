@@ -54,11 +54,12 @@ export type Evenement = {
  * 4 : ajoute archiveLe (tâche 1.5).
  * 5 : ajoute rappel (tâche 5.5, 10/11/2026).
  * 6 : ajoute recurrence (tâche 5.6, 10/11/2026).
+ * 7 : ajoute horizon (tâche 7.1, 10/11/2026).
  * Un instantané d'une forme plus ancienne se lit avec les champs qui lui manquent à null (type : tache).
  * Les liens, tags et commentaires sont en forme 1 depuis leur création ; leurs événements portent la
  * version courante, qui ne change que si leur forme change.
  */
-export const VERSION_FORME = 6;
+export const VERSION_FORME = 7;
 
 /** Fabrique un événement : la forme de avant / après suit le type. */
 export function evenementDe<T extends TypeEvenement>(params: {

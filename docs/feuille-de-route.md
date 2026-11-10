@@ -667,8 +667,20 @@ survit au rechargement. Chaque point a son scénario joué dans le navigateur.
 ## Étape 7 — Horizons
 
 - **Tâches** :
-  - 7.1 Décider comment on note un horizon : un champ dédié ou un tag `horizon:2026-11`.
-  - 7.2 La vue horizons à la Timestripe : jour, semaine, mois, année et au-delà.
+  - 7.1 ✓ Décider comment on note un horizon (10/11) : un champ dédié, rangé sous une forme unique
+    par échelle (`2026-11-10`, `2026-S46`, `2026-11`, `2026-T4`, `2027`, `2030-2039`, `vie`), et
+    saisi en français (« semaine 46 », « novembre », « l'an prochain », « un jour »). Le tag est
+    écarté : rien n'y empêche deux horizons ni une période qui n'existe pas
+    ([décision 007](decisions/007-horizon-champ-dedie.md)). Le détail a un champ « Horizon », le
+    connecteur le prend, et la vue `v_elements` le montre aux requêtes de Claude. Vérifié :
+    `tests/unitaires/horizon.test.ts` (semaines ISO à cheval sur deux années comprises).
+  - 7.2 ✓ La vue horizons à la Timestripe : jour, semaine, mois, année et au-delà (10/11). Un
+    onglet Horizons : une colonne par échelle (jour, semaine, mois, trimestre, année, décennie,
+    « un jour »), chacune sur sa période en cours ; ‹ et › changent la période d'une colonne
+    (gardée dans l'adresse). On ajoute un élément directement dans une colonne : il prend son
+    horizon. En bas, ce qui a dépassé son horizon sans être fait. Les colonnes s'empilent sur le
+    téléphone et se suivent de gauche à droite sur un grand écran. Vérifié :
+    `tests/unitaires/interface-horizons.test.ts`, `features/horizons.feature`.
   - ~~7.3 Le poids des objectifs et la vue en cercles~~ : avancée en étape 3b le 08/11.
 - **Fait quand** : un objectif se place sur « 2027 », une tâche sur « semaine 45 », et chacun
   apparaît dans son horizon.
