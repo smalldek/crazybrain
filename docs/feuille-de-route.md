@@ -531,8 +531,12 @@ survit au rechargement. Chaque point a son scénario joué dans le navigateur.
 ## Étape 4 — Requêtes enregistrées, tableaux de bord
 
 - **Tâches** :
-  - 4.1 Vérifier l'hypothèse « lecture seule » : des vues (`v_elements`, `v_tags`…), un vrai
-    analyseur SQL qui n'accepte qu'un `SELECT`, et le test des écritures déguisées, toutes refusées.
+  - 4.1 ✓ Vérifier l'hypothèse « lecture seule » (10/11, [décision 005](decisions/005-requetes-en-lecture-seule.md)).
+    Six vues (`v_elements`, `v_tags`, `v_liens`, `v_commentaires`, `v_evenements`, `v_types`) ; une
+    garde à deux couches : un découpage du texte comme SQLite le fait, qui n'accepte qu'une lecture
+    sur les vues, puis la requête exécutée en sous-requête, où SQLite lui-même refuse toute écriture.
+    `PRAGMA query_only` est refusé par D1. 35 écritures déguisées, toutes refusées, la base inchangée.
+    L'API : `POST /api/requetes/essai` avec `{"sql": "SELECT …"}` rend colonnes et lignes (500 au plus).
   - 4.2 La table `requetes` et les outils du connecteur pour tester et enregistrer une requête.
   - 4.3 Les requêtes enregistrées comme filtres dans l'interface.
   - 4.4 Les premiers tableaux de bord, codés.

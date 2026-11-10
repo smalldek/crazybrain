@@ -4,6 +4,7 @@
 // index.ts. L'auteur est toujours Adrien : seul lui passe Access ; Claude passe par le connecteur.
 import { Hono, type Context } from 'hono';
 import { ServiceElements } from '../application/service-elements';
+import { ServiceRequetes } from '../application/service-requetes';
 import { CHAMPS_MODIFIABLES, type ChangementsElement } from '../domaine/modifier-element';
 
 type Liaisons = { Bindings: { DB: D1Database } };
@@ -120,3 +121,11 @@ function lireChangements(champs: Record<string, unknown> | null): ChangementsEle
   }
   return champs as ChangementsElement;
 }
+
+// Essayer une requête SQL en lecture seule (tâche 4.1) : elle ne lit que les vues v_… ; une
+// écriture, même déguisée, est refusée (400, avec la raison).
+api.post('/requetes/essai', async (c) => {
+  const corps = await objet(c);
+  if (typeof corps?.sql !== 'string') return c.json({ erreur: 'Le corps doit contenir {"sql": "SELECT …"}.' }, 400);
+  return c.json(await new ServiceRequetes(c.env.DB).essayer(corps.sql));
+});
