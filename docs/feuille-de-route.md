@@ -636,7 +636,13 @@ survit au rechargement. Chaque point a son scénario joué dans le navigateur.
 ## Étape 6 — Calendrier et mode journée
 
 - **Tâches** :
-  - 6.1 Le calendrier, semaine et mois, par échéance ou jour planifié.
+  - 6.1 ✓ Le calendrier, semaine et mois, par échéance ou jour planifié (10/11). Un onglet
+    Calendrier : la semaine en liste de jours (lisible au téléphone), le mois en grille de sept
+    colonnes, trois titres par case puis « +n ». Une tâche paraît à son échéance (en rouge) et au
+    jour prévu (avec son heure), une seule fois si c'est le même jour. ‹ et › changent de période,
+    « Aujourd'hui » y revient, le numéro d'un jour du mois ouvre sa semaine ; la période et le jour
+    vivent dans l'adresse. Les filtres s'appliquent. Vérifié : `tests/unitaires/interface-calendrier.test.ts`,
+    `features/calendrier.feature` (navigateur à la taille d'un téléphone).
   - 6.2 Le mode journée, le matin : choisir ses tâches du jour dans le backlog.
   - 6.3 Les caser dans des créneaux, et voir le temps prévu face au temps disponible.
 - **Fait quand** : les éléments apparaissent à leur échéance ou à leur jour planifié ; le matin,

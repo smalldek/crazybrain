@@ -328,3 +328,35 @@ li .ouvrir:hover, li .ouvrir:focus-visible { background: var(--fond); color: var
 #tableau table { border-collapse: collapse; font-size: .9rem; }
 #tableau th, #tableau td { text-align: left; padding: 4px 10px 4px 0; border-bottom: 1px solid var(--bord); white-space: nowrap; }
 #tableau th { color: var(--doux); font-weight: 500; }
+
+/* Le calendrier (tâche 6.1) : la semaine en liste de jours, le mois en grille. */
+#calendrier .commandes { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0 12px; }
+#calendrier .commandes h2 { font-size: 1.05rem; margin: 0; min-width: 9rem; text-align: center; flex: 1; }
+#calendrier .commandes > button { font: inherit; min-width: 40px; min-height: 40px; border-radius: 8px;
+  border: 1px solid var(--bord); background: var(--carte); color: var(--texte); cursor: pointer; }
+#calendrier .commandes > button.lien { border-color: transparent; background: none; color: var(--accent); }
+#calendrier .bascule { display: inline-flex; border: 1px solid var(--bord); border-radius: 8px; overflow: hidden; }
+#calendrier .bascule button { font: inherit; border: 0; padding: 8px 12px; background: var(--carte); color: var(--texte); cursor: pointer; }
+#calendrier .bascule button[aria-pressed=true] { background: var(--accent); color: var(--fond); }
+#calendrier button.lien { background: none; border: none; padding: 0; color: var(--accent); font: inherit; text-align: left; cursor: pointer; }
+#calendrier ol.semaine { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+#calendrier ol.semaine > li { display: block; }
+#calendrier ol.semaine > li.aujourdhui { border-color: var(--accent); }
+#calendrier h3 { font-size: .9rem; margin: 0 0 6px; color: var(--doux); }
+#calendrier .aujourdhui h3 { color: var(--accent); }
+#calendrier .vide { margin: 0; color: var(--doux); }
+#calendrier ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }
+#calendrier ul li { background: none; border: 0; padding: 0; display: flex; gap: 8px; align-items: baseline; justify-content: space-between; }
+#calendrier ul li.fait button { text-decoration: line-through; color: var(--doux); }
+#calendrier .marque { font-size: .75rem; color: var(--doux); white-space: nowrap; }
+#calendrier ul li.echeance .marque { color: var(--erreur); }
+#calendrier table.mois { width: 100%; border-collapse: collapse; table-layout: fixed; }
+#calendrier table.mois th { font-size: .75rem; color: var(--doux); font-weight: normal; padding: 4px 0; }
+#calendrier table.mois td { border: 1px solid var(--bord); vertical-align: top; padding: 2px; height: 5.5rem; background: var(--carte); overflow: hidden; }
+#calendrier table.mois td.autre-mois { opacity: .5; }
+#calendrier table.mois td.aujourdhui { outline: 2px solid var(--accent); outline-offset: -2px; }
+#calendrier table.mois .numero { font: inherit; font-size: .8rem; background: none; border: 0; color: var(--doux); padding: 2px 4px; cursor: pointer; }
+#calendrier table.mois ul li { display: block; font-size: .72rem; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#calendrier table.mois ul li .marque { display: none; }
+#calendrier table.mois ul li.echeance button { color: var(--erreur); }
+#calendrier .encore { font-size: .72rem; color: var(--doux); padding-left: 2px; }
