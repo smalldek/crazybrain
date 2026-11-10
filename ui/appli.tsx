@@ -16,6 +16,7 @@ import { appliquer, ordonner } from './liste';
 import { tagsParElement } from './tags';
 import { VueKanban } from './vue-kanban';
 import { VueProjets } from './vue-projets';
+import { VueTableau } from './vue-tableau';
 import { lireAnneaux, rattacher } from './cercles';
 import { VueCercles } from './vue-cercles';
 
@@ -26,7 +27,7 @@ interface Message {
   readonly annuler?: () => void;
 }
 
-const NOMS_VUES: Record<Vue, string> = { liste: 'Liste', kanban: 'Kanban', backlog: 'Backlog', projets: 'Projets', cercles: 'Cercles' };
+const NOMS_VUES: Record<Vue, string> = { liste: 'Liste', kanban: 'Kanban', backlog: 'Backlog', projets: 'Projets', cercles: 'Cercles', tableau: 'Tableau' };
 
 export function Appli() {
   const [elements, setElements] = useState<Element[] | null>(null);
@@ -76,7 +77,7 @@ export function Appli() {
     return () => { actif = false; };
   }, [filtres.requete]);
   const visibles = elements && filtrer(elements, filtres, tagsParElement(tags), aujourdhui(), idsRequete);
-  const rienAMontrer = vue !== 'projets' && vue !== 'cercles' && elements !== null && elements.length > 0 && visibles !== null
+  const rienAMontrer = vue !== 'projets' && vue !== 'cercles' && vue !== 'tableau' && elements !== null && elements.length > 0 && visibles !== null
     && (vue === 'backlog' ? backlog(visibles) : visibles).length === 0;
   // La liste et le backlog dans leur ordre habituel, ou « modifié récemment » d'abord (filtre `tri`).
   const enOrdre = visibles && (vue === 'backlog' ? backlog(visibles) : ordonner(visibles));
@@ -226,7 +227,7 @@ export function Appli() {
         <header className="entete-appli">
           <h1>Crazybrain</h1>
           <nav aria-label="Vues">
-            {(['liste', 'kanban', 'backlog', 'projets', 'cercles'] as const).map((v) => (
+            {(['liste', 'kanban', 'backlog', 'projets', 'cercles', 'tableau'] as const).map((v) => (
               <a key={v} href={adresseVue(v) + window.location.search} aria-current={v === vue ? 'page' : undefined}
                 onClick={(e) => { e.preventDefault(); naviguer(adresseVue(v) + parametresIci()); }}>{NOMS_VUES[v]}</a>
             ))}
@@ -243,7 +244,7 @@ export function Appli() {
           {message.annuler && <button type="button" onClick={message.annuler}>Annuler</button>}
         </p>
         {/* Les filtres valent pour les vues d'éléments ; la vue des projets montre tout. */}
-        {elements && elements.length > 0 && vue !== 'projets' && (
+        {elements && elements.length > 0 && vue !== 'projets' && vue !== 'tableau' && (
           <BarreFiltres filtres={filtres} elements={elements} tags={tags} changer={changerFiltres} />
         )}
         {avisRequete && <p className="etat" id="avis-requete">{avisRequete}</p>}
@@ -254,6 +255,8 @@ export function Appli() {
             ranger={ranger} signaler={(texte) => setMessage({ texte, erreur: true })} jour={aujourdhui()}
             tags={tags} recharger={charger}
             eclaires={visibles && (nombreDeFiltres(filtres) > 0 || filtres.texte) ? new Set(visibles.map((e) => e.id)) : null} />
+        ) : vue === 'tableau' ? (
+          elements && <VueTableau elements={elements} aujourdhui={aujourdhui()} ouvrir={ouvrir} />
         ) : vue === 'projets' ? (
           elements && <VueProjets elements={elements} tags={tags} ouvert={ouvert} ouvrir={ouvrir} creerProjet={creerProjet} />
         ) : vue !== 'kanban' ? (
