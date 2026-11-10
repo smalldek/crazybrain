@@ -34,6 +34,9 @@ Adrien veut apprendre à travailler avec l'IA.
   Playwright). On ne demande à Adrien que ce qu'aucun test ne peut faire à sa place.
 - **Un essai d'Adrien ne bloque rien** (Adrien, 09/11 : « le fait que je teste n'est pas une excuse
   pour s'arrêter ») : on enchaîne les tâches suivantes, il essaie quand il veut.
+- **Une question à Adrien ne bloque rien non plus** (Adrien, 10/11 : « tu peux avancer. on changera
+  après ») : on construit l'option recommandée, on la note (feuille de route et vault), on change
+  après s'il choisit l'autre. N'attend que ce qui ne se défait pas.
 - Une fonctionnalité qui repose sur une hypothèse non vérifiée (`docs/architecture.md`,
   « Hypothèses à vérifier ») commence par la vérifier.
 

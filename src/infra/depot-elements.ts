@@ -25,6 +25,8 @@ export interface FiltresRecherche {
   readonly jourPlanifie?: string;
   /** Nombre maximal de résultats (50 par défaut, 200 au plus). */
   readonly limite?: number;
+  /** `echeance` (par défaut : la plus proche d'abord) ou `modifie` (modifié le plus récemment d'abord). */
+  readonly tri?: 'echeance' | 'modifie';
 }
 
 /** Un résultat de recherche : l'élément et ses tags, écrits « cle:valeur ». */
@@ -139,7 +141,7 @@ export class DepotElements {
            FROM tags t WHERE t.element_id = e.id) AS tags_texte
       FROM elements e
       WHERE ${conditions.join(' AND ')}
-      ORDER BY e.echeance IS NULL, e.echeance, e.cree_le DESC, e.id
+      ORDER BY ${filtres.tri === 'modifie' ? 'e.modifie_le DESC, e.cree_le DESC' : 'e.echeance IS NULL, e.echeance, e.cree_le DESC'}, e.id
       LIMIT ${limite}`;
     const { results } = await this.db.prepare(sql).bind(...parametres).all<LigneElement & { tags_texte: string | null }>();
     return results.map((ligne) => ({

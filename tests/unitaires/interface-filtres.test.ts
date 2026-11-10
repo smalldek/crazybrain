@@ -1,7 +1,7 @@
 // Les filtres de l'écran et le backlog.
 import { describe, expect, it } from 'vitest';
 import type { Element } from '../../ui/api';
-import { avecFiltre, backlog, filtrer, lireFiltres, nombreDeFiltres } from '../../ui/filtres';
+import { avecFiltre, backlog, filtrer, lireFiltres, nombreDeFiltres, parModification } from '../../ui/filtres';
 
 function element(id: string, champs: Partial<Element> = {}): Element {
   return {
@@ -83,5 +83,24 @@ describe('backlog', () => {
       element('faite', { priorite: 'urgente', statut: 'fait' }),
     ];
     expect(ids(backlog(liste))).toEqual(['urgente-proche', 'urgente-loin', 'basse', 'sans-prio-ancien', 'sans-prio-recent']);
+  });
+});
+
+describe('le tri « modifié récemment » (tâche 3.9)', () => {
+  it('met le plus récemment modifié en haut, et à égalité le plus récemment créé', () => {
+    const liste = [
+      element('neuve', { creeLe: '2026-11-08T08:00:00.000Z', modifieLe: '2026-11-08T08:00:00.000Z' }),
+      element('jumelle', { creeLe: '2026-11-02T08:00:00.000Z', modifieLe: '2026-11-08T08:00:00.000Z' }),
+      element('ancienne', { creeLe: '2026-11-01T08:00:00.000Z', modifieLe: '2026-11-09T08:00:00.000Z' }),
+    ];
+    expect(ids(parModification(liste))).toEqual(['ancienne', 'neuve', 'jumelle']);
+    expect(ids(liste)).toEqual(['neuve', 'jumelle', 'ancienne']); // la liste reçue n'est pas touchée
+  });
+
+  it('vit dans l’adresse sans compter comme un filtre ni rien cacher', () => {
+    const f = lireFiltres(new URLSearchParams('tri=modifie&tag=a'));
+    expect(f).toEqual({ tri: 'modifie', tag: 'a' });
+    expect(nombreDeFiltres(f)).toBe(1);
+    expect(ids(filtrer([element('x')], { tri: 'modifie' }, new Map(), '2026-11-10'))).toEqual(['x']);
   });
 });

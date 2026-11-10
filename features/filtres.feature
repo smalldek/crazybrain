@@ -79,3 +79,15 @@ Fonctionnalité: Les filtres et le backlog
     Quand je reviens à la liste
     Alors la page montre la tâche "Backlog : urgente"
     Et la page ne montre pas la tâche "Backlog : haute"
+
+  Scénario: Trier par « modifié récemment » : un commentaire fait remonter la tâche (tâche 3.9)
+    Étant donné que la tâche "Tri : commentée" existe avec la priorité "basse"
+    Et que la tâche "Tri : créée après" existe avec la priorité "basse"
+    Et que la tâche "Tri : commentée" est commentée
+    Et que j'ouvre la page
+    Alors la tâche "Tri : commentée" est après la tâche "Tri : créée après"
+    Quand je trie par "Modifié récemment"
+    Alors la tâche "Tri : créée après" est après la tâche "Tri : commentée"
+    Et le bouton des filtres dit "Filtres"
+    Quand je recharge la page
+    Alors la tâche "Tri : créée après" est après la tâche "Tri : commentée"

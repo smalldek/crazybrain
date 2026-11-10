@@ -9,7 +9,9 @@ interface LigneCommentaire { id: string; element_id: string; texte: string; aute
 
 /**
  * Dépôt des liens, tags et commentaires d'un élément. Comme DepotElements : chaque écriture range
- * la donnée ET son événement dans un même `batch` (une transaction).
+ * la donnée ET son événement dans un même `batch` (une transaction). Elle avance aussi la date
+ * « modifié le » de l'élément concerné (des deux, pour un lien) : un commentaire, un tag ou un lien
+ * est une modification, et le tri « modifié récemment » doit la voir (tâche 3.9).
  */
 export class DepotRelations {
   constructor(private readonly db: D1Database) {}
@@ -50,12 +52,17 @@ export class DepotRelations {
     await this.db.batch([
       this.db.prepare('INSERT INTO liens (id, source, cible, type, cree_le) VALUES (?, ?, ?, ?, ?)')
         .bind(lien.id, lien.source, lien.cible, lien.type, lien.creeLe),
+      this.toucher([lien.source, lien.cible], evenement),
       insererEvenement(this.db, evenement),
     ]);
   }
 
-  async retirerLien(id: string, evenement: Evenement): Promise<void> {
-    await this.db.batch([this.db.prepare('DELETE FROM liens WHERE id = ?').bind(id), insererEvenement(this.db, evenement)]);
+  async retirerLien(lien: InstantaneLien, evenement: Evenement): Promise<void> {
+    await this.db.batch([
+      this.db.prepare('DELETE FROM liens WHERE id = ?').bind(lien.id),
+      this.toucher([lien.source, lien.cible], evenement),
+      insererEvenement(this.db, evenement),
+    ]);
   }
 
   async tagsDe(elementId: string): Promise<InstantaneTag[]> {
@@ -83,6 +90,7 @@ export class DepotRelations {
   async ajouterTag(tag: InstantaneTag, evenement: Evenement): Promise<void> {
     await this.db.batch([
       this.db.prepare('INSERT INTO tags (element_id, cle, valeur) VALUES (?, ?, ?)').bind(tag.elementId, tag.cle, tag.valeur),
+      this.toucher([tag.elementId], evenement),
       insererEvenement(this.db, evenement),
     ]);
   }
@@ -90,6 +98,7 @@ export class DepotRelations {
   async retirerTag(tag: InstantaneTag, evenement: Evenement): Promise<void> {
     await this.db.batch([
       this.db.prepare('DELETE FROM tags WHERE element_id = ? AND cle = ? AND valeur = ?').bind(tag.elementId, tag.cle, tag.valeur),
+      this.toucher([tag.elementId], evenement),
       insererEvenement(this.db, evenement),
     ]);
   }
@@ -106,8 +115,15 @@ export class DepotRelations {
     await this.db.batch([
       this.db.prepare('INSERT INTO commentaires (id, element_id, texte, auteur, cree_le) VALUES (?, ?, ?, ?, ?)')
         .bind(commentaire.id, commentaire.elementId, commentaire.texte, commentaire.auteur, commentaire.creeLe),
+      this.toucher([commentaire.elementId], evenement),
       insererEvenement(this.db, evenement),
     ]);
+  }
+
+  /** Avance « modifié le » des éléments à la date de l'événement (jamais en arrière). */
+  private toucher(ids: readonly string[], evenement: Evenement): D1PreparedStatement {
+    return this.db.prepare('UPDATE elements SET modifie_le = ?1 WHERE id IN (?2, ?3) AND modifie_le < ?1')
+      .bind(evenement.date, ids[0], ids[ids.length - 1]);
   }
 }
 

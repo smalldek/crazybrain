@@ -8,7 +8,7 @@ import { adresseElement, adresseVue, elementDeLAdresse, naviguer, parametresIci,
 import { api, type Appartenance, type Changements, type Element, type Tag } from './api';
 import { BarreFiltres } from './barre-filtres';
 import { aujourdhui } from './dates';
-import { backlog, filtrer, lireFiltres, nombreDeFiltres } from './filtres';
+import { backlog, filtrer, lireFiltres, nombreDeFiltres, parModification } from './filtres';
 import { PanneauDetail } from './panneau-detail';
 import { LigneTache } from './ligne-tache';
 import { ecrireCritere, lireCritere, rangsAPoser, type Critere, type StatutColonne } from './kanban';
@@ -61,6 +61,9 @@ export function Appli() {
   const visibles = elements && filtrer(elements, filtres, tagsParElement(tags), aujourdhui());
   const rienAMontrer = vue !== 'projets' && vue !== 'cercles' && elements !== null && elements.length > 0 && visibles !== null
     && (vue === 'backlog' ? backlog(visibles) : visibles).length === 0;
+  // La liste et le backlog dans leur ordre habituel, ou « modifié récemment » d'abord (filtre `tri`).
+  const enOrdre = visibles && (vue === 'backlog' ? backlog(visibles) : ordonner(visibles));
+  const lignes = enOrdre && filtres.tri === 'modifie' ? parModification(enOrdre) : enOrdre;
 
   const erreur = (e: unknown): void => setMessage({ texte: e instanceof Error ? e.message : String(e), erreur: true });
 
@@ -238,7 +241,7 @@ export function Appli() {
         ) : vue !== 'kanban' ? (
           // Le backlog est une liste : ce qui n'est ni fait ni planifié, le plus important en haut.
           <ul id="liste" className={vue === 'backlog' ? 'backlog' : undefined}>
-            {visibles && (vue === 'backlog' ? backlog(visibles) : ordonner(visibles)).map((e) => (
+            {lignes?.map((e) => (
               <LigneTache key={e.id} element={e} ouverte={e.id === ouvert}
                 modifier={(c) => void modifier(e.id, c)} supprimer={() => void supprimer(e)}
                 ouvrir={() => ouvrir(e.id)} />

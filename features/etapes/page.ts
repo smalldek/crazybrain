@@ -86,10 +86,13 @@ Then("la tâche {string} n'est pas cochée", async function (this: Monde, titre:
 });
 
 Then('la tâche {string} est après la tâche {string}', async function (this: Monde, apres: string, avant: string) {
-  const titres = await page(this).locator('#liste li .titre').allTextContents();
-  const [i, j] = [titres.indexOf(avant), titres.indexOf(apres)];
-  expect(i, `« ${avant} » absente`).toBeGreaterThanOrEqual(0);
-  expect(j, `« ${apres} » doit venir après « ${avant} » : ${JSON.stringify(titres)}`).toBeGreaterThan(i);
+  // Relu jusqu'à ce que l'ordre tienne (la liste se redessine après un changement d'adresse).
+  const ordre = async (): Promise<string[]> => page(this).locator('#liste li .titre').allTextContents();
+  await expect.poll(async () => {
+    const titres = await ordre();
+    const [i, j] = [titres.indexOf(avant), titres.indexOf(apres)];
+    return i >= 0 && j > i;
+  }, { message: `« ${apres} » doit venir après « ${avant} » : ${JSON.stringify(await ordre())}` }).toBe(true);
 });
 
 Then("la tâche {string} a l'échéance {string}, marquée en retard", async function (this: Monde, titre: string, jour: string) {

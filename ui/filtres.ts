@@ -17,9 +17,11 @@ export interface Filtres {
   readonly dans?: string;
   /** `en_retard`, `semaine` (d'ici 7 jours, retard compris), `sans`. */
   readonly echeance?: string;
+  /** L'ordre de la liste et du backlog : `modifie` (modifié récemment d'abord) ; absent, l'ordre habituel. Ne filtre rien. */
+  readonly tri?: string;
 }
 
-export const CLES_FILTRES = ['texte', 'type', 'statut', 'priorite', 'tag', 'dans', 'echeance'] as const;
+export const CLES_FILTRES = ['texte', 'type', 'statut', 'priorite', 'tag', 'dans', 'echeance', 'tri'] as const;
 
 export function lireFiltres(p: URLSearchParams): Filtres {
   const f: Record<string, string> = {};
@@ -39,7 +41,7 @@ export function avecFiltre(p: URLSearchParams, cle: (typeof CLES_FILTRES)[number
 }
 
 export function nombreDeFiltres(f: Filtres): number {
-  return CLES_FILTRES.filter((c) => c !== 'texte' && f[c] !== undefined).length;
+  return CLES_FILTRES.filter((c) => c !== 'texte' && c !== 'tri' && f[c] !== undefined).length;
 }
 
 /** Pour comparer sans majuscules ni accents : « Éléphant » et « elephant » se trouvent. */
@@ -109,4 +111,12 @@ export function backlog(elements: readonly Element[]): Element[] {
       (POIDS_PRIORITE[a.priorite ?? ''] ?? 9) - (POIDS_PRIORITE[b.priorite ?? ''] ?? 9)
       || (a.echeance ?? '9999').localeCompare(b.echeance ?? '9999')
       || a.creeLe.localeCompare(b.creeLe));
+}
+
+/**
+ * Modifié le plus récemment d'abord : une modification de champ, un commentaire, un tag ou un lien
+ * avance « modifié le ». À égalité, le plus récemment créé d'abord.
+ */
+export function parModification(elements: readonly Element[]): Element[] {
+  return [...elements].sort((a, b) => b.modifieLe.localeCompare(a.modifieLe) || b.creeLe.localeCompare(a.creeLe));
 }

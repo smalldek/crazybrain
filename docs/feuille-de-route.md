@@ -260,9 +260,8 @@ au titre sur un téléphone.
   - 3.3 ✓ Commentaires et liens dans le panneau : la liste des commentaires (auteur, date, retours à
     la ligne gardés) et un champ pour commenter ; les liens lus dans le bon sens (« bloque » depuis
     la source, « bloqué par » depuis la cible), un lien mène à l'autre élément, une croix le retire,
-    et on en pose un en choisissant sa sorte et l'élément (05/11). La date « modifié le » ne bouge
-    toujours pas pour un commentaire ou un lien (remarque de 2.6) : à trancher avec le tri
-    « modifié récemment », qui n'existe pas encore.
+    et on en pose un en choisissant sa sorte et l'élément (05/11). La date « modifié le » qui ne
+    bougeait pas pour un commentaire ou un lien (remarque de 2.6) : réglé en 3.9.
   - 3.4 ✓ Le kanban (`/kanban`) : colonnes par statut, glisser une carte change son statut, la
     glisser dans sa colonne change son ordre (`rang`, posé de 1000 en 1000). À la souris, au doigt
     après un appui long (un glissement court fait défiler), au clavier. Toucher une carte ouvre son
@@ -293,6 +292,14 @@ au titre sur un téléphone.
     « Dans ») ; un champ y crée un projet. Dessous, les releases : une par valeur du tag
     `release`, les ouvertes d'abord, avec leur avancement ; toucher une release ouvre le kanban
     filtré sur son tag (05/11).
+  - 3.9 ✓ La date « modifié le » et le tri « modifié récemment » (10/11). Poser ou retirer un
+    commentaire, un tag ou un lien avance « modifié le » de l'élément (des deux éléments pour un
+    lien), dans la même transaction que la donnée et son événement ; elle ne recule jamais. Choix
+    pris sans attendre Adrien (règle du 10/11 : on avance sur la recommandation, on change après) :
+    un commentaire compte comme une modification, parce que « sur quoi ai-je travaillé ? » doit le
+    voir. Dans les filtres, « Ordre (liste et backlog) » : « Habituel » ou « Modifié récemment »,
+    gardé dans l'adresse (`?tri=modifie`), sans compter comme un filtre. Le connecteur :
+    `chercher_elements` prend `tri: "modifie"`.
 - **Fait quand** : glisser une carte d'une colonne à l'autre change son statut ; les couloirs se
   font par une clé de tag au choix ; cliquer une carte ouvre son panneau ; le filtre
   `composant:pxe` ne montre que ces éléments ; l'adresse d'un élément l'ouvre directement.

@@ -117,7 +117,7 @@ export async function repondreMcp(requete: Request, sources: SourcesMcp, horloge
     title: 'Chercher des éléments',
     description: `Cherche les tâches, projets et autres éléments d'Adrien. Tous les filtres sont facultatifs et se cumulent.
 Sans filtre de statut, les éléments faits sont exclus (inclureFaits pour les avoir).
-Pour « qu'est-ce qui est en retard ? » : enRetard. Pour « qu'est-ce que j'ai aujourd'hui ? » : aujourdhui.`,
+Pour « qu'est-ce qui est en retard ? » : enRetard. Pour « qu'est-ce que j'ai aujourd'hui ? » : aujourdhui. Pour « sur quoi ai-je travaillé ? » : tri modifie.`,
     inputSchema: {
       texte: z.string().optional().describe('Un morceau du titre ou de la description'),
       statuts: z.array(statut).optional(),
@@ -131,6 +131,7 @@ Pour « qu'est-ce qui est en retard ? » : enRetard. Pour « qu'est-ce que j'ai 
       jourPlanifie: jour.optional().describe('Planifié ce jour-là'),
       inclureFaits: z.boolean().optional(),
       limite: z.number().int().min(1).max(200).optional().describe('50 par défaut'),
+      tri: z.enum(['echeance', 'modifie']).optional().describe("echeance (défaut : la plus proche d'abord) ou modifie (modifié le plus récemment d'abord : commentaire, tag et lien comptent)"),
     },
     annotations: { readOnlyHint: true },
   }, async (a) => proteger(async () => {
@@ -149,6 +150,7 @@ Pour « qu'est-ce qui est en retard ? » : enRetard. Pour « qu'est-ce que j'ai 
       ...(a.echeanceJusquA ? { echeanceJusquA: a.echeanceJusquA } : {}),
       ...(a.aujourdhui ? { jourPlanifie: auj } : a.jourPlanifie ? { jourPlanifie: a.jourPlanifie } : {}),
       ...(a.limite ? { limite: a.limite } : {}),
+      ...(a.tri ? { tri: a.tri } : {}),
     };
     const trouves: Trouve[] = await sources.chercher(filtres);
     return texte({ aujourdhui: auj, nombre: trouves.length, elements: trouves.map((t) => enBref(t.element, t.tags)) });
