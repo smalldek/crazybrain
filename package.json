@@ -32,6 +32,7 @@
     "@modelcontextprotocol/sdk": "^1.32.2",
     "hono": "^4.13.16",
     "jose": "^6.2.15",
+    "postal-mime": "4.1.4",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "zod": "^4.6.7"

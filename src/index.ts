@@ -11,6 +11,7 @@ import { Hono, type Context } from 'hono';
 import { jetonAccessValide } from './acces/jeton-access';
 import { api } from './api/routes';
 import { ErreurConflit, ErreurIntrouvable } from './application/erreurs';
+import { ServiceCourrier } from './application/service-courrier';
 import { ServiceElements } from './application/service-elements';
 import { clesVapid, ServiceRappels } from './application/service-rappels';
 import { ServiceRequetes } from './application/service-requetes';
@@ -36,6 +37,10 @@ interface Env {
   VAPID_PRIVEE?: string;
   /** La clé publique VAPID, en base64url : le téléphone la donne en s'abonnant. */
   VAPID_PUBLIQUE?: string;
+  /** Les adresses d'Adrien qui peuvent écrire une tâche par mail (étape 8), séparées par des virgules : un secret. */
+  COURRIER_EXPEDITEURS?: string;
+  /** Le serveur de Cloudflare qui signe le résultat d'authentification des mails reçus (« authserv-id »). */
+  COURRIER_AUTHSERV?: string;
 }
 
 type Ctx = Context<{ Bindings: Env }>;
@@ -222,5 +227,17 @@ export default {
   scheduled: async (_evenement, env, ctx) => {
     const service = new ServiceRappels(env.DB, clesVapid(env.VAPID_PRIVEE, env.VAPID_PUBLIQUE), (r) => fetch(r));
     ctx.waitUntil(service.envoyerEchus().then(() => undefined, (e: unknown) => console.error('rappels', e)));
+  },
+  // Un mail reçu à l'adresse de Crazybrain (Email Routing, étape 8) : une tâche s'il vient d'Adrien et
+  // qu'il est authentifié, sinon refusé. Le détail du refus est noté (onglet Tableau), pas renvoyé.
+  email: async (message, env) => {
+    try {
+      const service = new ServiceCourrier(env.DB, { expediteurs: env.COURRIER_EXPEDITEURS, authserv: env.COURRIER_AUTHSERV });
+      const issue = await service.recevoir(message.from, message.raw);
+      if (!issue.accepte) message.setReject('Mail refusé par Crazybrain.');
+    } catch (e) {
+      console.error('courrier', e);
+      message.setReject('Crazybrain n’a pas pu lire ce mail.');
+    }
   },
 } satisfies ExportedHandler<Env>;

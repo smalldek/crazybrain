@@ -4,6 +4,7 @@
 // index.ts. L'auteur est toujours Adrien : seul lui passe Access ; Claude passe par le connecteur.
 import { Hono, type Context } from 'hono';
 import { ServiceElements } from '../application/service-elements';
+import { ServiceCourrier } from '../application/service-courrier';
 import { clesVapid, ServiceRappels } from '../application/service-rappels';
 import { ServiceRequetes } from '../application/service-requetes';
 import { CHAMPS_MODIFIABLES, type ChangementsElement } from '../domaine/modifier-element';
@@ -170,3 +171,6 @@ api.post('/push/recu/:id', async (c) => {
 });
 
 api.get('/push/envois', async (c) => c.json({ envois: await rappels(c).envois() }));
+
+// Les derniers mails reçus (étape 8) : acceptés ou refusés, et pourquoi.
+api.get('/mails', async (c) => c.json({ mails: await new ServiceCourrier(c.env.DB, { expediteurs: undefined, authserv: undefined }).derniers() }));
