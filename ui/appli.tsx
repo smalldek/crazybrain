@@ -3,7 +3,7 @@
 // son panneau de détail.
 // Un composant React est une fonction qui rend ce qu'il faut afficher à partir de son état ;
 // quand l'état change (useState), React refait l'affichage tout seul.
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { adresseElement, adresseVue, elementDeLAdresse, naviguer, parametresIci, useAdresse, vueDe, type Vue } from './adresse';
 import { api, type Appartenance, type Changements, type Element, type Tag } from './api';
 import { BarreFiltres } from './barre-filtres';
@@ -106,10 +106,18 @@ export function Appli() {
     setMessage({ texte: e instanceof Error ? e.message : String(e), erreur: true });
   };
 
+  // Les envois en vol et une « génération » qui avance à chaque envoi. Une relecture partie avant un
+  // envoi, ou pendant qu'un envoi est en vol, est jetée : elle remettrait à l'écran un état déjà dépassé
+  // (une part supprimée qui réapparaît un instant). Le dernier envoi terminé relance la relecture.
+  const enVol = useRef(0);
+  const generation = useRef(0);
+
   /** Relit la liste ; garde le message en cours sauf « Chargement… » et « Aucune tâche ». */
   const charger = useCallback(async (): Promise<void> => {
+    const depart = generation.current;
     try {
       const [lus, tousLesTags, liens] = await Promise.all([api.lister(), api.tags(), api.appartenances()]);
+      if (depart !== generation.current || enVol.current > 0) return;
       setElements(lus);
       setTags(tousLesTags);
       setAppartenances(liens);
@@ -145,66 +153,63 @@ export function Appli() {
     if (titre.trim() === '') return;
     setEnvoi(true);
     try {
-      await api.creer(descriptionPartagee ? { titre, description: descriptionPartagee } : { titre });
-      setTitre('');
-      setDescriptionPartagee(null);
-      setMessage({ texte: '' });
-      await charger();
-    } catch (e) {
-      erreur(e);
+      const cree = await creerElement(descriptionPartagee ? { titre, description: descriptionPartagee } : { titre });
+      if (cree) {
+        setTitre('');
+        setDescriptionPartagee(null);
+      }
     } finally {
       setEnvoi(false);
     }
   }
 
-  async function creerElement(champs: Changements & { titre: string }): Promise<void> {
+  /**
+   * Envoie un changement au serveur sans faire attendre l'écran, qui l'a déjà montré. Quand plus rien
+   * n'est en vol, une relecture confirme l'état (ou remet l'état vrai si le serveur a refusé).
+   */
+  async function envoyer<T>(envoi: () => Promise<T>): Promise<T | null> {
+    enVol.current += 1;
+    generation.current += 1;
     try {
-      await api.creer(champs);
-      setMessage({ texte: '' });
-      await charger();
+      const resultat = await envoi();
+      setMessage((m) => (m.annuler ? m : { texte: '' }));
+      return resultat;
     } catch (e) {
       erreur(e);
+      return null;
+    } finally {
+      enVol.current -= 1;
+      if (enVol.current === 0) void charger();
     }
   }
 
+  /** Crée un élément ; il paraît dès que le serveur rend son identifiant, sans attendre la relecture. */
+  async function creerElement(champs: Changements & { titre: string }): Promise<Element | null> {
+    const cree = await envoyer(() => api.creer(champs));
+    if (cree) setElements((l) => (l && !l.some((e) => e.id === cree.id) ? [...l, cree] : l));
+    return cree;
+  }
+
   async function creerProjet(titreProjet: string): Promise<void> {
-    try {
-      await api.creer({ titre: titreProjet, type: 'projet' });
-      setMessage({ texte: '' });
-      await charger();
-    } catch (e) {
-      erreur(e);
-    }
+    await creerElement({ titre: titreProjet, type: 'projet' });
   }
 
   // La page montre le changement tout de suite (une case cochée se coche sous le doigt), puis relit
   // la liste : si le serveur refuse, la relecture remet l'état vrai et le message dit pourquoi.
   async function modifier(id: string, changements: Changements): Promise<void> {
     setElements((liste) => liste && liste.map((e) => (e.id === id ? appliquer(e, changements) : e)));
-    try {
-      await api.modifier(id, changements);
-      setMessage({ texte: '' });
-      await charger();
-    } catch (e) {
-      erreur(e);
-      await charger();
-    }
+    await envoyer(() => api.modifier(id, changements));
   }
 
   // Plusieurs éléments d'un coup (une carte posée, une ligne rangée, la journée casée) : l'écran les
-  // montre tout de suite, les envois partent un par un, puis la relecture confirme.
+  // montre tout de suite, les envois partent ensemble, puis la relecture confirme.
   async function modifierPlusieurs(envois: readonly (readonly [string, Changements])[]): Promise<void> {
+    if (envois.length === 0) return;
     setElements((l) => l && l.map((e) => {
       const changement = envois.find(([i]) => i === e.id);
       return changement ? appliquer(e, changement[1]) : e;
     }));
-    try {
-      for (const [i, changements] of envois) await api.modifier(i, changements);
-      setMessage({ texte: '' });
-    } catch (e) {
-      erreur(e);
-    }
-    await charger();
+    await envoyer(() => Promise.all(envois.map(([i, changements]) => api.modifier(i, changements))));
   }
 
   // Une carte posée sur le kanban : son statut s'il a changé, et les rangs de sa colonne d'arrivée
@@ -231,29 +236,19 @@ export function Appli() {
   }
 
   // Supprimer ne demande pas de confirmation : la tâche est archivée, et « Annuler » la restaure
-  // tout de suite (plus rapide qu'une question à chaque fois, et rien n'est perdu).
+  // tout de suite (plus rapide qu'une question à chaque fois, et rien n'est perdu). Elle quitte
+  // l'écran sous le doigt, sans attendre le serveur.
   async function supprimer(element: Element): Promise<void> {
-    try {
-      await api.supprimer(element.id);
-    } catch (e) {
-      erreur(e);
-      return;
-    }
+    setElements((l) => l && l.filter((e) => e.id !== element.id));
     setMessage({
       texte: `« ${element.titre} » supprimée.`,
       annuler: () => {
-        void (async () => {
-          try {
-            await api.restaurer(element.id);
-            setMessage({ texte: '' });
-            await charger();
-          } catch (e) {
-            erreur(e);
-          }
-        })();
+        setMessage({ texte: '' });
+        setElements((l) => (l && !l.some((e) => e.id === element.id) ? [...l, element] : l));
+        void envoyer(() => api.restaurer(element.id));
       },
     });
-    await charger();
+    await envoyer(() => api.supprimer(element.id));
   }
 
   return (
@@ -299,7 +294,7 @@ export function Appli() {
           elements && <VueCercles elements={rattacher(elements, appartenances)} centre={parametres.get('centre')} anneaux={lireAnneaux(parametres.get('anneaux'))}
             ouvert={ouvert} ouvrir={ouvrir} modifier={modifier} creer={creerElement} supprimer={supprimer}
             ranger={ranger} signaler={(texte) => setMessage({ texte, erreur: true })} jour={aujourdhui()}
-            tags={tags} recharger={charger}
+            tags={tags} recharger={charger} modifierPlusieurs={modifierPlusieurs}
             eclaires={visibles && (nombreDeFiltres(filtres) > 0 || filtres.texte) ? new Set(visibles.map((e) => e.id)) : null} />
         ) : vue === 'journee' ? (
           visibles && <VueJournee elements={visibles} aujourdhui={aujourdhui()} ouvrir={ouvrir}

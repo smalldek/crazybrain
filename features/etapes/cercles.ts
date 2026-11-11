@@ -175,7 +175,11 @@ Then('le passage au nouveau centre est animé', async function (this: Monde) {
 });
 
 When('je touche le centre des cercles', async function (this: Monde) {
-  await cercles(this).locator('g.centre').click();
+  // En oignon, le centre est une bande autour des ancêtres : on la touche en haut, pas en son milieu.
+  const centre = cercles(this).locator('g.centre');
+  const boite = await centre.boundingBox();
+  if (boite === null) throw new Error('Pas de centre dessiné');
+  await centre.click({ position: { x: boite.width / 2, y: Math.min(6, boite.height / 4) } });
 });
 
 Then('la part {string} couvre {int}°', async function (this: Monde, titre: string, degres: number) {
@@ -423,7 +427,7 @@ Then('la ligne {string} du plan est grisée', async function (this: Monde, titre
 const saisie = (monde: Monde): Locator => cercles(monde).locator('.saisie-cercle input');
 
 When('je touche le « + » du centre et je tape {string}', async function (this: Monde, titre: string) {
-  await cercles(this).locator('button.ajout-centre').click();
+  await cercles(this).locator('g.ajout-centre').click();
   await saisie(this).fill(titre);
   await saisie(this).press('Enter');
   await expect(part(this, titre)).toHaveCount(1);
@@ -478,4 +482,72 @@ Then("la barre d'actions tient dans l'écran", async function (this: Monde) {
 
 Then("la saisie du cercle tient dans l'écran", async function (this: Monde) {
   await tientDansLEcran(this, '.saisie-cercle');
+});
+
+// ——— Les retours du 11/11 ———
+Then("l'oignon montre « Tout » puis {string} autour du centre", async function (this: Monde, titre: string) {
+  await expect(cercles(this).locator('g.oignon .racine')).toHaveAttribute('aria-label', 'Remonter à « Tout »');
+  await expect(cercles(this).locator(`g.oignon .anneau-parent[data-titre="${titre}"]`)).toHaveCount(1);
+  await expect(cercles(this).locator('g.centre.en-oignon')).toHaveCount(1);
+});
+
+When("je touche l'anneau {string} de l'oignon", async function (this: Monde, titre: string) {
+  // Une bande est un anneau : on la touche en haut, là où s'écrit son titre.
+  const bande = cercles(this).locator(`g.oignon .anneau-parent[data-titre="${titre}"]`);
+  const boite = await bande.boundingBox();
+  if (boite === null) throw new Error(`Pas d'anneau « ${titre} »`);
+  await bande.click({ position: { x: boite.width / 2, y: 3 } });
+});
+
+Then("pendant que je tire la frontière de la part choisie jusqu'à {int}°, la valeur dit {string}", async function (this: Monde, degres: number, texte: string) {
+  const { interieur, exterieur } = await rayonsDe(this, cercles(this).locator('g.part[aria-pressed="true"]'));
+  const q = auPoint(degres, (interieur + exterieur) / 2);
+  const depart = await repere(this, cercles(this).locator('g.poignee-frontiere'));
+  const arrivee = await ecranDe(this, q.x, q.y);
+  const souris = page(this).mouse;
+  await souris.move(depart.x, depart.y);
+  await souris.down();
+  await souris.move(arrivee.x, arrivee.y, { steps: 10 });
+  // Le doigt encore posé, la valeur s'affiche au-dessus du cercle.
+  await expect(cercles(this).locator('.valeur-geste span')).toHaveText(texte);
+  await souris.up();
+  await expect(cercles(this).locator('.valeur-geste')).toHaveCount(0);
+});
+
+When('je touche « Supprimer » sur le cercle alors que le serveur met {int} secondes à répondre', async function (this: Monde, secondes: number) {
+  await page(this).route('**/api/elements/*', async (route) => {
+    if (route.request().method() !== 'DELETE') { await route.fallback(); return; }
+    await new Promise((r) => setTimeout(r, secondes * 1000));
+    await route.fallback();
+  });
+  await cercles(this).locator('.barre-part').getByRole('button', { name: 'Supprimer', exact: true }).click();
+});
+
+Then('la part {string} a disparu sans attendre le serveur', async function (this: Monde, titre: string) {
+  // Moins d'une seconde, quand le serveur en met trois : la part quitte l'écran sous le doigt.
+  let supprimee = false;
+  const reponse = page(this).waitForResponse((r) => r.request().method() === 'DELETE', { timeout: 6000 }).then(() => { supprimee = true; });
+  const relecture = page(this).waitForResponse((r) => supprimee && r.url().endsWith('/api/elements') && r.request().method() === 'GET', { timeout: 8000 });
+  await expect(part(this, titre)).toHaveCount(0, { timeout: 1000 });
+  // Et après la réponse du serveur, la relecture ne la fait pas revenir.
+  await reponse;
+  await relecture;
+  await expect(part(this, titre)).toHaveCount(0);
+  await page(this).unroute('**/api/elements/*');
+});
+
+When(/^je touche « (Zoomer|Dézoomer|Plein écran) » au-dessus du cercle$/, async function (this: Monde, nom: string) {
+  await cercles(this).locator('.outils-loupe').getByRole('button', { name: nom, exact: true }).click();
+});
+
+Then(/^le dessin est grossi ([\d,]+) fois$/, async function (this: Monde, facteur: string) {
+  await expect(cercles(this).locator('svg.dessin-cercles')).toHaveAttribute('data-zoom', facteur.replace(',', '.'));
+});
+
+Then('le cercle est en plein écran', async function (this: Monde) {
+  await expect(cercles(this).locator('.zone-dessin')).toHaveClass(/plein-ecran/);
+});
+
+Then("le cercle n'est plus en plein écran", async function (this: Monde) {
+  await expect(cercles(this).locator('.zone-dessin')).not.toHaveClass(/plein-ecran/);
 });
