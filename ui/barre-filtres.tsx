@@ -3,6 +3,7 @@
 // les filtres dans l'adresse et les y écrit (les règles sont dans filtres.ts).
 import { useEffect, useId, useState } from 'react';
 import { api, type Element, type Requete, type Tag, type TypeElement } from './api';
+import { TYPE_RETOUR } from './retours';
 import { avecFiltre, CLES_FILTRES, nombreDeFiltres, type Filtres } from './filtres';
 import { texteTag } from './tags';
 
@@ -29,7 +30,7 @@ export function BarreFiltres({ filtres, elements, tags, changer }: Proprietes) {
   // Le texte tapé s'écrit dans l'adresse à chaque lettre, mais sans attendre l'adresse pour s'afficher.
   const [texte, setTexte] = useState(filtres.texte ?? '');
   useEffect(() => { setTexte(filtres.texte ?? ''); }, [filtres.texte]);
-  useEffect(() => { api.types().then(setTypes, () => setTypes([])); }, []);
+  useEffect(() => { api.types().then((t) => setTypes(t.filter((x) => x.code !== TYPE_RETOUR)), () => setTypes([])); }, []);
   useEffect(() => { api.requetes().then(setRequetes, () => setRequetes([])); }, []);
   const id = useId();
 

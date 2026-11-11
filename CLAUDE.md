@@ -37,6 +37,11 @@ Adrien veut apprendre à travailler avec l'IA.
 - **Une question à Adrien ne bloque rien non plus** (Adrien, 10/11 : « tu peux avancer. on changera
   après ») : on construit l'option recommandée, on la note (feuille de route et vault), on change
   après s'il choisit l'autre. N'attend que ce qui ne se défait pas.
+- **Les retours d'Adrien sur les pages** (étape 9) sont des éléments de type `retour` dans la base,
+  tagués `page:<vue>`. Quand il dit « traite les retours » : les lire par le connecteur
+  (`chercher_elements`, type `retour`, statuts à faire et en cours), répondre à chacun par
+  `commenter_element` (la réponse s'affiche sur la page), le passer en cours, construire par PR, puis
+  le passer à fait avec le lien de la PR en commentaire.
 - Une fonctionnalité qui repose sur une hypothèse non vérifiée (`docs/architecture.md`,
   « Hypothèses à vérifier ») commence par la vérifier.
 

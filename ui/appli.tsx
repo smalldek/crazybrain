@@ -24,6 +24,8 @@ import { VueJournee } from './vue-journee';
 import { VueHorizons } from './vue-horizons';
 import { lireAnneaux, rattacher } from './cercles';
 import { VueCercles } from './vue-cercles';
+import { FilClaude } from './fil-claude';
+import { estRetour, NOMS_VUES, retoursDeLaPage } from './retours';
 
 /** Le message sous la saisie : un état, une erreur, ou « supprimée » avec un bouton Annuler. */
 interface Message {
@@ -32,10 +34,10 @@ interface Message {
   readonly annuler?: () => void;
 }
 
-const NOMS_VUES: Record<Vue, string> = { liste: 'Liste', journee: 'Journée', kanban: 'Kanban', backlog: 'Backlog', calendrier: 'Calendrier', horizons: 'Horizons', projets: 'Projets', cercles: 'Cercles', tableau: 'Tableau' };
-
 export function Appli() {
   const [elements, setElements] = useState<Element[] | null>(null);
+  // Les retours écrits à Claude depuis les pages (étape 9) : à part, aucune vue de travail ne les montre.
+  const [retours, setRetours] = useState<Element[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [appartenances, setAppartenances] = useState<Appartenance[]>([]);
   const [message, setMessage] = useState<Message>({ texte: 'Chargement…' });
@@ -110,10 +112,12 @@ export function Appli() {
   const charger = useCallback(async (): Promise<void> => {
     try {
       const [lus, tousLesTags, liens] = await Promise.all([api.lister(), api.tags(), api.appartenances()]);
-      setElements(lus);
+      const travail = lus.filter((e) => !estRetour(e));
+      setElements(travail);
+      setRetours(lus.filter(estRetour));
       setTags(tousLesTags);
       setAppartenances(liens);
-      setMessage((m) => (m.erreur || m.annuler ? m : { texte: lus.length === 0 ? 'Aucune tâche pour l’instant.' : '' }));
+      setMessage((m) => (m.erreur || m.annuler ? m : { texte: travail.length === 0 ? 'Aucune tâche pour l’instant.' : '' }));
     } catch (e) {
       erreur(e);
     }
@@ -326,10 +330,24 @@ export function Appli() {
             poser={(id, statut, ordre) => void poser(id, statut, ordre)} />
         )}
       </main>
+      <FilClaude retours={retoursDeLaPage(retours, tags, vue)} recharger={charger}
+        contexte={{
+          vue,
+          adresse: chemin + window.location.search,
+          element: elementRegarde(elements ?? [], ouvert ?? (vue === 'cercles' ? parametres.get('centre') : null)),
+          largeur: window.innerWidth,
+          hauteur: window.innerHeight,
+        }} />
       {ouvert && (
         <PanneauDetail key={ouvert} id={ouvert} elements={elements ?? []} tousLesTags={tags} fermer={fermer}
           modifie={() => void charger()} />
       )}
     </div>
   );
+}
+
+/** L'élément qu'Adrien regarde (ouvert dans le détail, ou au centre des cercles), pour le contexte d'un retour. */
+function elementRegarde(elements: readonly Element[], id: string | null): { id: string; titre: string } | null {
+  const trouve = id ? elements.find((e) => e.id === id) : undefined;
+  return trouve ? { id: trouve.id, titre: trouve.titre } : null;
 }

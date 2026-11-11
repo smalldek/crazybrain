@@ -430,3 +430,43 @@ li .ouvrir:hover, li .ouvrir:focus-visible { background: var(--fond); color: var
 .ajout-centre { position: absolute; z-index: 5; transform: translate(-50%, -50%); width: 40px; height: 40px; border-radius: 50%;
   border: 1px solid var(--accent); background: var(--carte); color: var(--accent); font-size: 1.4rem; line-height: 1; cursor: pointer;
   box-shadow: 0 2px 8px rgb(0 0 0 / .15); }
+
+/* Le bouton « Claude » et le fil des retours de la page (étape 9). Le bouton reste en bas à droite,
+   par-dessus tout ; le fil s'ouvre en feuille depuis le bas sur le téléphone, en colonne à droite
+   sur un grand écran. */
+.bouton-claude { position: fixed; right: 16px; bottom: 16px; z-index: 40; font: inherit; font-weight: 600;
+                 padding: 10px 16px; border-radius: 999px; border: 0; background: var(--accent); color: var(--carte);
+                 box-shadow: 0 2px 8px rgb(0 0 0 / .25); cursor: pointer; display: flex; align-items: center; gap: 6px; }
+.bouton-claude .pastille { background: var(--carte); color: var(--accent); border-radius: 999px; min-width: 1.4em;
+                           padding: 0 6px; font-size: .85rem; text-align: center; }
+.fil-claude { position: fixed; z-index: 41; left: 0; right: 0; bottom: 0; max-height: 85vh; display: flex; flex-direction: column;
+              background: var(--carte); color: var(--texte); border-top: 1px solid var(--bord); border-radius: 14px 14px 0 0;
+              box-shadow: 0 -4px 16px rgb(0 0 0 / .2); padding: 12px 16px 16px; }
+@media (min-width: 900px) {
+  .fil-claude { left: auto; width: 26rem; top: 0; max-height: none; border-radius: 0; border-top: 0; border-left: 1px solid var(--bord); }
+}
+.fil-claude header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.fil-claude h2 { font-size: 1.1rem; margin: 0; }
+.fil-claude .fermer { font: inherit; font-size: 1.2rem; background: none; border: 0; color: var(--doux); width: 40px; height: 40px; cursor: pointer; }
+.fil-claude .defile { overflow-y: auto; flex: 1; min-height: 3rem; margin: 8px 0; }
+.fil-claude .retours { list-style: none; margin: 0; padding: 0; }
+.fil-claude li.retour { display: block; background: none; border: 0; border-bottom: 1px solid var(--bord); border-radius: 0; padding: 8px 0; }
+.fil-claude .bulle { padding: 8px 10px; border-radius: 10px; margin: 4px 0; max-width: 92%; }
+.fil-claude .bulle.adrien { background: var(--fond); margin-left: auto; }
+.fil-claude .bulle.claude { border: 1px solid var(--accent); }
+.fil-claude .bulle .entete { color: var(--doux); font-size: .8rem; margin-bottom: 2px; }
+.fil-claude .bulle .texte { white-space: pre-wrap; overflow-wrap: anywhere; }
+.fil-claude .attente { color: var(--doux); font-size: .85rem; margin: 4px 0; }
+.fil-claude .repondre { display: flex; gap: 6px; margin: 4px 0; }
+.fil-claude .repondre input { padding: 8px 10px; font-size: 1rem; }
+.fil-claude .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.fil-claude button:not(.fermer) { font: inherit; font-size: .95rem; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--bord);
+                                  background: var(--fond); color: var(--texte); cursor: pointer; }
+.fil-claude .nouveau-retour { display: flex; flex-direction: column; gap: 6px; margin: 0; }
+.fil-claude textarea { width: 100%; font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--bord);
+                       background: var(--fond); color: var(--texte); resize: vertical; }
+.fil-claude .nouveau-retour button[type=submit] { background: var(--accent); color: var(--carte); border: 0; align-self: flex-end; }
+.fil-claude .reglage-claude, .fil-claude .retours-faits { margin-top: 8px; font-size: .9rem; }
+.fil-claude summary { cursor: pointer; color: var(--doux); }
+/* Le bas de page garde la place du bouton, pour qu'il ne cache pas la dernière ligne. */
+main { padding-bottom: 72px; }

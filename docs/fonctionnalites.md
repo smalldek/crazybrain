@@ -62,6 +62,7 @@ La liste complète voulue par Adrien (03/11/2026), et pour chacune un statut :
 | Fonctionnalité | Statut | Étape | Motif, précision |
 |---|---|---|---|
 | Connecteur Claude (MCP) | première version | 2 | Claude lit et écrit les éléments depuis une conversation d'Adrien. |
+| Parler à Claude depuis chaque page | première version | 9 | Un bouton « Claude » sur chaque page ouvre le fil des retours de la page : Adrien écrit, Claude répond par le connecteur, la réponse s'affiche sous le retour ; « Continuer dans Claude » ouvre une conversation avec le message prêt. Pas de chat en direct dans la page : il faudrait l'API, payée à l'usage. |
 | Moteur de requêtes et filtres enregistrés | première version | 4 | Claude, par le connecteur, écrit la requête SQL, la teste et l'enregistre ; l'outil la rejoue. Exécution en lecture seule (voir l'architecture). |
 
 Pourquoi Claude écrit la requête depuis une conversation, et pas depuis une page de l'outil : à
