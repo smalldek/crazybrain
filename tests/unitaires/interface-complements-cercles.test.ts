@@ -66,4 +66,14 @@ describe('disposer : importance absolue et couleur choisie', () => {
     const de = (id: string) => dessin.parts.find((p) => p.element.id === id)?.couleur;
     expect([de('sante'), de('courir'), de('dormir'), de('famille')]).toEqual([6, 6, 6, 1]);
   });
+
+  it("une part seule à son niveau laisse ses enfants prendre une couleur chacun (11/11, « Sport est tout en bleu »)", () => {
+    // Autour de « Tout », une seule branche : « vie ». Ses enfants ne sont pas tous de sa couleur.
+    const dessin = disposer(arbre, null, 3);
+    const de = (id: string) => dessin.parts.find((p) => p.element.id === id);
+    expect([de('vie')?.couleur, de('sante')?.couleur, de('famille')?.couleur]).toEqual([0, 0, 1]);
+    // Plus bas, des sœurs qui héritent de la même couleur se distinguent par la nuance.
+    expect([de('courir')?.couleur, de('dormir')?.couleur]).toEqual([0, 0]);
+    expect([de('courir')?.nuance, de('dormir')?.nuance]).toEqual([0, 1]);
+  });
 });

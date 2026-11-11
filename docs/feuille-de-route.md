@@ -27,7 +27,7 @@ tâche en a besoin, elle le dit (« Il faut du projet Cloudflare »), et Adrien 
 | 1. Socle | Le site, la connexion Google, la base, l'API, le connecteur testé, modifier une tâche, le modèle complet | Fait le 05/11 |
 | 2. Connecteur Claude | Claude lit, crée et modifie les tâches depuis une conversation | Fait le 05/11 |
 | 3. Kanban, détail, tags, filtres | Le premier vrai écran de travail | Construite le 05/11 |
-| 3b. Objectifs en cercles | Le découpage pondéré en cercles, avancement qui remonte (avancé depuis l'étape 7 le 08/11) | Construite le 08/11 ; le cercle comme outil principal (3b.8 à 3b.12) le 09/11 ; éditer sur le cercle (3b.13) le 10/11 ; essai d'Adrien quand il voudra |
+| 3b. Objectifs en cercles | Le découpage pondéré en cercles, avancement qui remonte (avancé depuis l'étape 7 le 08/11) | Construite le 08/11 ; le cercle comme outil principal (3b.8 à 3b.12) le 09/11 ; éditer sur le cercle (3b.13) le 10/11 ; ses retours du 11/11 (3b.14) ; essai d'Adrien quand il voudra |
 | 4. Requêtes enregistrées, tableaux de bord | Claude écrit des requêtes, l'outil les rejoue | — |
 | 5. L'appli sur le téléphone | Icône, partage, rappels, tâches récurrentes | — |
 | 6. Calendrier et mode journée | Planifier sa journée à la Sunsama | — |
@@ -356,6 +356,7 @@ responsables (une personne par part), qui n'ont de sens qu'à plusieurs.
 | 3b.11 | Les gestes directs sur le cercle : tirer le bord d'une part règle son importance, tirer son remplissage règle son avancement | **Fait le 09/11** |
 | 3b.12 | Glisser une part sur le cercle pour la ranger dans une autre ou la réordonner ; les flèches du clavier | **Fait le 09/11** |
 | 3b.13 | Éditer sur le cercle même : toucher une part ouvre ses boutons (ajouter dedans, à côté, renommer, supprimer), on tape le titre sur place | **Fait le 10/11** |
+| 3b.14 | Les retours d'Adrien du 11/11 : actions immédiates, boutons sur le bord du cercle, importance sans toucher aux poids des sœurs et sa valeur affichée, titres lisibles, zoom et plein écran, couleurs, centre en oignon | **Fait le 11/11** |
 
 ### 3b.1 Poids et avancement
 
@@ -550,6 +551,49 @@ On en reprend le principe, pas l'apparence :
 - **Non vérifié par un test** : le clic droit (les scénarios passent par les boutons et le clavier).
 - **Pas repris pour l'instant** : couper, copier, coller une branche (le glisser de 3b.12 déplace déjà) ;
   la miniature du cercle entier quand on a zoomé ; replier les anneaux extérieurs ; annuler et rétablir.
+
+### 3b.14 Les retours d'Adrien du 11/11
+
+Le 11/11, Adrien a essayé les cercles sur son téléphone [dit par Adrien, 11/11/2026] : les pages lentes,
+un ajout ou une suppression qui ne se fait pas tout de suite et un bouton parfois ignoré ; en tirant
+une part, on ne voit pas de combien, et elle rognait sa seule voisine ; la barre « + Dedans / À côté »
+cachait le texte et devait être sur le cercle ; des titres trop longs qu'on ne voit pas ; le cercle
+ne prend pas toute la page, il faut pouvoir zoomer ; Sport tout en bleu ; enfin, dans un sous-élément,
+on ne sait plus où l'on est, et toucher le centre pour remonter n'est pas naturel.
+
+- **Tout de suite.** Ajouter, supprimer, régler se voient sous le doigt : l'écran n'attend plus le
+  serveur (avant, chaque geste attendait l'envoi puis la relecture de toute la liste, trois appels).
+  Une relecture partie avant un envoi est jetée, pour qu'une part supprimée ne revienne pas un instant ;
+  le dernier envoi terminé relance la relecture, qui remet l'état vrai si le serveur a refusé.
+- **Tirer une part ne change que son poids.** Les poids des sœurs restent tels quels ; à l'écran,
+  elles se serrent toutes ensemble dans leurs proportions (comme dans Goalscape). Lecture retenue de
+  « je devrais pas modifier les autres » : ne pas toucher aux autres éléments, seulement à celui qu'on
+  tire. Pendant le geste, sa part dans le parent s'affiche en grand au-dessus du cercle (« 75 % de son
+  parent »), comme l'avancement quand on tire le remplissage.
+- **Les boutons sur le bord du cercle**, ronds, au-delà des anneaux : ils ne couvrent plus aucun
+  titre. « + » plein face au milieu de la part (un sous-élément, sur l'anneau suivant), « + » en
+  pointillés sur sa frontière de fin (une sœur, juste après), « ✎ » et « − » rouge à côté. Sans part
+  choisie, un « + » en bas ajoute dans le centre.
+- **Les titres.** Trop long, un titre s'écrit un peu plus petit avant d'être coupé ; en zoomant, il
+  garde sa taille à l'écran, donc plus de lettres tiennent et il finit par se lire en entier.
+- **La place.** Le cercle prend toute la largeur (sur un grand écran, sans dépasser la hauteur de la
+  fenêtre). Zoom : pincer à deux doigts (et déplacer), Ctrl + molette, ou les boutons − et + en haut à
+  droite ; « ⊙ » revient au cercle entier ; « ⛶ » met le cercle en plein écran (Échap ou ✕ en sort).
+- **Les couleurs.** Une part seule à son niveau (Sport, seul projet) ne donne plus sa couleur à ses
+  enfants : ils en prennent une chacun. Plus bas, des sœurs qui héritent de la même couleur se
+  distinguent par une nuance plus soutenue.
+- **L'oignon.** Dans un sous-élément, le milieu du cercle montre le chemin : « Tout » au cœur, puis un
+  anneau par parent, puis le centre lui-même avec son titre et son avancement. Toucher un de ces
+  anneaux y remonte directement.
+- **Vérifié par** : tests unitaires (le poids d'une part tirée, les bandes de l'oignon, les couleurs
+  d'une branche seule et les nuances, le titre plus petit avant d'être coupé) ; un scénario dans le
+  navigateur à la taille d'un téléphone (l'oignon et la remontée par un anneau ; la valeur affichée
+  pendant le réglage ; une part supprimée qui disparaît en moins d'une seconde alors que le serveur
+  en met trois, et ne revient pas ; le zoom ; le plein écran) ; captures regardées à la taille d'un
+  téléphone.
+- **Non vérifié par un test** : le pincement à deux doigts (Playwright ne simule pas deux doigts) et
+  la molette.
+- **Hors de ce fil** : discuter avec Claude depuis chaque page, demandé le même jour, traité ailleurs.
 
 ### 3b.6 L'essai d'Adrien
 

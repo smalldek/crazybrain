@@ -14,8 +14,8 @@ import { lireListe } from './liste-collee';
 import { tagsParElement } from './tags';
 import { PlanCercles } from './plan-cercles';
 import {
-  ANNEAUX_MAX, arcDeTexte, avancementSous, chemin, cibleSous, couleursChoisies, couper, deplacerFrontiere, disposer, TEINTES, enfantsDe,
-  enfantsParParent, filAriane, geometrieDe, libelle, point, polaire, pourcent, RAYON_CENTRE, trames, type Cible, type Geometrie, type Part,
+  ANNEAUX_MAX, arcDeTexte, avancementSous, chemin, cibleSous, couleursChoisies, couper, bordTire, etirerPart, disposer, TEINTES, enfantsDe,
+  enfantsParParent, filAriane, geometrieDe, libelle, oignon, point, polaire, pourcent, trames, type Cible, type Geometrie, type Part,
 } from './cercles';
 
 interface Proprietes {
@@ -26,7 +26,7 @@ interface Proprietes {
   readonly ouvert: string | null;
   readonly ouvrir: (id: string) => void;
   readonly modifier: (id: string, changements: Changements) => Promise<void>;
-  readonly creer: (champs: Changements & { titre: string }) => Promise<void>;
+  readonly creer: (champs: Changements & { titre: string }) => Promise<Element | null>;
   readonly supprimer: (element: Element) => Promise<void>;
   /** Range un élément dans un parent (null : à la racine) et ordonne sa nouvelle fratrie. */
   readonly ranger: (id: string, parent: string | null, ordre: readonly string[]) => Promise<void>;
@@ -39,6 +39,8 @@ interface Proprietes {
   readonly tags: readonly Tag[];
   /** Relit les éléments et les tags, après des changements faits ici directement par l'API. */
   readonly recharger: () => Promise<void>;
+  /** Plusieurs changements d'un coup (égaliser, une frontière tirée) : montrés tout de suite, envoyés ensemble. */
+  readonly modifierPlusieurs: (envois: readonly (readonly [string, Changements])[]) => Promise<void>;
 }
 
 /** L'adresse de la vue avec ce centre et ce nombre d'anneaux (les autres paramètres restent). */
@@ -71,7 +73,7 @@ interface Edition {
 
 /** Un geste en cours sur la part choisie : tirer une frontière, ou tirer le remplissage. */
 type Geste =
-  | { readonly sorte: 'frontiere'; readonly gauche: Part; readonly droite: Part; readonly pointeur: number }
+  | { readonly sorte: 'frontiere'; readonly part: Part; readonly fratrie: readonly Part[]; readonly pointeur: number }
   | { readonly sorte: 'avancement'; readonly part: Part; readonly pointeur: number };
 
 /** Une part attrapée pour la glisser : où est le doigt (dans le dessin) et ce qu'il y a dessous. */
@@ -96,9 +98,39 @@ function pointDuDessin(svg: SVGSVGElement | null, clientX: number, clientY: numb
 /** La clé de la fiche : l'élément, son poids et son avancement enregistrés. */
 const cleFiche = (e: Element): string => `${e.id}-${e.poids ?? ''}-${e.avancement ?? ''}`;
 
+/** La moitié de la largeur du dessin entier : le cercle (rayon 98) et, autour, la place des boutons d'action. */
+const VUE = 114;
+/** Le rayon où se posent les boutons d'action, juste au-delà du bord du cercle. */
+const RAYON_BOUTONS = 105;
+/** Le rayon d'un bouton d'action (dans le dessin ; environ 18 pixels sur un téléphone). */
+const TAILLE_BOUTON = 8.5;
+const ZOOM_MAX = 6;
+
+/** La loupe : le grossissement et le point du dessin au milieu de la vue. */
+interface Loupe {
+  readonly k: number;
+  readonly x: number;
+  readonly y: number;
+}
+const LOUPE_ENTIERE: Loupe = { k: 1, x: 0, y: 0 };
+
+/** Garde la loupe dans ses bornes : pas plus petit que le cercle entier, et le cercle jamais hors de la vue. */
+function borner(l: Loupe): Loupe {
+  const k = Math.min(ZOOM_MAX, Math.max(1, l.k));
+  const marge = VUE - VUE / k;
+  return { k, x: Math.min(marge, Math.max(-marge, l.x)), y: Math.min(marge, Math.max(-marge, l.y)) };
+}
+
+/** La loupe qui grossit `facteur` fois en gardant le point `p` du dessin sous le même endroit de l'écran. */
+function zoomerAutour(l: Loupe, facteur: number, p: { x: number; y: number }): Loupe {
+  const k = Math.min(ZOOM_MAX, Math.max(1, l.k * facteur));
+  const r = l.k / k;
+  return borner({ k, x: p.x + (l.x - p.x) * r, y: p.y + (l.y - p.y) * r });
+}
+
 const mouvementsReduits = (): boolean => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
-export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier, creer, supprimer, ranger, signaler, eclaires, jour, tags, recharger }: Proprietes) {
+export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier, creer, supprimer, ranger, signaler, eclaires, jour, tags, recharger, modifierPlusieurs }: Proprietes) {
   const [choisi, setChoisi] = useState<string | null>(null);
   const dessinRef = useRef<SVGSVGElement>(null);
   // Le curseur d'importance (ou la frontière tirée) : les poids essayés, montrés avant d'être enregistrés.
@@ -111,6 +143,12 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
   const [glisse, setGlisse] = useState<Glisse | null>(null);
   const [survol, setSurvol] = useState<{ part: Part; x: number; y: number } | null>(null);
   const [edition, setEdition] = useState<Edition | null>(null);
+  // La loupe : le grossissement (1 : le cercle entier) et le point du dessin au milieu de l'écran.
+  const [loupe, setLoupe] = useState<Loupe>(LOUPE_ENTIERE);
+  const [pleinEcran, setPleinEcran] = useState(false);
+  // Les doigts posés sur le dessin ; à deux, ils pincent pour zoomer et se déplacent pour bouger le dessin.
+  const doigts = useRef(new Map<number, { x: number; y: number }>());
+  const pince = useRef<{ ecart: number; loupe: Loupe; milieu: { x: number; y: number } } | null>(null);
   // Après un ajout qui tombe hors des anneaux montrés, on zoome sur son parent puis on choisit le nouveau.
   const aChoisir = useRef<{ id: string; edition: Edition } | null>(null);
   // Ce qui était affiché au dernier dessin : le départ du prochain mouvement.
@@ -127,6 +165,14 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
   const dessin = disposer(apercuAvancement, centre, anneaux, apercu, couleursChoisies(parElement));
   const fil = filAriane(elements, centre);
   const centreInconnu = centre !== null && dessin.centre === null;
+  // Le centre en oignon : « Tout » au milieu, une bande par ancêtre, puis le centre ; les anneaux autour.
+  const coeur = oignon(centreInconnu ? 0 : fil.length);
+  const rc = coeur.rayon;
+  const cadre = { x: loupe.x - VUE / loupe.k, y: loupe.y - VUE / loupe.k, cote: (2 * VUE) / loupe.k };
+  /** Où tombe un point du dessin dans la zone, en pourcentages (pour y poser un champ de saisie). */
+  const dansLaZone = (x: number, y: number): { left: string; top: string } => ({
+    left: `${((x - cadre.x) / cadre.cote) * 100}%`, top: `${((y - cadre.y) / cadre.cote) * 100}%`,
+  });
   const partChoisie = dessin.parts.find((p) => p.element.id === choisi) ?? null;
   // Pendant un réglage, tout s'estompe sauf ce qu'il touche : la part et ses sœurs pour
   // l'importance ; ses sœurs et ses ancêtres pour l'avancement (il remonte jusqu'au centre).
@@ -141,9 +187,9 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
   // Les anneaux se partagent toute la place : une branche à deux niveaux remplit le cercle comme une à trois.
   const anneauxDessines = Math.min(anneaux, Math.max(1, ...dessin.parts.map((p) => p.anneau)));
   // Les géométries d'arrivée, et celles du moment si un mouvement est en cours.
-  const arrivee = new Map(dessin.parts.map((p) => [p.element.id, geometrieDe(p, anneauxDessines)]));
+  const arrivee = new Map(dessin.parts.map((p) => [p.element.id, geometrieDe(p, anneauxDessines, rc)]));
   const enCours = mouvement ? trames(mouvement.depart, arrivee, instant) : null;
-  const geometrieDeLaPart = (p: Part): Geometrie => enCours?.get(p.element.id)?.geometrie ?? arrivee.get(p.element.id) ?? geometrieDe(p, anneauxDessines);
+  const geometrieDeLaPart = (p: Part): Geometrie => enCours?.get(p.element.id)?.geometrie ?? arrivee.get(p.element.id) ?? geometrieDe(p, anneauxDessines, rc);
   useEffect(() => {
     affiche.current = { geometries: new Map(dessin.parts.map((p) => [p.element.id, geometrieDeLaPart(p)])), parts: dessin.parts };
   });
@@ -171,15 +217,6 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
     return () => cancelAnimationFrame(image);
   }, [mouvement]);
 
-  /** Plusieurs changements d'un coup (égaliser, une frontière tirée), puis une seule relecture. */
-  async function modifierPlusieurs(envois: readonly [string, Changements][]): Promise<void> {
-    try {
-      for (const [id, c] of envois) await api.modifier(id, c);
-    } catch (e) {
-      signaler(e instanceof Error ? e.message : String(e));
-    }
-    await recharger();
-  }
 
   /** Crée les lignes d'une liste collée sous `parent` (null : à la racine), dans l'ordre, chacune sous la sienne. */
   async function creerListe(parent: string | null, texte: string, typeDefaut: string): Promise<number> {
@@ -215,7 +252,7 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
     const suivant = aChoisir.current;
     aChoisir.current = null;
     setChoisi(suivant?.id ?? null); setEdition(suivant?.edition ?? null);
-    setApercu(new Map()); setAvancementEssaye(null); setGeste(null); setGlisse(null);
+    setApercu(new Map()); setAvancementEssaye(null); setGeste(null); setGlisse(null); setLoupe(LOUPE_ENTIERE);
   }, [centre]);
 
   const zoomer = (id: string): void => naviguer(adresseCercles(id));
@@ -243,13 +280,13 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
     const freres = enfantsDe(parent, elements, enfants);
     // Son type : celui d'une sœur, sinon « objectif » à la racine et « tâche » ailleurs (comme la fiche).
     const type = freres[0]?.type ?? (parent === null ? 'objectif' : 'tache');
-    try {
-      const cree = await api.creer({ titre, type, parent });
+    {
+      const cree = await creer({ titre, type, parent });
+      if (!cree) return;
       const ids = freres.map((f) => f.id);
       const i = sorte === 'cote' && id ? ids.indexOf(id) : -1;
       // « À côté » se place juste après la part, pas au bout de la fratrie.
-      if (i >= 0 && i < ids.length - 1) await ranger(cree.id, parent, [...ids.slice(0, i + 1), cree.id, ...ids.slice(i + 1)]);
-      else await recharger();
+      if (i >= 0 && i < ids.length - 1) void ranger(cree.id, parent, [...ids.slice(0, i + 1), cree.id, ...ids.slice(i + 1)]);
       // La saisie reste ouverte : un autre titre ajoute la sœur suivante, comme on dresse une liste.
       const suite: Edition = { sorte: 'cote', id: cree.id };
       const anneauDuParent = parent === null || parent === (dessin.centre?.id ?? null) ? 0
@@ -262,8 +299,6 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
         setChoisi(cree.id);
         setEdition(suite);
       }
-    } catch (e) {
-      signaler(e instanceof Error ? e.message : String(e));
     }
   }
 
@@ -280,7 +315,6 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
     await supprimer(part.element);
   }
 
-  /** Les raccourcis sur une part choisie : Inser ou + (sous-élément), F2 (renommer), Suppr (supprimer). */
   /** Ferme la saisie et rend la main à la part, pour enchaîner au clavier. */
   function fermerSaisie(id: string): void {
     setEdition(null);
@@ -289,6 +323,7 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
     });
   }
 
+  /** Les raccourcis sur une part choisie : Inser ou + (sous-élément), F2 (renommer), Suppr (supprimer). */
   function raccourci(part: Part, touche: string): boolean {
     // Les nôtres (Inser, F2, Suppr) et ceux du menu de Goalscape (Ctrl+Entrée, Ctrl+Maj+Entrée, Alt+Entrée,
     // Ctrl+Retour arrière ; Cmd au lieu de Ctrl sur un Mac).
@@ -332,17 +367,12 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
   }
 
   // ——— Les poignées de la part choisie : tirer sa frontière avec une sœur, tirer son remplissage ———
-  const voisines = ((): { gauche: Part; droite: Part } | null => {
+  const fratrieChoisie = ((): readonly Part[] | null => {
     if (!partChoisie) return null;
     // Au premier anneau, toutes les parts sont sœurs (autour de « Tout », leur parent est vide ou pas chargé).
     const fratrie = dessin.parts.filter((p) => p.anneau === partChoisie.anneau
       && (partChoisie.anneau === 1 || p.element.parent === partChoisie.element.parent)).sort((a, b) => a.debut - b.debut);
-    if (fratrie.length < 2) return null;
-    const i = fratrie.findIndex((p) => p.element.id === partChoisie.element.id);
-    const suivante = fratrie[i + 1];
-    const precedente = fratrie[i - 1];
-    if (suivante) return { gauche: partChoisie, droite: suivante };
-    return precedente ? { gauche: precedente, droite: partChoisie } : null;
+    return fratrie.length < 2 ? null : fratrie;
   })();
   const remplissageReglable = partChoisie !== null && !partChoisie.calcule && partChoisie.element.statut !== 'fait'
     && !dessin.parts.some((p) => p.element.parent === partChoisie.element.id)
@@ -361,10 +391,10 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
     if (!q) return;
     const { angle, rayon } = polaire(q.x, q.y);
     if (geste.sorte === 'frontiere') {
-      const poids = deplacerFrontiere(geste.gauche, geste.droite, angle);
-      setApercu(new Map([[geste.gauche.element.id, poids.gauche], [geste.droite.element.id, poids.droite]]));
+      const etire = etirerPart(geste.part, geste.fratrie, angle);
+      if (etire) setApercu(new Map([[geste.part.element.id, etire.poids]]));
     } else {
-      const { interieur, exterieur } = geometrieDe(geste.part, anneauxDessines);
+      const { interieur, exterieur } = geometrieDe(geste.part, anneauxDessines, rc);
       setAvancementEssaye({ id: geste.part.element.id, valeur: avancementSous(rayon, interieur, exterieur) });
     }
   }
@@ -374,11 +404,8 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
     setGeste(null);
     if (!fini) return;
     if (fini.sorte === 'frontiere') {
-      const g = apercu.get(fini.gauche.element.id);
-      const d = apercu.get(fini.droite.element.id);
-      if (g !== undefined && d !== undefined) {
-        await modifierPlusieurs([[fini.gauche.element.id, { poids: g }], [fini.droite.element.id, { poids: d }]]);
-      }
+      const poids = apercu.get(fini.part.element.id);
+      if (poids !== undefined) await modifier(fini.part.element.id, { poids });
       setApercu(new Map());
     } else if (avancementEssaye) {
       await modifier(fini.part.element.id, { avancement: avancementEssaye.valeur });
@@ -388,7 +415,7 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
 
   // ——— Glisser une part sur le cercle pour la ranger ailleurs ———
   function appuyer(part: Part, evenement: EvenementPointeur): void {
-    if (evenement.button !== 0 || geste) return;
+    if (evenement.button !== 0 || geste || doigts.current.size > 1) return;
     const nouveau = { part, x: evenement.clientX, y: evenement.clientY, pointeur: evenement.pointerId, sorte: evenement.pointerType, minuteur: null as number | null };
     if (evenement.pointerType !== 'mouse') {
       // Au doigt, un appui long attrape la part ; bouger avant laisse la page défiler.
@@ -406,14 +433,51 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
     try { dessinRef.current?.setPointerCapture(a.pointeur); } catch { /* le pointeur est déjà relâché */ }
     navigator.vibrate?.(15);
     setSurvol(null);
-    setGlisse({ part: a.part, x: q.x, y: q.y, cible: cibleSous(dessin.parts, anneauxDessines, q.x, q.y) });
+    setGlisse({ part: a.part, x: q.x, y: q.y, cible: cibleSous(dessin.parts, anneauxDessines, q.x, q.y, rc) });
+  }
+
+  /** Un doigt de plus sur le dessin : au deuxième, la pince remplace tout autre geste. */
+  function poserDoigt(evenement: EvenementPointeur<SVGSVGElement>): void {
+    if (evenement.pointerType === 'mouse') return;
+    doigts.current.set(evenement.pointerId, { x: evenement.clientX, y: evenement.clientY });
+    if (doigts.current.size !== 2) return;
+    const a = appui.current;
+    if (a?.minuteur != null) window.clearTimeout(a.minuteur);
+    appui.current = null;
+    setGlisse(null); setGeste(null); setApercu(new Map()); setAvancementEssaye(null); setSurvol(null);
+    const [p, q] = [...doigts.current.values()];
+    if (!p || !q) return;
+    const milieu = pointDuDessin(dessinRef.current, (p.x + q.x) / 2, (p.y + q.y) / 2);
+    if (milieu) pince.current = { ecart: Math.hypot(p.x - q.x, p.y - q.y), loupe, milieu };
+  }
+
+  function leverDoigt(evenement: EvenementPointeur<SVGSVGElement>): void {
+    doigts.current.delete(evenement.pointerId);
+    if (doigts.current.size < 2) pince.current = null;
+  }
+
+  /** La pince : l'écart des doigts grossit, et le point du dessin pris entre eux reste entre eux. */
+  function pincer(): boolean {
+    const debut = pince.current;
+    const svg = dessinRef.current;
+    const [p, q] = [...doigts.current.values()];
+    if (!debut || !svg || !p || !q) return false;
+    const k = Math.min(ZOOM_MAX, Math.max(1, debut.loupe.k * (Math.hypot(p.x - q.x, p.y - q.y) / Math.max(1, debut.ecart))));
+    const boite = svg.getBoundingClientRect();
+    const cote = (2 * VUE) / k;
+    const fx = ((p.x + q.x) / 2 - boite.left) / boite.width;
+    const fy = ((p.y + q.y) / 2 - boite.top) / boite.height;
+    setLoupe(borner({ k, x: debut.milieu.x - fx * cote + cote / 2, y: debut.milieu.y - fy * cote + cote / 2 }));
+    return true;
   }
 
   function bouger(evenement: EvenementPointeur<SVGSVGElement>): void {
+    if (doigts.current.has(evenement.pointerId)) doigts.current.set(evenement.pointerId, { x: evenement.clientX, y: evenement.clientY });
+    if (pince.current) { pincer(); return; }
     if (geste) { suivreGeste(evenement.clientX, evenement.clientY); return; }
     if (glisse) {
       const q = pointDuDessin(dessinRef.current, evenement.clientX, evenement.clientY);
-      if (q) setGlisse({ ...glisse, x: q.x, y: q.y, cible: cibleSous(dessin.parts, anneauxDessines, q.x, q.y) });
+      if (q) setGlisse({ ...glisse, x: q.x, y: q.y, cible: cibleSous(dessin.parts, anneauxDessines, q.x, q.y, rc) });
       return;
     }
     const a = appui.current;
@@ -440,10 +504,38 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
   useEffect(() => {
     const svg = dessinRef.current;
     if (!svg) return undefined;
-    const retenir = (e: TouchEvent): void => { if (glisse || geste) e.preventDefault(); };
+    const retenir = (e: TouchEvent): void => { if (glisse || geste || e.touches.length > 1) e.preventDefault(); };
     svg.addEventListener('touchmove', retenir, { passive: false });
     return () => svg.removeEventListener('touchmove', retenir);
   }, [glisse, geste]);
+
+  // La molette avec Ctrl (ou le pincement d'un pavé tactile, que le navigateur envoie ainsi) zoome
+  // autour du pointeur ; sans Ctrl, la molette fait défiler la page comme d'habitude.
+  useEffect(() => {
+    const svg = dessinRef.current;
+    if (!svg) return undefined;
+    const molette = (e: WheelEvent): void => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      const p = pointDuDessin(svg, e.clientX, e.clientY);
+      if (p) setLoupe((l) => zoomerAutour(l, Math.exp(-e.deltaY / 300), p));
+    };
+    svg.addEventListener('wheel', molette, { passive: false });
+    return () => svg.removeEventListener('wheel', molette);
+  }, []);
+
+  // Échap quitte le plein écran (avant de remonter d'un niveau).
+  useEffect(() => {
+    if (!pleinEcran) return undefined;
+    const touche = (e: globalThis.KeyboardEvent): void => {
+      // Dans un champ, Échap ferme d'abord le champ.
+      if (e.key !== 'Escape' || e.defaultPrevented || (e.target instanceof HTMLElement && e.target.closest('input, textarea, select'))) return;
+      e.preventDefault();
+      setPleinEcran(false);
+    };
+    window.addEventListener('keydown', touche, true);
+    return () => window.removeEventListener('keydown', touche, true);
+  }, [pleinEcran]);
 
   /** Range l'élément lâché : dans le centre, dans une part, ou avant ou après une part (dans le parent de celle-ci). */
   async function deposer(element: Element, cible: Cible): Promise<void> {
@@ -512,12 +604,22 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
         </label>
       </div>
 
-      <div className="zone-dessin">
-      <svg ref={dessinRef} viewBox="-100 -100 200 200" role="group" aria-label={`Cercles de « ${titreCentre} »`}
+      <div className={['zone-dessin', pleinEcran && 'plein-ecran'].filter(Boolean).join(' ')}>
+      <div className="outils-loupe" role="toolbar" aria-label="Zoom">
+        <button type="button" aria-label="Dézoomer" title="Dézoomer (Ctrl + molette, ou pincer)" disabled={loupe.k <= 1}
+          onClick={() => setLoupe((l) => zoomerAutour(l, 1 / 1.5, { x: l.x, y: l.y }))}>−</button>
+        <button type="button" aria-label="Zoomer" title="Zoomer (Ctrl + molette, ou pincer)" disabled={loupe.k >= ZOOM_MAX}
+          onClick={() => setLoupe((l) => zoomerAutour(l, 1.5, { x: l.x, y: l.y }))}>+</button>
+        {loupe.k > 1 && <button type="button" aria-label="Voir le cercle entier" title="Voir le cercle entier" onClick={() => setLoupe(LOUPE_ENTIERE)}>⊙</button>}
+        <button type="button" aria-label={pleinEcran ? 'Quitter le plein écran' : 'Plein écran'} aria-pressed={pleinEcran}
+          title={pleinEcran ? 'Quitter le plein écran (Échap)' : 'Plein écran'} onClick={() => setPleinEcran((v) => !v)}>{pleinEcran ? '✕' : '⛶'}</button>
+      </div>
+      <svg ref={dessinRef} viewBox={`${cadre.x} ${cadre.y} ${cadre.cote} ${cadre.cote}`} role="group" aria-label={`Cercles de « ${titreCentre} »`}
         className={['dessin-cercles', glisse && 'glisse-en-cours', geste && 'geste-en-cours'].filter(Boolean).join(' ')}
-        data-anime={mouvement ? 'oui' : undefined}
-        onPointerMove={bouger} onPointerUp={() => void relacher()}
-        onPointerCancel={() => { appui.current = null; setGlisse(null); if (geste) void finirGeste(); }}
+        data-anime={mouvement ? 'oui' : undefined} data-zoom={Math.round(loupe.k * 100) / 100}
+        onPointerDownCapture={poserDoigt}
+        onPointerMove={bouger} onPointerUp={(e) => { leverDoigt(e); void relacher(); }}
+        onPointerCancel={(e) => { leverDoigt(e); appui.current = null; setGlisse(null); if (geste) void finirGeste(); }}
         onContextMenu={(e) => { if (appui.current || glisse) e.preventDefault(); }}>
         {mouvement?.fantomes.map((p) => {
           const t = enCours?.get(p.element.id);
@@ -531,7 +633,7 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
           );
         })}
         {dessin.parts.map((p) => (
-          <PartDessinee key={p.element.id} part={p} geometrie={geometrieDeLaPart(p)} opacite={enCours?.get(p.element.id)?.opacite ?? 1}
+          <PartDessinee key={p.element.id} part={p} geometrie={geometrieDeLaPart(p)} zoom={loupe.k} opacite={enCours?.get(p.element.id)?.opacite ?? 1}
             enMouvement={mouvement !== null} choisie={p.element.id === choisi}
             eteinte={(eclaires !== null && !eclaires.has(p.element.id)) || (gardees !== null && !gardees.has(p.element.id))}
             enRetard={p.element.echeance !== null && p.element.echeance < jour && p.element.statut !== 'fait'}
@@ -547,17 +649,17 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
             }}
             quitter={() => setSurvol((s) => (s?.part.element.id === p.element.id ? null : s))} />
         ))}
-        {partChoisie && !mouvement && !glisse && voisines && (() => {
-          const { interieur, exterieur } = geometrieDe(partChoisie, anneauxDessines);
-          const angle = voisines.gauche.fin;
+        {partChoisie && !mouvement && !glisse && fratrieChoisie && (() => {
+          const { interieur, exterieur } = geometrieDe(partChoisie, anneauxDessines, rc);
+          const angle = bordTire(partChoisie, fratrieChoisie) === 'fin' ? partChoisie.fin : partChoisie.debut;
           const a = point(interieur + 1, angle);
           const b = point(exterieur - 1, angle);
           const m = point((interieur + exterieur) / 2, angle);
           return (
-            <g className="poignee poignee-frontiere" role="slider" aria-label={`Frontière entre « ${voisines.gauche.element.titre} » et « ${voisines.droite.element.titre} »`}
+            <g className="poignee poignee-frontiere" role="slider" aria-label={`Importance de « ${partChoisie.element.titre} »`}
               aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(partChoisie.part * 100)}
               data-x={Math.round(m.x * 100) / 100} data-y={Math.round(m.y * 100) / 100}
-              onPointerDown={(e) => commencerGeste(e, { sorte: 'frontiere', gauche: voisines.gauche, droite: voisines.droite, pointeur: e.pointerId })}>
+              onPointerDown={(e) => commencerGeste(e, { sorte: 'frontiere', part: partChoisie, fratrie: fratrieChoisie, pointeur: e.pointerId })}>
               <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} />
               <circle cx={m.x} cy={m.y} r={3.2} />
               <circle className="zone" cx={m.x} cy={m.y} r={7} />
@@ -565,7 +667,7 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
           );
         })()}
         {partChoisie && !mouvement && !glisse && remplissageReglable && (() => {
-          const { interieur, exterieur } = geometrieDe(partChoisie, anneauxDessines);
+          const { interieur, exterieur } = geometrieDe(partChoisie, anneauxDessines, rc);
           const r = interieur + ((exterieur - interieur) * partChoisie.avancement) / 100;
           const m = point(r, (partChoisie.debut + partChoisie.fin) / 2);
           return (
@@ -578,7 +680,34 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
             </g>
           );
         })()}
-        <g className={['centre', cible?.sorte === 'centre' && 'cible-dans'].filter(Boolean).join(' ')} role="button" tabIndex={0}
+        {coeur.bandes.length > 0 && (
+          // L'oignon : « Tout » au milieu, puis les ancêtres ; toucher l'un d'eux y remonte directement.
+          <g className="oignon">
+            <g className="anneau-parent racine" role="button" tabIndex={0} aria-label="Remonter à « Tout »"
+              onClick={() => naviguer(adresseCercles(null))}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); naviguer(adresseCercles(null)); } }}>
+              <circle r={coeur.racine} />
+              <text className="titre-oignon">Tout</text>
+            </g>
+            {fil.slice(0, -1).map((e, i) => {
+              const bande = coeur.bandes[i];
+              if (!bande) return null;
+              const milieu = (bande.interieur + bande.exterieur) / 2;
+              return (
+                <g key={e.id} className="anneau-parent" role="button" tabIndex={0} aria-label={`Remonter à « ${e.titre} »`}
+                  data-titre={e.titre} onClick={() => naviguer(adresseCercles(e.id))}
+                  onKeyDown={(ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); naviguer(adresseCercles(e.id)); } }}>
+                  <path className="bande" d={chemin(bande.interieur, bande.exterieur, 0, 2 * Math.PI)} />
+                  <path id={`oignon-${i}`} className="trace" d={arcDuHaut(milieu)} />
+                  <text className="titre-oignon" style={{ fontSize: `${Math.min(3.6, (bande.exterieur - bande.interieur) * 0.62)}px` }}>
+                    <textPath href={`#oignon-${i}`} startOffset="50%">{couper(e.titre, Math.max(6, Math.floor((Math.PI * milieu) / 2.4)), 1)[0]}</textPath>
+                  </text>
+                </g>
+              );
+            })}
+          </g>
+        )}
+        <g className={['centre', coeur.bandes.length > 0 && 'en-oignon', cible?.sorte === 'centre' && 'cible-dans'].filter(Boolean).join(' ')} role="button" tabIndex={0}
           aria-label={centre === null ? `Tout, avancement ${Math.round(dessin.avancementCentre)} %` : `Remonter depuis « ${titreCentre} »`}
           onClick={remonter}
           onKeyDown={(e) => {
@@ -589,11 +718,36 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
               if (premiere) { setChoisi(premiere.element.id); dessinRef.current?.querySelector<SVGGElement>(`g.part[data-id="${premiere.element.id}"]`)?.focus(); }
             }
           }}>
-          <circle r={RAYON_CENTRE - 1} />
-          {lignesCentre.map((l, i) => (
-            <text key={i} y={(lignesCentre.length === 1 ? -3 : -6) + i * 5.4} className="titre-centre">{l}</text>
-          ))}
-          <text y={lignesCentre.length === 1 ? 6 : 8} className="avancement-centre">{Math.round(dessin.avancementCentre)} %</text>
+          {(() => {
+            const bande = coeur.bandes.at(-1);
+            if (!bande) {
+              return (
+                <>
+                  <circle r={rc - 1} />
+                  {lignesCentre.map((l, i) => (
+                    <text key={i} y={(lignesCentre.length === 1 ? -3 : -6) + i * 5.4} className="titre-centre">{l}</text>
+                  ))}
+                  <text y={lignesCentre.length === 1 ? 6 : 8} className="avancement-centre">{Math.round(dessin.avancementCentre)} %</text>
+                </>
+              );
+            }
+            // Le centre est la bande la plus large de l'oignon : son titre en haut, son avancement en bas.
+            const milieu = (bande.interieur + bande.exterieur) / 2;
+            return (
+              <>
+                <path className="bande" d={chemin(bande.interieur, bande.exterieur - 0.6, 0, 2 * Math.PI)} />
+                <path id="oignon-centre-haut" className="trace" d={arcDuHaut(milieu)} />
+                <path id="oignon-centre-bas" className="trace" d={arcDuBas(milieu)} />
+                {/* Zoomé, le titre garde sa taille à l'écran : plus de lettres tiennent sur l'arc. */}
+                <text className="titre-centre" style={loupe.k > 1 ? { fontSize: `${4.6 / loupe.k}px` } : undefined}>
+                  <textPath href="#oignon-centre-haut" startOffset="50%">{couper(titreCentre, Math.max(8, Math.floor((Math.PI * milieu * loupe.k) / 2.9)), 1)[0]}</textPath>
+                </text>
+                <text className="avancement-centre">
+                  <textPath href="#oignon-centre-bas" startOffset="50%">{Math.round(dessin.avancementCentre)} %</textPath>
+                </text>
+              </>
+            );
+          })()}
         </g>
         {glisse && (
           <g className="etiquette-glisse" aria-hidden="true" transform={`translate(${glisse.x} ${glisse.y - 9})`}>
@@ -601,48 +755,66 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
             <text>{couper(glisse.part.element.titre, 18, 1)[0]}</text>
           </g>
         )}
-      </svg>
-      {!mouvement && !glisse && !geste && (() => {
-        // La barre d'actions de la part choisie, posée contre son bord extérieur ; sans part choisie,
-        // un « + » sous le centre ajoute dans le centre.
-        if (edition && (edition.sorte === 'dedans' && edition.id === (dessin.centre?.id ?? null) && !partChoisie)) {
+        {!mouvement && !glisse && !geste && !edition && (() => {
+          // Les boutons d'action, sur le bord du cercle (pas sur les titres) : sans part choisie, un « + »
+          // en bas ajoute dans le centre ; avec une part choisie, ses boutons se posent au-delà de son bord.
+          if (!partChoisie) {
+            return (
+              <g className="barre-part">
+                <BoutonCercle angle={Math.PI} classe="plus ajout-centre" signe="+" nom={`Ajouter dans « ${titreCentre} »`}
+                  agir={() => setEdition({ sorte: 'dedans', id: dessin.centre?.id ?? null })} />
+              </g>
+            );
+          }
+          const e = partChoisie.element;
+          const angles = anglesDesBoutons(partChoisie);
           return (
-            <SaisieCercle x={0} y={RAYON_CENTRE} dessous libelle={`Ajouter dans « ${titreCentre} »`} valeur=""
+            <g className="barre-part" role="toolbar" aria-label={`Actions sur « ${e.titre} »`}>
+              <BoutonCercle angle={angles.supprimer} classe="moins" signe="−" nom="Supprimer" aide="Supprimer (Suppr)"
+                agir={() => void supprimerSurLeCercle(partChoisie)} />
+              <BoutonCercle angle={angles.renommer} classe="crayon" signe="✎" nom="Renommer" aide="Renommer (F2)"
+                agir={() => setEdition({ sorte: 'renommer', id: e.id })} />
+              <BoutonCercle angle={angles.dedans} classe="plus" signe="+" nom="Ajouter un sous-élément" aide="Ajouter un sous-élément, sur l'anneau suivant (Inser)"
+                agir={() => setEdition({ sorte: 'dedans', id: e.id })} />
+              <BoutonCercle angle={angles.cote} classe="plus cote" signe="+" nom="Ajouter à côté" aide="Ajouter à côté, juste après (Ctrl+Maj+Entrée)"
+                agir={() => setEdition({ sorte: 'cote', id: e.id })} />
+            </g>
+          );
+        })()}
+      </svg>
+      {geste && (() => {
+        // Pendant un réglage, la valeur s'affiche au-dessus du cercle, là où le doigt ne la cache pas.
+        const id = geste.part.element.id;
+        const p = dessin.parts.find((x) => x.element.id === id);
+        if (!p) return null;
+        const valeur = geste.sorte === 'frontiere' ? `${pourcent(p.part)} de son parent`
+          : `Avancement ${avancementEssaye?.id === id ? avancementEssaye.valeur : Math.round(p.avancement)} %`;
+        return (
+          <div className="valeur-geste" role="status">
+            <strong>{p.element.titre}</strong>
+            <span>{valeur}</span>
+          </div>
+        );
+      })()}
+      {!mouvement && !glisse && !geste && edition && (() => {
+        // Le champ pour taper un titre, posé au bord du cercle, là où l'on a touché le bouton.
+        if (edition.sorte === 'dedans' && edition.id === (dessin.centre?.id ?? null) && !partChoisie) {
+          const q = point(RAYON_BOUTONS, Math.PI);
+          return (
+            <SaisieCercle position={dansLaZone(q.x, q.y)} dessous libelle={`Ajouter dans « ${titreCentre} »`} valeur=""
               valider={(t) => ajouterSurLeCercle('dedans', dessin.centre?.id ?? null, t)} fermer={() => setEdition(null)} />
           );
         }
-        if (!partChoisie) {
-          const q = { x: 0, y: RAYON_CENTRE };
-          return (
-            <button type="button" className="ajout-centre" aria-label={`Ajouter dans « ${titreCentre} »`} title={`Ajouter dans « ${titreCentre} »`}
-              style={{ left: `${((q.x + 100) / 200) * 100}%`, top: `${((q.y + 100) / 200) * 100}%` }}
-              onClick={() => setEdition({ sorte: 'dedans', id: dessin.centre?.id ?? null })}>+</button>
-          );
-        }
-        const { exterieur } = geometrieDe(partChoisie, anneauxDessines);
-        const a = partChoisie.fin - partChoisie.debut >= 2 * Math.PI - 1e-9 ? Math.PI : (partChoisie.debut + partChoisie.fin) / 2;
-        const q = point(exterieur, a);
-        const dessous = q.y >= 0;
+        if (!partChoisie || edition.id !== partChoisie.element.id) return null;
         const e = partChoisie.element;
-        if (edition && edition.id === e.id) {
-          const libelle = edition.sorte === 'dedans' ? `Ajouter dans « ${e.titre} »`
-            : edition.sorte === 'cote' ? 'Ajouter à côté' : `Renommer « ${e.titre} »`;
-          return (
-            <SaisieCercle key={`${edition.sorte}-${e.id}`} x={q.x} y={q.y} dessous={dessous} libelle={libelle}
-              valeur={edition.sorte === 'renommer' ? e.titre : ''}
-              valider={(t) => (edition.sorte === 'renommer' ? renommerSurLeCercle(e.id, t) : ajouterSurLeCercle(edition.sorte, e.id, t))}
-              fermer={() => fermerSaisie(e.id)} />
-          );
-        }
+        const q = point(RAYON_BOUTONS, milieuDe(partChoisie));
+        const libelle = edition.sorte === 'dedans' ? `Ajouter dans « ${e.titre} »`
+          : edition.sorte === 'cote' ? 'Ajouter à côté' : `Renommer « ${e.titre} »`;
         return (
-          <BarrePart x={q.x} y={q.y} dessous={dessous} titre={e.titre}>
-            <button type="button" aria-label="Ajouter un sous-élément" title="Ajouter un sous-élément (Inser)"
-              onClick={() => setEdition({ sorte: 'dedans', id: e.id })}><span aria-hidden="true">＋</span> Dedans</button>
-            <button type="button" aria-label="Ajouter à côté" title="Ajouter à côté"
-              onClick={() => setEdition({ sorte: 'cote', id: e.id })}><span aria-hidden="true">＋</span> À côté</button>
-            <button type="button" aria-label="Renommer" title="Renommer (F2)" onClick={() => setEdition({ sorte: 'renommer', id: e.id })}>✎</button>
-            <button type="button" className="moins" aria-label="Supprimer" title="Supprimer (Suppr)" onClick={() => void supprimerSurLeCercle(partChoisie)}>−</button>
-          </BarrePart>
+          <SaisieCercle key={`${edition.sorte}-${e.id}`} position={dansLaZone(q.x, q.y)} dessous={q.y >= 0} libelle={libelle}
+            valeur={edition.sorte === 'renommer' ? e.titre : ''}
+            valider={(t) => (edition.sorte === 'renommer' ? renommerSurLeCercle(e.id, t) : ajouterSurLeCercle(edition.sorte, e.id, t))}
+            fermer={() => fermerSaisie(e.id)} />
         );
       })()}
       </div>
@@ -703,17 +875,53 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
   );
 }
 
-/** La barre d'actions de la part choisie, posée contre son bord extérieur. */
-function BarrePart({ x, y, dessous, titre, children }: {
-  x: number; y: number; dessous: boolean; titre: string; children: ReactNode;
+/** Un bouton rond posé sur le bord du cercle, à l'angle donné. */
+function BoutonCercle({ angle, classe, signe, nom, aide, agir }: {
+  angle: number; classe: string; signe: string; nom: string; aide?: string; agir: () => void;
 }) {
-  const cadre = useGarderDansLEcran<HTMLDivElement>();
+  const q = point(RAYON_BOUTONS, angle);
   return (
-    <div ref={cadre} className={`barre-part ${dessous ? 'dessous' : 'dessus'}`} role="toolbar" aria-label={`Actions sur « ${titre} »`}
-      style={{ left: `${((x + 100) / 200) * 100}%`, top: `${((y + 100) / 200) * 100}%` }}>
-      {children}
-    </div>
+    <g className={`bouton-cercle ${classe}`} role="button" tabIndex={0} aria-label={nom}
+      data-x={Math.round(q.x * 100) / 100} data-y={Math.round(q.y * 100) / 100}
+      // Le doigt sur un bouton ne doit ni attraper la part dessous, ni compter pour une pince.
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => { e.stopPropagation(); agir(); }}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); agir(); } }}>
+      <title>{aide ?? nom}</title>
+      <circle cx={q.x} cy={q.y} r={TAILLE_BOUTON} />
+      <text x={q.x} y={q.y}>{signe}</text>
+    </g>
   );
+}
+
+/** L'angle du milieu d'une part (le bas pour un tour entier). */
+function milieuDe(part: Part): number {
+  return part.fin - part.debut >= 2 * Math.PI - 1e-9 ? Math.PI : (part.debut + part.fin) / 2;
+}
+
+/**
+ * Où poser les quatre boutons d'une part, au-delà du bord du cercle : « + dedans » face à son milieu
+ * (l'anneau suivant, vers l'extérieur), « + à côté » sur sa frontière de fin (là où la sœur viendra),
+ * puis « ✎ » et « − » avant le milieu. Une part étroite les écarte assez pour qu'ils ne se touchent pas.
+ */
+function anglesDesBoutons(part: Part): { supprimer: number; renommer: number; dedans: number; cote: number } {
+  const pas = (2 * TAILLE_BOUTON + 2) / RAYON_BOUTONS;
+  const milieu = milieuDe(part);
+  const tour = part.fin - part.debut >= 2 * Math.PI - 1e-9;
+  return {
+    supprimer: milieu - 2 * pas, renommer: milieu - pas, dedans: milieu,
+    cote: tour ? milieu + pas : Math.max(part.fin, milieu + pas),
+  };
+}
+
+/** Un arc de cercle par le haut, de gauche à droite : un titre s'y lit à l'endroit. */
+function arcDuHaut(r: number): string {
+  return `M ${-r} 0 A ${r} ${r} 0 0 1 ${r} 0`;
+}
+
+/** Un arc de cercle par le bas, de gauche à droite : un titre s'y lit à l'endroit, lui aussi. */
+function arcDuBas(r: number): string {
+  return `M ${-r} 0 A ${r} ${r} 0 0 0 ${r} 0`;
 }
 
 /**
@@ -738,8 +946,8 @@ function useGarderDansLEcran<T extends HTMLElement>(): RefObject<T | null> {
 }
 
 /** Le champ posé sur le cercle pour taper un titre : Entrée valide, Échap ferme (sans remonter d'un niveau). */
-function SaisieCercle({ x, y, dessous, libelle, valeur, valider, fermer }: {
-  x: number; y: number; dessous: boolean; libelle: string; valeur: string;
+function SaisieCercle({ position, dessous, libelle, valeur, valider, fermer }: {
+  position: { left: string; top: string }; dessous: boolean; libelle: string; valeur: string;
   valider: (titre: string) => Promise<void>; fermer: () => void;
 }) {
   const [texte, setTexte] = useState(valeur);
@@ -757,7 +965,7 @@ function SaisieCercle({ x, y, dessous, libelle, valeur, valider, fermer }: {
   }
   return (
     <form ref={cadre} className={`saisie-cercle ${dessous ? 'dessous' : 'dessus'}`} autoComplete="off"
-      style={{ left: `${((x + 100) / 200) * 100}%`, top: `${((y + 100) / 200) * 100}%` }}
+      style={position}
       onSubmit={(ev) => void envoyer(ev)}>
       <input ref={champ} aria-label={libelle} placeholder={libelle} maxLength={200} enterKeyHint="done" value={texte}
         onChange={(ev) => setTexte(ev.target.value)}
@@ -770,6 +978,8 @@ function SaisieCercle({ x, y, dessous, libelle, valeur, valider, fermer }: {
 
 interface ProprietesPart {
   readonly part: Part;
+  /** Le grossissement de la loupe (1 : le cercle entier). */
+  readonly zoom: number;
   /** Où elle se dessine en ce moment (pendant un mouvement, entre deux places). */
   readonly geometrie: Geometrie;
   readonly opacite: number;
@@ -794,18 +1004,19 @@ interface ProprietesPart {
 }
 
 /** Une part : sa couleur claire, sa portion faite en foncé (du bord intérieur vers l'extérieur), son titre s'il tient. */
-function PartDessinee({ part, geometrie, opacite, enMouvement, choisie, eteinte, enRetard, glissee, cible, toucher, zoomer, fleche, raccourci, menu, appuyer, survoler, quitter }: ProprietesPart) {
+function PartDessinee({ part, geometrie, zoom, opacite, enMouvement, choisie, eteinte, enRetard, glissee, cible, toucher, zoomer, fleche, raccourci, menu, appuyer, survoler, quitter }: ProprietesPart) {
   const { interieur, exterieur, debut, fin } = geometrie;
   const fait = interieur + ((exterieur - interieur) * part.avancement) / 100;
   const a = (debut + fin) / 2;
   const milieu = (interieur + exterieur) / 2;
   const { x, y } = point(milieu, a);
-  const texte = enMouvement ? null : libelle(part.element.titre, geometrie, TAILLE_TEXTE);
+  // Zoomé, le texte garde sa taille à l'écran : plus petit dans le dessin, il laisse passer plus de lettres.
+  const texte = enMouvement ? null : libelle(part.element.titre, geometrie, TAILLE_TEXTE / zoom, 1.6 / zoom);
   const description = `${part.element.titre}, ${pourcent(part.part)} de son parent, avancement ${Math.round(part.avancement)} %`
     + (enRetard ? `, en retard (échéance ${part.element.echeance ?? ''})` : '');
   const idArc = `arc-${part.element.id}`;
   return (
-    <g className={[`part branche-${part.couleur}`, choisie && 'choisie', part.element.statut === 'fait' && 'faite',
+    <g className={[`part branche-${part.couleur} nuance-${part.nuance}`, choisie && 'choisie', part.element.statut === 'fait' && 'faite',
       eteinte && 'eteinte', enRetard && 'en-retard', glissee && 'glissee', cible && `cible-${cible}`].filter(Boolean).join(' ')}
       role="button" tabIndex={0} aria-label={description} aria-pressed={choisie} data-titre={part.element.titre} data-id={part.element.id}
       data-x={Math.round(x * 100) / 100} data-y={Math.round(y * 100) / 100} opacity={opacite < 1 ? opacite : undefined}
@@ -861,7 +1072,7 @@ interface ProprietesFiche {
   readonly essayerPoids: (poids: number | null) => void;
   readonly essayerAvancement: (valeur: number | null) => void;
   readonly modifier: (changements: Changements) => Promise<void>;
-  readonly creer: (champs: Changements & { titre: string }) => Promise<void>;
+  readonly creer: (champs: Changements & { titre: string }) => Promise<unknown>;
   readonly supprimer: () => Promise<void>;
   readonly egaliser: () => Promise<void>;
   readonly creerListe: (texte: string) => Promise<number>;
@@ -971,12 +1182,12 @@ function FichePart({ part, elements, zoomer, ouvrir, essayerPoids, essayerAvance
 
 /** Sans part choisie : ajouter un élément au centre. */
 function AjoutAuCentre({ centre, elements, creer, creerListe, egaliser }: { centre: Element | null; elements: readonly Element[];
-  creer: (champs: Changements & { titre: string }) => Promise<void>; creerListe: (texte: string) => Promise<number>;
+  creer: (champs: Changements & { titre: string }) => Promise<unknown>; creerListe: (texte: string) => Promise<number>;
   egaliser: () => Promise<void> }) {
   const premiers = enfantsDe(centre?.id ?? null, elements);
   return (
     <section className="fiche-part" aria-label="Ajouter au centre">
-      <p className="doux">Toucher une part pour la choisir ; la retoucher pour zoomer ; le centre pour remonter.</p>
+      <p className="doux">Toucher une part pour la choisir ; la retoucher pour y entrer ; toucher un anneau du milieu pour remonter. Pincer ou Ctrl + molette pour zoomer.</p>
       {premiers.length > 1 && (
         <div className="actions-fiche">
           <button type="button" onClick={() => void egaliser()}>Égaliser les sous-éléments</button>
@@ -993,7 +1204,7 @@ function AjoutAuCentre({ centre, elements, creer, creerListe, egaliser }: { cent
  * sinon « objectif » à la racine et « tâche » ailleurs. Il prend le rang après la dernière sœur.
  */
 function Ajout({ parent, soeursDuNouveau, libelle, creer }: { parent: Element | null; soeursDuNouveau: readonly Element[];
-  libelle: string; creer: (champs: Changements & { titre: string }) => Promise<void> }) {
+  libelle: string; creer: (champs: Changements & { titre: string }) => Promise<unknown> }) {
   const [titre, setTitre] = useState('');
   async function ajouter(ev: FormEvent): Promise<void> {
     ev.preventDefault();

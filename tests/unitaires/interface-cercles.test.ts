@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Element } from '../../ui/api';
 import {
-  arcDeTexte, avancementSous, chemin, cibleSous, couper, deplacerFrontiere, disposer, libelle, polaire, rattacher, trames, type Part,
+  arcDeTexte, avancementSous, chemin, cibleSous, couper, etirerPart, disposer, oignon, libelle, polaire, rattacher, trames, type Part,
 } from '../../ui/cercles';
 
 function element(id: string, champs: Partial<Element> = {}): Element {
@@ -97,6 +97,17 @@ describe('trames (le mouvement du zoom)', () => {
 });
 
 describe('libelle (le titre dans sa part)', () => {
+  it("écrit un titre trop long un peu plus petit avant de le couper, et le coupe s'il ne tient toujours pas", () => {
+    const g = { debut: 0, fin: Math.PI / 4, interieur: 60, exterieur: 98 };
+    const entier = libelle('Préparer le dossier complet du notaire pour la vente', g, 4.2);
+    expect(entier?.mode === 'arc' && entier.lignes.map((l) => l.texte).join(' ')).toBe('Préparer le dossier complet du notaire pour la vente');
+    expect(entier?.taille).toBeLessThan(4.2);
+    // Trop long même plus petit : coupé, à la taille normale.
+    const coupe = libelle('Préparer le dossier complet du notaire pour la vente de la maison', g, 4.2);
+    expect(coupe?.taille).toBe(4.2);
+    expect(coupe?.mode === 'arc' && coupe.lignes.at(-1)?.texte.endsWith('…')).toBe(true);
+  });
+
   it("écrit le titre le long de l'arc quand il y tient", () => {
     const l = libelle('Santé', { debut: 0, fin: Math.PI / 2, interieur: 24, exterieur: 48 }, 4.2);
     expect(l).toEqual({ mode: 'arc', inverse: false, taille: 4.2, lignes: [{ texte: 'Santé', rayon: 36 }] });
@@ -140,7 +151,7 @@ describe('libelle (le titre dans sa part)', () => {
 /** Une part posée, pour les gestes. */
 function partPosee(id: string, debut: number, fin: number, anneau = 1, poids: number | null = null): Part {
   return { element: element(id, { poids }), anneau, debut, fin, part: (fin - debut) / (2 * Math.PI), absolue: 0, avancement: 0,
-    calcule: false, couleur: 0 };
+    calcule: false, couleur: 0, nuance: 0 };
 }
 
 describe('les gestes sur le cercle', () => {
@@ -150,14 +161,25 @@ describe('les gestes sur le cercle', () => {
     expect(polaire(-10, 0).angle).toBeCloseTo(1.5 * Math.PI);
   });
 
-  it('tirer la frontière entre deux sœurs partage autrement leurs poids', () => {
-    const g = partPosee('g', 0, Math.PI / 2);
-    const d = partPosee('d', Math.PI / 2, Math.PI);
-    // Poids 1 et 1 ; la frontière tirée aux trois quarts de la paire donne 1,5 et 0,5.
-    expect(deplacerFrontiere(g, d, (3 * Math.PI) / 4)).toEqual({ gauche: 1.5, droite: 0.5 });
-    // Au-delà de la paire, on bute contre le bout le plus proche, en gardant un minimum.
-    expect(deplacerFrontiere(g, d, Math.PI * 1.1).droite).toBeCloseTo(0.06);
-    expect(deplacerFrontiere(g, d, Math.PI * 1.9).gauche).toBeCloseTo(0.06);
+  it('tirer le bord d\'une part ne change que son poids : ses sœurs se serrent ensemble', () => {
+    // Trois sœurs de poids 1 sur un tour : 120° chacune.
+    const t = (2 * Math.PI) / 3;
+    const a = partPosee('a', 0, t);
+    const b = partPosee('b', t, 2 * t);
+    const c = partPosee('c', 2 * t, 3 * t);
+    const fratrie = [a, b, c];
+    // La fin de « a » tirée à 180° : « a » fait la moitié, donc poids 2 face aux deux autres (1 + 1).
+    const r = etirerPart(a, fratrie, Math.PI);
+    expect(r?.part).toBeCloseTo(0.5);
+    expect(r?.poids).toBeCloseTo(2);
+    // « b » au milieu : sa fin tirée à 240° + 60° (300°). Avant elle, « a » pèse la moitié des autres :
+    // la fin est à 1/2 + s/2 = 300/360, donc s = 2/3 (poids 4 face à 1 + 1).
+    expect(etirerPart(b, fratrie, (300 / 180) * Math.PI)?.poids).toBeCloseTo(4);
+    // « c », la dernière : on tire son début. Début à 180° : b(1 - s) = 1/2 avec b = 1, donc s = 1/2.
+    expect(etirerPart(c, fratrie, Math.PI)?.part).toBeCloseTo(0.5);
+    // On bute en gardant un minimum, et une part seule n'a rien à régler.
+    expect(etirerPart(a, fratrie, 0.001)?.part).toBeCloseTo(0.03);
+    expect(etirerPart(a, [a], Math.PI)).toBeNull();
   });
 
   it("lit l'avancement sous le doigt, par pas de 5", () => {
@@ -177,5 +199,17 @@ describe('les gestes sur le cercle', () => {
     expect(cibleSous(parts, 3, 3, -30)).toMatchObject({ part: a, ou: 'avant' });
     expect(cibleSous(parts, 3, 3, 30)).toMatchObject({ part: a, ou: 'apres' });
     expect(cibleSous(parts, 3, 0, -99)).toBeNull();
+  });
+});
+
+describe('le centre en oignon', () => {
+  it('sur « Tout », le disque seul ; plus bas, « Tout » au milieu, une bande par ancêtre, puis le centre', () => {
+    expect(oignon(0)).toEqual({ racine: 24, bandes: [], rayon: 24 });
+    // Un niveau : le disque de « Tout » et la bande du centre, qui finit où finissait le disque.
+    expect(oignon(1)).toEqual({ racine: 11, bandes: [{ interieur: 11, exterieur: 24 }], rayon: 24 });
+    // Trois niveaux : deux ancêtres de 7, puis le centre.
+    expect(oignon(3).bandes.map((b) => b.exterieur)).toEqual([18, 25, 38]);
+    // Très profond, les bandes des ancêtres s'amincissent : le centre ne dépasse pas sa taille maximale.
+    expect(oignon(12).rayon).toBeCloseTo(46);
   });
 });

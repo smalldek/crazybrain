@@ -205,6 +205,9 @@ li .ouvrir:hover, li .ouvrir:focus-visible { background: var(--fond); color: var
 }
 .part { cursor: pointer; outline: none; }
 .part .fond { fill: var(--clair); }
+/* Des sœurs de même couleur (héritée de leur parent) se distinguent par une nuance plus soutenue. */
+.part.nuance-1 .fond { fill: color-mix(in srgb, var(--clair) 72%, var(--fonce)); }
+.part.nuance-2 .fond { fill: color-mix(in srgb, var(--clair) 52%, var(--fonce)); }
 .part .rempli { fill: var(--fonce); }
 .part .contour { fill: none; stroke: var(--fond); stroke-width: .8; }
 .part text { fill: var(--texte); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
@@ -412,21 +415,64 @@ li .ouvrir:hover, li .ouvrir:focus-visible { background: var(--fond); color: var
 #horizons .depasses { margin-top: 16px; }
 #horizons .depasses h2 { color: var(--erreur); margin-bottom: 6px; }
 
-/* Éditer sur le cercle (3b.13) : la barre d'actions de la part choisie, le « + » du centre, la saisie. */
-.zone-dessin { position: relative; max-width: 34rem; margin: 0 auto 12px; }
-.zone-dessin .dessin-cercles { margin: 0 auto; }
-.barre-part, .saisie-cercle { position: absolute; z-index: 5; display: flex; gap: 4px; align-items: center;
+/* Le cercle prend toute la largeur (sur un grand écran, sans dépasser la hauteur de la fenêtre). */
+.zone-dessin { position: relative; width: 100%; max-width: min(100%, calc(100vh - 140px)); margin: 0 auto 12px; }
+.zone-dessin .dessin-cercles { margin: 0 auto; max-width: none; }
+@media (max-width: 899px) { .zone-dessin { max-width: none; } }
+
+/* La loupe, dans le coin haut droit du dessin (hors du cercle). */
+.outils-loupe { position: absolute; z-index: 6; top: 0; right: 0; display: flex; flex-direction: column; gap: 4px; }
+.outils-loupe button { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--bord); background: var(--carte);
+  color: var(--texte); font-size: 1.1rem; line-height: 1; cursor: pointer; box-shadow: 0 1px 4px rgb(0 0 0 / .12); }
+.outils-loupe button:disabled { opacity: .35; cursor: default; }
+
+/* Plein écran : le dessin seul, aussi grand que la fenêtre le permet. */
+.zone-dessin.plein-ecran { position: fixed; inset: 0; z-index: 40; max-width: none; margin: 0; background: var(--fond);
+  display: flex; align-items: center; justify-content: center; }
+.zone-dessin.plein-ecran .dessin-cercles { width: min(100vw, 100vh); height: min(100vw, 100vh); }
+.zone-dessin.plein-ecran .outils-loupe { top: 12px; right: 12px; }
+
+/* Les boutons d'action, ronds, posés sur le bord du cercle : + (accent), ✎, − (rouge). */
+.bouton-cercle { cursor: pointer; outline: none; }
+.bouton-cercle circle { fill: var(--carte); stroke: var(--accent); stroke-width: .9; filter: drop-shadow(0 .6px 1.2px rgb(0 0 0 / .25)); }
+.bouton-cercle text { fill: var(--accent); font-size: 9px; font-weight: 600; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.bouton-cercle.plus circle { fill: var(--accent); }
+.bouton-cercle.plus text { fill: var(--carte); }
+.bouton-cercle.cote circle { fill: var(--carte); stroke-dasharray: 2 1.2; }
+.bouton-cercle.cote text { fill: var(--accent); }
+.bouton-cercle.crayon text { font-size: 7px; }
+.bouton-cercle.moins circle { stroke: var(--erreur); }
+.bouton-cercle.moins text { fill: var(--erreur); font-size: 11px; }
+.bouton-cercle:hover circle, .bouton-cercle:focus-visible circle { stroke-width: 1.6; }
+
+/* Le centre en oignon : « Tout » au milieu, les ancêtres autour, le centre en dernier. */
+.oignon .anneau-parent { cursor: pointer; outline: none; }
+.oignon .anneau-parent circle, .oignon .anneau-parent .bande { fill: color-mix(in srgb, var(--carte) 80%, var(--doux)); stroke: var(--fond); stroke-width: .6; }
+.oignon .anneau-parent:hover circle, .oignon .anneau-parent:hover .bande,
+.oignon .anneau-parent:focus-visible circle, .oignon .anneau-parent:focus-visible .bande { fill: color-mix(in srgb, var(--carte) 60%, var(--accent)); }
+.oignon text, .centre.en-oignon text { fill: var(--texte); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.oignon .racine text { font-size: 3.6px; font-weight: 600; }
+.oignon .titre-oignon { font-size: 3.4px; }
+.trace { fill: none; stroke: none; }
+.centre.en-oignon .bande { fill: var(--carte); stroke: var(--bord); stroke-width: .8; }
+.centre.en-oignon:focus-visible .bande { stroke: var(--accent); stroke-width: 1.5; }
+
+/* La valeur d'un réglage en cours, au-dessus du cercle. */
+.valeur-geste { position: absolute; z-index: 6; top: 4px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column;
+  align-items: center; padding: 6px 14px; border-radius: 12px; background: var(--carte); border: 1px solid var(--bord);
+  box-shadow: 0 4px 14px rgb(0 0 0 / .18); pointer-events: none; text-align: center; max-width: 80%; }
+.valeur-geste strong { font-size: .9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.valeur-geste span { font-size: 1.3rem; font-weight: 700; color: var(--accent); }
+
+/* Le champ pour taper un titre, posé au bord du cercle. */
+.saisie-cercle { position: absolute; z-index: 5; display: flex; gap: 4px; align-items: center;
   background: var(--carte); border: 1px solid var(--bord); border-radius: 999px; padding: 4px;
   box-shadow: 0 4px 14px rgb(0 0 0 / .18); white-space: nowrap; }
-.barre-part.dessus, .saisie-cercle.dessus { transform: translate(-50%, calc(-100% - 6px)); }
-.barre-part.dessous, .saisie-cercle.dessous { transform: translate(-50%, 6px); }
-.barre-part button, .saisie-cercle button { font: inherit; font-size: .9rem; min-width: 40px; min-height: 40px; padding: 0 10px;
+.saisie-cercle.dessus { transform: translate(-50%, calc(-100% - 6px)); }
+.saisie-cercle.dessous { transform: translate(-50%, 6px); }
+.saisie-cercle button { font: inherit; font-size: .9rem; min-width: 40px; min-height: 40px; padding: 0 10px;
   border-radius: 999px; border: 0; background: none; color: var(--accent); cursor: pointer; }
-.barre-part button:hover, .saisie-cercle button:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
-.barre-part .moins { color: var(--erreur); font-size: 1.3rem; }
+.saisie-cercle button:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .saisie-cercle input { font: inherit; width: min(14rem, 52vw); padding: 8px 12px; border-radius: 999px; border: 1px solid var(--bord);
   background: var(--fond); color: var(--texte); }
 .saisie-cercle button:disabled { opacity: .4; cursor: default; }
-.ajout-centre { position: absolute; z-index: 5; transform: translate(-50%, -50%); width: 40px; height: 40px; border-radius: 50%;
-  border: 1px solid var(--accent); background: var(--carte); color: var(--accent); font-size: 1.4rem; line-height: 1; cursor: pointer;
-  box-shadow: 0 2px 8px rgb(0 0 0 / .15); }

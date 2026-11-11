@@ -210,14 +210,14 @@ Fonctionnalité: Les objectifs en cercles (étape 3b)
     Et je touche la part "Tirer : sport"
     Et je tire la frontière de la part choisie jusqu'à 180°
     Alors la part "Tirer : sport" couvre 180°
-    Et la part "Tirer : lecture" couvre 60°
-    Et la part "Tirer : amis" couvre 120°
+    Et la part "Tirer : lecture" couvre 90°
+    Et la part "Tirer : amis" couvre 90°
     Quand je recharge la page des cercles
     Alors la part "Tirer : sport" couvre 180°
     Quand je touche la part "Tirer : amis"
     Et je tire le remplissage de la part choisie à 60 %
     Alors la part "Tirer : amis" en est à 60 %
-    Et le centre en est à "20 %"
+    Et le centre en est à "15 %"
     Quand je recharge la page des cercles
     Alors la part "Tirer : amis" en est à 60 %
 
@@ -275,3 +275,27 @@ Fonctionnalité: Les objectifs en cercles (étape 3b)
     Quand je ferme la saisie du cercle
     Et j'appuie sur "Alt+Enter" dans les cercles
     Alors la saisie du cercle propose "Renommer « Sur : jardin »"
+
+  Scénario: Les retours du 11/11 : l'oignon, la valeur pendant un réglage, la suppression immédiate, le zoom
+    Étant donné que l'objectif "Oignon : sport" existe
+    Et que "Oignon : sport" contient l'objectif "Oignon : courir" sans poids
+    Et que "Oignon : sport" contient l'objectif "Oignon : nager" sans poids
+    Et que "Oignon : courir" contient la tâche "Oignon : fractionné"
+    Et que "Oignon : courir" contient la tâche "Oignon : footing"
+    Quand j'ouvre les cercles centrés sur "Oignon : courir"
+    Alors l'oignon montre « Tout » puis "Oignon : sport" autour du centre
+    Quand je touche l'anneau "Oignon : sport" de l'oignon
+    Alors le centre des cercles est "Oignon : sport"
+    Quand je touche la part "Oignon : courir"
+    Alors pendant que je tire la frontière de la part choisie jusqu'à 270°, la valeur dit "75 % de son parent"
+    Et la part "Oignon : courir" couvre 270°
+    Et la part "Oignon : nager" couvre 90°
+    Quand je touche la part "Oignon : nager"
+    Et je touche « Supprimer » sur le cercle alors que le serveur met 3 secondes à répondre
+    Alors la part "Oignon : nager" a disparu sans attendre le serveur
+    Quand je touche « Zoomer » au-dessus du cercle
+    Alors le dessin est grossi 1,5 fois
+    Quand je touche « Plein écran » au-dessus du cercle
+    Alors le cercle est en plein écran
+    Quand j'appuie sur "Escape" dans les cercles
+    Alors le cercle n'est plus en plein écran
