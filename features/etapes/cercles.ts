@@ -551,3 +551,7 @@ Then('le cercle est en plein écran', async function (this: Monde) {
 Then("le cercle n'est plus en plein écran", async function (this: Monde) {
   await expect(cercles(this).locator('.zone-dessin')).not.toHaveClass(/plein-ecran/);
 });
+
+Then("aucune part n'est choisie", async function (this: Monde) {
+  await expect(cercles(this).locator('g.part[aria-pressed="true"]')).toHaveCount(0);
+});

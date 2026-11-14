@@ -286,6 +286,10 @@ Fonctionnalité: Les objectifs en cercles (étape 3b)
     Alors l'oignon montre « Tout » puis "Oignon : sport" autour du centre
     Quand je touche l'anneau "Oignon : sport" de l'oignon
     Alors le centre des cercles est "Oignon : sport"
+    Quand je touche la part "Oignon : nager"
+    Et je touche le centre des cercles
+    Alors aucune part n'est choisie
+    Et le centre des cercles est "Oignon : sport"
     Quand je touche la part "Oignon : courir"
     Alors pendant que je tire la frontière de la part choisie jusqu'à 270°, la valeur dit "75 % de son parent"
     Et la part "Oignon : courir" couvre 270°

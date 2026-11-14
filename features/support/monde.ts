@@ -44,6 +44,8 @@ export class Monde extends World {
   /** Le navigateur des scénarios @navigateur (voir navigateur.ts). */
   contexte: BrowserContext | undefined;
   page: Page | undefined;
+  /** L'onglet ouvert par « Continuer dans Claude » (étape 9). */
+  ongletClaude: Page | undefined;
 
   get serrure(): SerrureDeTest {
     if (!serrure) throw new Error('Serrure de test non démarrée.');

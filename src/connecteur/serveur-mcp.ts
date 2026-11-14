@@ -47,6 +47,7 @@ Tout est un « élément » : projet, initiative, objectif, epic, feature, tâch
 - Statuts : a_faire, en_cours, fait. Priorités : basse, normale, haute, urgente. Dates AAAA-MM-JJ, heures HH:MM, estimation en minutes.
 - Vue en cercles : « poids » dit ce que pèse un élément parmi ses frères (sa part dans son parent = son poids sur la somme des poids des frères ; sans poids, il compte pour 1). « avancement » (0 à 100) se saisit sur un élément sans enfant ; celui d'un parent se calcule de ses enfants, pondéré par leurs parts, et un élément « fait » vaut 100.
 - Supprimer archive l'élément : il sort des listes et peut se restaurer.
+- Un « retour » (type « retour ») est ce qu'Adrien écrit à Claude depuis une page de l'outil, avec le tag page:<vue> (page:cercles…) ; sa description dit la page, l'adresse, l'élément regardé et la taille de l'écran. Les ouverts : chercher_elements avec types ["retour"] et statuts ["a_faire", "en_cours"]. Répondre par commenter_element : la réponse s'affiche sous le retour, sur la page. Le passer « en_cours » quand on s'y met, « fait » quand c'est livré, avec le lien de la PR en commentaire. Changer la page elle-même se fait par une PR du dépôt smalldek/crazybrain.
 - Pour une question qu'aucun filtre de chercher_elements ne couvre (compter, regrouper, croiser) : tester_requete, du SQL en lecture seule sur les vues v_elements, v_tags… ; enregistrer_requete la garde sous un nom, et Adrien la retrouve dans l'outil.
 Avant de créer un projet, chercher s'il existe déjà. Les dates relatives (« demain », « vendredi ») se comptent au jour de Paris.
 Tout ce que Claude fait ici est noté dans le journal avec Claude pour auteur.`;
@@ -57,7 +58,7 @@ const jour = z.string().describe('Jour AAAA-MM-JJ');
 
 /** Les champs qu'on peut donner à la création et changer ensuite. */
 const champsElement = {
-  type: z.string().optional().describe('Code du type : tache (par défaut), projet, initiative, objectif, epic, feature'),
+  type: z.string().optional().describe('Code du type : tache (par défaut), projet, initiative, objectif, epic, feature, retour'),
   parent: z.string().nullable().optional().describe("Id de l'élément qui le contient ; null pour le sortir de son parent"),
   description: z.string().nullable().optional().describe('Texte en Markdown'),
   priorite: priorite.nullable().optional(),

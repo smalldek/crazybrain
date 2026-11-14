@@ -5,6 +5,7 @@ import { useEffect, useId, useState, type FormEvent, type ReactNode } from 'reac
 import { avancementsCalcules } from '../src/domaine/cercles';
 import { libelleHorizon } from './horizons';
 import { api, type Element, type ElementComplet, type Tag, type TypeElement } from './api';
+import { TYPE_RETOUR } from './retours';
 import { brouillonDe, changementsDepuis, parentsPossibles, type Brouillon } from './formulaire';
 import { contenuAPartager } from './partage';
 import { dateLisible, RelationsDetail } from './relations-detail';
@@ -61,7 +62,7 @@ export function PanneauDetail({ id, elements, tousLesTags, fermer, modifie }: Pr
   };
 
   useEffect(() => {
-    api.types().then(setTypes, () => setTypes([]));
+    api.types().then((t) => setTypes(t.filter((x) => x.code !== TYPE_RETOUR)), () => setTypes([]));
   }, []);
 
   // Échap ferme le panneau, sauf s'il a déjà servi ailleurs (annuler la correction d'un titre).

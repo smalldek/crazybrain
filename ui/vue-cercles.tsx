@@ -260,6 +260,13 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
     if (centre === null) return;
     naviguer(adresseCercles(dessin.centre?.parent ?? null));
   };
+  // Toucher le centre (« Tout », ou le centre en oignon) : avec une part choisie, on la lâche et l'on
+  // revient au centre (sa fiche, son « + ») ; sinon, on remonte d'un niveau. Avant, sur « Tout », il ne
+  // se passait rien (14/11, Adrien : « je ne peux pas recliquer sur Tout dans le cercle »).
+  const toucherCentre = (): void => {
+    if (choisi !== null) { setChoisi(null); setEdition(null); return; }
+    remonter();
+  };
   const toucher = (part: Part): void => {
     if (ignorerClic.current) { ignorerClic.current = false; return; }
     if (choisi === part.element.id) zoomer(part.element.id);
@@ -709,9 +716,9 @@ export function VueCercles({ elements, centre, anneaux, ouvert, ouvrir, modifier
         )}
         <g className={['centre', coeur.bandes.length > 0 && 'en-oignon', cible?.sorte === 'centre' && 'cible-dans'].filter(Boolean).join(' ')} role="button" tabIndex={0}
           aria-label={centre === null ? `Tout, avancement ${Math.round(dessin.avancementCentre)} %` : `Remonter depuis « ${titreCentre} »`}
-          onClick={remonter}
+          onClick={toucherCentre}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); remonter(); }
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toucherCentre(); }
             if (e.key === 'ArrowDown') {
               e.preventDefault();
               const premiere = dessin.parts.filter((p) => p.anneau === 1).sort((a, b) => a.debut - b.debut)[0];

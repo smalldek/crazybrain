@@ -6,7 +6,7 @@ Fonctionnalité: Le modèle complet d'un élément (tâche 1.3)
   Scénario: Les types d'éléments sont listés
     Étant donné que je suis connecté par Cloudflare Access
     Quand je demande la liste des types
-    Alors les types sont "projet, initiative, objectif, epic, feature, tache"
+    Alors les types sont "projet, initiative, objectif, epic, feature, tache, retour"
 
   Scénario: Une tâche créée sans préciser est une « tache »
     Étant donné que je suis connecté par Cloudflare Access
