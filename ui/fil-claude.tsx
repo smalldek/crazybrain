@@ -78,7 +78,7 @@ function Fil({ contexte, retours, recharger, fermer }: Proprietes & { fermer: ()
       const cree = await api.creer({ ...retour, type: TYPE_RETOUR });
       await api.tagger(cree.id, `${CLE_PAGE}:${contexte.vue}`);
       setTexte('');
-      setAvis({ texte: 'Retour gardé. Claude le lira quand tu lui diras « traite les retours », ou tout de suite avec « Continuer dans Claude ».' });
+      setAvis({ texte: 'Retour gardé, rien d’autre à faire ici. Pour que Claude s’en occupe : dis-lui « traite les retours » dans ton projet Claude crazybrain. Sa réponse s’affichera sous ton retour.' });
       await recharger();
     } catch (e) {
       setAvis({ texte: e instanceof Error ? e.message : String(e), erreur: true });
@@ -118,7 +118,7 @@ function Fil({ contexte, retours, recharger, fermer }: Proprietes & { fermer: ()
       </header>
       <div className="defile">
         {enCours.length === 0 && faits.length === 0 && (
-          <p className="vide-doux">Aucun retour sur cette page. Écris ce qui ne va pas, ce que tu voudrais : Claude le lira et répondra ici.</p>
+          <p className="vide-doux">Aucun retour sur cette page. Écris ce qui ne va pas, ce que tu voudrais, puis dis à Claude « traite les retours » dans ton projet Claude crazybrain : il répondra ici.</p>
         )}
         <ol className="retours">
           {enCours.map((r) => (
