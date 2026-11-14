@@ -13,7 +13,7 @@ interface Proprietes {
   readonly aujourdhui: string;
   readonly parametres: URLSearchParams;
   readonly ouvrir: (id: string) => void;
-  readonly creer: (champs: Changements & { titre: string }) => Promise<void>;
+  readonly creer: (champs: Changements & { titre: string }) => Promise<unknown>;
 }
 
 export function VueHorizons({ elements, aujourdhui, parametres, ouvrir, creer }: Proprietes) {

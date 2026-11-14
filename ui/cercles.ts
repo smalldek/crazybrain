@@ -1,7 +1,7 @@
 // La vue en cercles, sans React : quel élément au centre, quelles parts autour, à quels angles.
 // Testé seul (tests/unitaires/interface-cercles.test.ts et interface-complements-cercles.test.ts). Les règles de poids et d'avancement
 // viennent du domaine (src/domaine/cercles.ts), les mêmes que côté serveur.
-import { avancementDeRacines, avancementsCalcules, parts, poidsEffectif } from '../src/domaine/cercles';
+import { avancementDeRacines, avancementsCalcules, parts, poidsEffectif, poidsPourPart } from '../src/domaine/cercles';
 import type { Appartenance, Element } from './api';
 
 /** Le nombre d'anneaux montrés, par défaut et au plus. */
@@ -77,11 +77,17 @@ export interface Part {
   /** L'avancement est-il calculé (l'élément a des enfants) ? */
   readonly calcule: boolean;
   /**
-   * Sa couleur (0 à COULEURS − 1) : celle choisie pour elle, sinon celle de son parent, sinon (au
-   * premier anneau) une par branche, dans l'ordre.
+   * Sa couleur (0 à COULEURS − 1) : celle choisie pour elle, sinon celle de son parent, sinon une par
+   * sœur, dans l'ordre. Une part seule à son niveau (un seul projet, comme Sport le 11/11) ne donne pas
+   * sa couleur à ses enfants : ils en prennent une chacun, sinon tout serait d'une seule teinte.
    */
   readonly couleur: number;
+  /** La nuance (0 à NUANCES − 1) qui distingue des sœurs de même couleur : la claire, puis deux plus soutenues. */
+  readonly nuance: number;
 }
+
+/** Le nombre de nuances d'une même couleur (classes .nuance-0 à .nuance-2 de styles.css). */
+export const NUANCES = 3;
 
 /** Le dessin entier : le centre (null : « Tout »), son avancement, et les parts. */
 export interface Disposition {
@@ -150,13 +156,17 @@ export function disposer(
       vus.add(e.id);
       const part = p[i] ?? 0;
       const finPart = angle + (fin - debut) * part;
-      const sienne = choisies.get(e.id) ?? couleur ?? i % COULEURS;
+      const choisie = choisies.get(e.id);
+      const sienne = choisie ?? couleur ?? i % COULEURS;
       const siens = enfants.get(e.id) ?? [];
       lesParts.push({
         element: e, anneau, debut: angle, fin: finPart, part, absolue: (finPart - angle) / (2 * Math.PI),
         avancement: avancements.get(e.id) ?? 0, calcule: siens.length > 0 && e.statut !== 'fait', couleur: sienne,
+        // Des sœurs qui héritent toutes la même couleur se distinguent par la nuance.
+        nuance: choisie === undefined && couleur !== null ? i % NUANCES : 0,
       });
-      poser(siens, anneau + 1, angle, finPart, sienne);
+      // Seule à son niveau et sans couleur choisie, elle laisse ses enfants prendre une couleur chacun.
+      poser(siens, anneau + 1, angle, finPart, choisie !== undefined || freres.length > 1 ? sienne : null);
       angle = finPart;
     });
   };
@@ -188,10 +198,38 @@ export function lireAnneaux(texte: string | null): number {
 export const RAYON_CENTRE = 24;
 export const RAYON_EXTERIEUR = 98;
 
-/** Les rayons intérieur et extérieur d'un anneau. */
-export function rayons(anneau: number, anneaux: number): { interieur: number; exterieur: number } {
-  const largeur = (RAYON_EXTERIEUR - RAYON_CENTRE) / anneaux;
-  return { interieur: RAYON_CENTRE + (anneau - 1) * largeur, exterieur: RAYON_CENTRE + anneau * largeur };
+/** Les rayons intérieur et extérieur d'un anneau, autour d'un centre de rayon `centre`. */
+export function rayons(anneau: number, anneaux: number, centre = RAYON_CENTRE): { interieur: number; exterieur: number } {
+  const largeur = (RAYON_EXTERIEUR - centre) / anneaux;
+  return { interieur: centre + (anneau - 1) * largeur, exterieur: centre + anneau * largeur };
+}
+
+/** Une bande du centre en oignon : un ancêtre, ou le centre lui-même (la dernière). */
+export interface BandeOignon {
+  readonly interieur: number;
+  readonly exterieur: number;
+}
+
+/** Le plus grand rayon que prend le centre en oignon, pour laisser la place aux anneaux. */
+export const RAYON_OIGNON_MAX = 46;
+
+/**
+ * Le centre en oignon (11/11, Adrien : « je devrais voir les cercles intérieurs des parents comme un
+ * oignon ») : au milieu, le disque de « Tout » ; autour, une bande par ancêtre, du plus haut au plus
+ * proche ; puis la bande du centre lui-même, plus large pour son titre. `profondeur` est la longueur
+ * du fil d'Ariane (0 : on est sur « Tout », le disque seul fait le centre, comme avant).
+ */
+export function oignon(profondeur: number): { racine: number; bandes: BandeOignon[]; rayon: number } {
+  if (profondeur <= 0) return { racine: RAYON_CENTRE, bandes: [], rayon: RAYON_CENTRE };
+  const racine = 11;
+  const sienne = 13;
+  const ancetres = profondeur - 1;
+  const largeur = ancetres === 0 ? 0 : Math.min(7, (RAYON_OIGNON_MAX - racine - sienne) / ancetres);
+  const bandes: BandeOignon[] = [];
+  let r = racine;
+  for (let i = 0; i < ancetres; i++) { bandes.push({ interieur: r, exterieur: r + largeur }); r += largeur; }
+  bandes.push({ interieur: r, exterieur: r + sienne });
+  return { racine, bandes, rayon: r + sienne };
 }
 
 /** Un point à l'angle donné (0 en haut, dans le sens des aiguilles d'une montre). */
@@ -243,8 +281,8 @@ export interface Geometrie {
 }
 
 /** La géométrie d'une part posée, sur `anneaux` anneaux. */
-export function geometrieDe(part: Part, anneaux: number): Geometrie {
-  return { debut: part.debut, fin: part.fin, ...rayons(part.anneau, anneaux) };
+export function geometrieDe(part: Part, anneaux: number, centre = RAYON_CENTRE): Geometrie {
+  return { debut: part.debut, fin: part.fin, ...rayons(part.anneau, anneaux, centre) };
 }
 
 /** Une part pendant le mouvement : où elle en est, et son opacité (elle apparaît ou s'efface). */
@@ -325,12 +363,32 @@ export function couper(titre: string, max: number, lignes: number): string[] {
 /** Un caractère prend environ 0,55 fois la taille du texte. */
 const LARGEUR_CARACTERE = 0.55;
 
-export function libelle(titre: string, geometrie: Geometrie, tailleMax: number): Libelle | null {
+export function libelle(titre: string, geometrie: Geometrie, tailleMax: number, seuil = 1.6): Libelle | null {
+  // Un titre trop long pour la part s'écrit un peu plus petit avant d'être coupé (11/11, Adrien : « le
+  // texte dedans on le voit pas, trop long ») ; il n'est coupé que s'il ne tient pas non plus ainsi.
+  const base = Math.min(tailleMax, (geometrie.exterieur - geometrie.interieur) * 0.4);
+  if (base < seuil) return null;
+  let premier: Libelle | null = null;
+  for (const facteur of [1, 0.85, 0.72]) {
+    const taille = base * facteur;
+    if (taille < seuil) break;
+    const essai = poserLibelle(titre, geometrie, taille);
+    if (facteur === 1) premier = essai;
+    if (essai && !libelleCoupe(essai)) return essai;
+  }
+  return premier;
+}
+
+/** Le titre a-t-il été coupé (des points de suspension) ? */
+function libelleCoupe(l: Libelle): boolean {
+  return l.mode === 'rayon' ? l.texte.endsWith('…') : l.lignes.some((x) => x.texte.endsWith('…'));
+}
+
+/** Le titre posé à une taille donnée : le long de l'arc (sur une ou deux lignes), ou dans le sens du rayon. */
+function poserLibelle(titre: string, geometrie: Geometrie, taille: number): Libelle | null {
   const { interieur, exterieur } = geometrie;
   const angle = Math.min(geometrie.fin - geometrie.debut, Math.PI);
   const epaisseur = exterieur - interieur;
-  const taille = Math.min(tailleMax, epaisseur * 0.4);
-  if (taille < 1.6) return null;
   const milieu = (interieur + exterieur) / 2;
   const tient = (rayon: number): number => Math.floor((rayon * angle * 0.85) / (taille * LARGEUR_CARACTERE));
   const surUne = tient(milieu);
@@ -381,22 +439,39 @@ function depuis(angle: number, debut: number): number {
   return a;
 }
 
-/** La plus petite part qu'on peut laisser à l'une des deux voisines en tirant leur frontière. */
+/** La plus petite (et, à l'inverse, la plus grande) part qu'on peut donner en tirant un bord. */
 export const PART_MIN_FRONTIERE = 0.03;
 
+/** Le bord qu'on tire sur une part : sa fin, sauf pour la dernière de sa fratrie, collée au bout (son début). */
+export function bordTire(part: Part, fratrie: readonly Part[]): 'debut' | 'fin' {
+  const derniere = [...fratrie].sort((x, y) => x.debut - y.debut).at(-1);
+  return derniere?.element.id === part.element.id ? 'debut' : 'fin';
+}
+
 /**
- * Tirer la frontière entre deux sœurs voisines (`gauche` puis `droite`) jusqu'à `angle` : elles se
- * partagent autrement la somme de leurs poids, les autres sœurs ne bougent pas. Rend les deux poids.
+ * Tirer le bord de la part choisie jusqu'à `angle` (11/11, Adrien : « je devrais pas modifier les
+ * autres ») : seul son poids change ; ses sœurs gardent les leurs et se serrent toutes ensemble, dans
+ * leurs proportions, comme dans Goalscape. On cherche la part `s` pour laquelle le bord tiré tombe
+ * sous le doigt : avec `b` la part des sœurs d'avant parmi les autres, la fin est à b + s(1 - b) et
+ * le début à b(1 - s). Rend son nouveau poids et sa part dans le parent (null : rien à régler).
  */
-export function deplacerFrontiere(gauche: Part, droite: Part, angle: number): { gauche: number; droite: number } {
-  const total = poidsEffectif(gauche.element.poids) + poidsEffectif(droite.element.poids);
-  const etendue = droite.fin - gauche.debut;
-  const a = depuis(angle, gauche.debut);
-  // Au-delà de la paire, le doigt est plus près d'un bout ou de l'autre : on bute contre lui.
-  const dedans = a <= droite.fin ? a : (a - droite.fin < gauche.debut + 2 * Math.PI - a ? droite.fin : gauche.debut);
-  const fraction = Math.min(1 - PART_MIN_FRONTIERE, Math.max(PART_MIN_FRONTIERE, (dedans - gauche.debut) / etendue));
-  const g = Math.round(total * fraction * 1000) / 1000;
-  return { gauche: g, droite: Math.round((total - g) * 1000) / 1000 };
+export function etirerPart(part: Part, fratrie: readonly Part[], angle: number): { poids: number; part: number } | null {
+  const ordre = [...fratrie].sort((x, y) => x.debut - y.debut);
+  const premiere = ordre[0];
+  const derniere = ordre.at(-1);
+  if (!premiere || !derniere || ordre.length < 2) return null;
+  const debut = premiere.debut;
+  const etendue = derniere.fin - debut;
+  const ancienne = (part.fin - part.debut) / etendue;
+  const avant = (part.debut - debut) / etendue / (1 - ancienne);
+  let a = depuis(angle, debut) - debut;
+  // Au-delà de la fratrie, le doigt est plus près d'un bout ou de l'autre : on bute contre lui.
+  if (a > etendue) a = a - etendue < 2 * Math.PI - a ? etendue : 0;
+  const t = a / etendue;
+  const brute = bordTire(part, ordre) === 'fin' ? (t - avant) / (1 - avant) : 1 - t / avant;
+  const nouvelle = Math.min(1 - PART_MIN_FRONTIERE, Math.max(PART_MIN_FRONTIERE, brute));
+  const autres = ordre.filter((p) => p.element.id !== part.element.id).map((p) => p.element.poids);
+  return { poids: Math.round(poidsPourPart(nouvelle, autres) * 1000) / 1000, part: nouvelle };
 }
 
 /** L'avancement lu sous le doigt, du bord intérieur (0) au bord extérieur (100), par pas de 5. */
@@ -411,11 +486,11 @@ export type Cible =
   | { readonly sorte: 'part'; readonly part: Part; readonly ou: 'avant' | 'dans' | 'apres' };
 
 /** La cible sous le point (x, y) du dessin, ou null (hors du cercle). */
-export function cibleSous(lesParts: readonly Part[], anneaux: number, x: number, y: number): Cible | null {
+export function cibleSous(lesParts: readonly Part[], anneaux: number, x: number, y: number, centre = RAYON_CENTRE): Cible | null {
   const { angle, rayon } = polaire(x, y);
-  if (rayon < RAYON_CENTRE) return { sorte: 'centre' };
+  if (rayon < centre) return { sorte: 'centre' };
   for (const p of lesParts) {
-    const { interieur, exterieur } = rayons(p.anneau, anneaux);
+    const { interieur, exterieur } = rayons(p.anneau, anneaux, centre);
     if (rayon < interieur || rayon >= exterieur) continue;
     const a = depuis(angle, p.debut);
     if (a >= p.fin) continue;
