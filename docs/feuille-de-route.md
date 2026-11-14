@@ -33,6 +33,7 @@ tâche en a besoin, elle le dit (« Il faut du projet Cloudflare »), et Adrien 
 | 6. Calendrier et mode journée | Planifier sa journée à la Sunsama | — |
 | 7. Horizons | Timestripe | — |
 | 8. Mail → tâche | Un mail envoyé à une adresse devient une tâche | — |
+| 9. Parler à Claude depuis chaque page | Un retour écrit sur la page qu'on regarde ; Claude y répond et change la page | Construite le 11/11 |
 
 ## Étape 0 — Cadrage
 
@@ -749,6 +750,51 @@ survit au rechargement. Chaque point a son scénario joué dans le navigateur.
     local par la porte de test de wrangler, comme le ferait Email Routing).
 - **Fait quand** : un mail envoyé par Adrien à l'adresse devient une tâche (sujet en titre, corps
   en description) ; un mail d'une autre adresse est rejeté.
+
+## Étape 9 — Parler à Claude depuis chaque page
+
+Demande d'Adrien, 11/11 : « Rajoute que je puisse chatter avec toi avec Claude sur chaque page pour
+faire des retours et modifier les pages. »
+
+**Le principe.** Une page web ne peut pas utiliser l'abonnement Claude d'Adrien (l'API est un compte
+séparé, payé à l'usage : voir `docs/fonctionnalites.md`). La discussion se fait donc en deux temps,
+comme un fil de messages : Adrien écrit son retour **sur la page qu'il regarde**, l'outil le garde
+avec ce qu'il faut pour le comprendre (la vue, l'adresse, l'élément ouvert, la taille de l'écran) ;
+Claude, depuis une conversation ou le projet Claude « crazybrain », le lit par le connecteur, y
+répond dans le même fil, et, si la page doit changer, la change par une PR. La réponse s'affiche sur
+la page, sous le retour. Un vrai chat en direct dans la page demanderait l'API : c'est l'autre
+option, proposée à Adrien le 11/11, qui s'ajouterait par-dessus.
+
+- **Tâches** :
+  - 9.1 ✓ Le type « retour ». Un retour est un élément de type `retour` (une migration ajoute le type),
+    avec le tag `page:<vue>`. Il profite de tout ce qui existe : statut (à faire, en cours, fait),
+    commentaires (les messages du fil, auteur Adrien ou Claude), journal, connecteur. Les retours
+    n'apparaissent dans aucune vue de travail (liste, kanban, cercles…), seulement dans le fil de
+    leur page.
+  - 9.2 ✓ Le bouton « Claude » sur chaque page. En bas à droite, toujours là ; un nombre dit combien
+    de retours de la page sont encore ouverts. Il ouvre le fil de la page : les retours, du plus
+    ancien au plus récent, chacun avec ses réponses ; une zone pour écrire un nouveau retour, et
+    « Répondre » sous chaque retour ouvert. Un retour fait se replie. Envoyer garde le retour avec
+    son contexte (dans la description), sans quitter la page.
+  - 9.3 ✓ « Continuer dans Claude ». Le bouton copie un message tout prêt (« Retour Crazybrain <id>
+    sur la page Cercles : … ; lis-le avec lire_element, réponds par commenter_element ») et ouvre
+    Claude. Par défaut une nouvelle conversation claude.ai, avec le message pré-rempli
+    (`claude.ai/new?q=`, hypothèse non vérifiée : le message copié sert si le pré-remplissage ne
+    marche pas) ; Adrien peut régler une autre adresse (le chat de son projet Claude « crazybrain »),
+    gardée dans le téléphone.
+  - 9.4 ✓ Le connecteur sait ce qu'est un retour : ses consignes disent comment trouver les retours
+    ouverts (`chercher_elements` type `retour`), y répondre (`commenter_element`), et les fermer
+    (statut `fait`, avec le lien de la PR en commentaire).
+  - 9.5 ✓ La règle de traitement, dans `CLAUDE.md` : quand Adrien dit « traite les retours », Claude
+    lit les retours ouverts, répond à chacun, construit ce qui est demandé par PR, puis ferme.
+- **Fait quand** : depuis n'importe quelle vue, au téléphone, Adrien écrit un retour sans quitter la
+  page ; Claude le trouve par le connecteur, y répond, et la réponse s'affiche sous le retour. Vérifié
+  par un scénario dans un vrai navigateur et un scénario sur le connecteur.
+- **Construite le 11/11** : `ui/retours.ts` (testé seul, `tests/unitaires/interface-retours.test.ts`),
+  `ui/fil-claude.tsx`, migration `0013_retours.sql`, consignes du connecteur ; vérifié par
+  `features/retours.feature` (le retour écrit sur le kanban, absent de la liste, la réponse de Claude
+  par le connecteur affichée sous le retour, « C'est réglé » ; « Continuer dans Claude » ouvre
+  claude.ai avec le message). Reste l'essai d'Adrien sur son téléphone.
 
 ## Plus tard
 

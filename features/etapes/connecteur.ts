@@ -279,3 +279,13 @@ Then('la liste des requêtes ne contient ni {string} ni {string}', function (thi
   const noms = (dernier(this).json as RequeteLue[]).map((r) => r.nom);
   assert.ok(!noms.includes(a) && !noms.includes(b), JSON.stringify(noms));
 });
+
+// Étape 9 : Claude trouve un retour écrit depuis une page, par le connecteur, et y répond.
+When('Claude répond {string} au retour {string}', async function (this: Monde, reponse: string, titre: string) {
+  const trouves = await outil(this, 'chercher_elements', { types: ['retour'], statuts: ['a_faire', 'en_cours'], texte: titre });
+  assert.equal(trouves.erreur, false, trouves.texte);
+  const retour = ((trouves.json as { elements: { id: string; titre: string }[] }).elements).find((e) => e.titre === titre);
+  assert.ok(retour, `retour « ${titre} » introuvable : ${trouves.texte}`);
+  const r = await outil(this, 'commenter_element', { id: retour.id, texte: reponse });
+  assert.equal(r.erreur, false, r.texte);
+});
